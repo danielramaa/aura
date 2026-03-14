@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/group_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -11,6 +12,7 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Row(
@@ -50,6 +52,16 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            // card
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GroupCard(
+                name: 'Diabetes Tipo 2',
+                lastMessage: 'User123: Olá!',
+                time: '14:32',
+                color: Color(0xFF1D9E75),
               ),
             ),
           ],
