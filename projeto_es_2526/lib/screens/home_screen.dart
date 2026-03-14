@@ -2,7 +2,27 @@ import 'package:flutter/material.dart';
 import '../widgets/group_card.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  HomeScreen({super.key});
+  final List<Map<String, dynamic>> groups = [
+    {
+      'name': 'Diabetes Tipo 2',
+      'lastMessage': 'User123: "Olá!"',
+      'time': '14:32',
+      'color': Color(0xFF1D9E75),
+    },
+    {
+      'name': 'Hipertensão',
+      'lastMessage': 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
+      'time': '11:05',
+      'color': Color(0xFF378ADD),
+    },
+    {
+      'name': 'Asma',
+      'lastMessage': 'Sem novas mensagens',
+      'time': 'Mon',
+      'color': Color(0xFFD4537E),
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +43,7 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'My communities',
+                        'My Groups',
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w500,
@@ -32,7 +52,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '3 active communities',
+                        '3 active groups',
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
@@ -55,13 +75,20 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
             // card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GroupCard(
-                name: 'Diabetes Tipo 2',
-                lastMessage: 'User123: Olá!',
-                time: '14:32',
-                color: Color(0xFF1D9E75),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: groups.length,
+                separatorBuilder: (context, index) => SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  return GroupCard(
+                    name: group['name'],
+                    lastMessage: group['lastMessage'],
+                    time: group['time'],
+                    color: group['color'],
+                  );
+                },
               ),
             ),
           ],
