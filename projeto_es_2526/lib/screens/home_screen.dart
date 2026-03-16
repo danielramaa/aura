@@ -38,12 +38,10 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // header
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
@@ -165,8 +163,7 @@ class HomeScreen extends StatelessWidget {
                       },
                     ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

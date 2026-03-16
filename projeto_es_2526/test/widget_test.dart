@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:projeto_es_2526/widgets/group_card.dart';
 
 void main() {
