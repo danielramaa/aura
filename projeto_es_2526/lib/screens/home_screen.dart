@@ -14,6 +14,7 @@ class HomeScreen extends StatelessWidget {
       'color': defaultGroupColor,
       'unreadCount': 2,
       'isOnline': true,
+      'memberCount': 2400,
     },
     {
       'name': 'Hipertensão',
@@ -22,6 +23,7 @@ class HomeScreen extends StatelessWidget {
       'color': defaultGroupColor,
       'unreadCount': 0,
       'isOnline': false,
+      'memberCount': 1100,
     },
     {
       'name': 'Asma',
@@ -30,6 +32,7 @@ class HomeScreen extends StatelessWidget {
       'color': defaultGroupColor,
       'unreadCount': 5,
       'isOnline': false,
+      'memberCount': 890,
     },
   ];
 
@@ -157,6 +160,7 @@ class HomeScreen extends StatelessWidget {
                           color: group['color'],
                           unreadCount: group['unreadCount'],
                           isOnline: group['isOnline'],
+                          memberCount: group['memberCount'],
                         );
                       },
                     ),

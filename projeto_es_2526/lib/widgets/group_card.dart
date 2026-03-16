@@ -7,6 +7,7 @@ class GroupCard extends StatelessWidget {
   final Color color;
   final int unreadCount;
   final bool isOnline;
+  final int memberCount;
 
   const GroupCard({
     super.key,
@@ -16,6 +17,7 @@ class GroupCard extends StatelessWidget {
     required this.color,
     this.unreadCount = 0,
     this.isOnline = false,
+    this.memberCount = 0,
   });
 
   @override
@@ -76,6 +78,13 @@ class GroupCard extends StatelessWidget {
                         isOnline ? 'Online now' : 'Nobody online',
                         style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                       ),
+                      if (memberCount > 0) ...[
+                        SizedBox(width: 8),
+                        Text(
+                          '$memberCount members',
+                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                        ),
+                      ],
                     ],
                   ),
                 ],
