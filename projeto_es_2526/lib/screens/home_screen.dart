@@ -26,7 +26,7 @@ class HomeScreen extends StatelessWidget {
   static const Color defaultGroupColor = Color(0xFF378ADD);
   final VoidCallback onFindGroups;
 
-  static const List<Group> groups = <Group>[ // empty list IF wanna test empty state
+  static const List<Group> groups = <Group>[ // Set this to an empty list in tests/demos to verify the empty state UI.
     Group(
       name: 'Diabetes Tipo 2',
       lastMessage: 'User123: "Olá!"',
