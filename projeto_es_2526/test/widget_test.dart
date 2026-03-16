@@ -1,30 +1,42 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:flutter/material.dart';
+import 'package:projeto_es_2526/widgets/group_card.dart';
 import 'package:projeto_es_2526/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
+  testWidgets('Home screen shows my groups title', (WidgetTester tester) async {
     await tester.pumpWidget(const MyApp());
+    expect(find.text('My Groups'), findsOneWidget);
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  group('GroupCard unread badge', () {
+    Widget buildCard({required int unreadCount}) {
+      return MaterialApp(
+        home: Scaffold(
+          body: GroupCard(
+            name: 'Test',
+            lastMessage: 'Hello',
+            time: '10:00',
+            color: Colors.blue,
+            unreadCount: unreadCount,
+          ),
+        ),
+      );
+    }
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    testWidgets('badge is hidden when unreadCount is 0', (tester) async {
+      await tester.pumpWidget(buildCard(unreadCount: 0));
+      expect(find.text('0'), findsNothing);
+    });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    testWidgets('badge shows exact count for small values', (tester) async {
+      await tester.pumpWidget(buildCard(unreadCount: 5));
+      expect(find.text('5'), findsOneWidget);
+    });
+
+    testWidgets('badge shows 99+ when count exceeds 99', (tester) async {
+      await tester.pumpWidget(buildCard(unreadCount: 100));
+      expect(find.text('99+'), findsOneWidget);
+    });
   });
 }
