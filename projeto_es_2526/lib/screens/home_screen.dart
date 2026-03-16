@@ -1,39 +1,59 @@
 import 'package:flutter/material.dart';
 import '../widgets/group_card.dart';
 
+class Group {
+  final String name;
+  final String lastMessage;
+  final String time;
+  final Color color;
+  final int unreadCount;
+  final bool isOnline;
+  final int memberCount;
+
+  const Group({
+    required this.name,
+    required this.lastMessage,
+    required this.time,
+    required this.color,
+    required this.unreadCount,
+    required this.isOnline,
+    required this.memberCount,
+  });
+}
+
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key, required this.onFindGroups});
   static const Color defaultGroupColor = Color(0xFF378ADD);
   final VoidCallback onFindGroups;
 
-  final List<Map<String, dynamic>> groups = [ //empty list IF wanna test empty state
-    {
-      'name': 'Diabetes Tipo 2',
-      'lastMessage': 'User123: "Olá!"',
-      'time': '14:32',
-      'color': defaultGroupColor,
-      'unreadCount': 2,
-      'isOnline': true,
-      'memberCount': 2400,
-    },
-    {
-      'name': 'Hipertensão',
-      'lastMessage': 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
-      'time': '11:05',
-      'color': defaultGroupColor,
-      'unreadCount': 0,
-      'isOnline': false,
-      'memberCount': 1100,
-    },
-    {
-      'name': 'Asma',
-      'lastMessage': 'Sem novas mensagens',
-      'time': 'Mon',
-      'color': defaultGroupColor,
-      'unreadCount': 5,
-      'isOnline': false,
-      'memberCount': 890,
-    },
+  static const List<Group> groups = <Group>[ // empty list IF wanna test empty state
+    Group(
+      name: 'Diabetes Tipo 2',
+      lastMessage: 'User123: "Olá!"',
+      time: '14:32',
+      color: defaultGroupColor,
+      unreadCount: 2,
+      isOnline: true,
+      memberCount: 2400,
+    ),
+    Group(
+      name: 'Hipertensão',
+      lastMessage: 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
+      time: '11:05',
+      color: defaultGroupColor,
+      unreadCount: 0,
+      isOnline: false,
+      memberCount: 1100,
+    ),
+    Group(
+      name: 'Asma',
+      lastMessage: 'Sem novas mensagens',
+      time: 'Mon',
+      color: defaultGroupColor,
+      unreadCount: 5,
+      isOnline: false,
+      memberCount: 890,
+    ),
   ];
 
   @override
@@ -152,13 +172,13 @@ class HomeScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final group = groups[index];
                         return GroupCard(
-                          name: group['name'],
-                          lastMessage: group['lastMessage'],
-                          time: group['time'],
-                          color: group['color'],
-                          unreadCount: group['unreadCount'],
-                          isOnline: group['isOnline'],
-                          memberCount: group['memberCount'],
+                          name: group.name,
+                          lastMessage: group.lastMessage,
+                          time: group.time,
+                          color: group.color,
+                          unreadCount: group.unreadCount,
+                          isOnline: group.isOnline,
+                          memberCount: group.memberCount,
                         );
                       },
                     ),
