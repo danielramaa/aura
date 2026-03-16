@@ -61,7 +61,9 @@ class HomeScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        '3 active groups',
+                        groups.isEmpty
+                            ? 'No active groups'
+                            : '${groups.length} active group${groups.length == 1 ? '' : 's'}',
                         style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                       ),
                     ],
