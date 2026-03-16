@@ -104,15 +104,18 @@ class GroupCard extends StatelessWidget {
                 SizedBox(height: 6),
                 if (unreadCount > 0)
                   Container(
-                    width: 20,
-                    height: 20,
+                    constraints: const BoxConstraints(
+                      minWidth: 20,
+                      minHeight: 20,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFF185FA5),
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
                       child: Text(
-                        '$unreadCount',
+                        unreadCount > 99 ? '99+' : '$unreadCount',
                         style: TextStyle(fontSize: 11, color: Colors.white),
                       ),
                     ),
