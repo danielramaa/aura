@@ -121,24 +121,24 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
                             SizedBox(height: 24),
-                            GestureDetector(
-                              onTap: onFindGroups,
-                              child: Container(
+                            FilledButton(
+                              onPressed: onFindGroups,
+                              style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 24,
                                   vertical: 12,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: Color(0xFF185FA5),
+                                backgroundColor: const Color(0xFF185FA5),
+                                shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Text(
-                                  'Find a community',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                              ),
+                              child: const Text(
+                                'Find a community',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                             ),
