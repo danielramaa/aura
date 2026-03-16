@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../widgets/group_card.dart';
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+  HomeScreen({super.key, required this.onFindGroups});
   static const Color defaultGroupColor = Color(0xFF378ADD);
+  final VoidCallback onFindGroups;
 
-  final List<Map<String, dynamic>> groups = [
+  final List<Map<String, dynamic>> groups = [ //empty list IF wanna test empty state
     {
       'name': 'Diabetes Tipo 2',
       'lastMessage': 'User123: "Olá!"',
@@ -84,22 +85,79 @@ class HomeScreen extends StatelessWidget {
             ),
             // card
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: groups.length,
-                separatorBuilder: (context, index) => SizedBox(height: 10),
-                itemBuilder: (context, index) {
-                  final group = groups[index];
-                  return GroupCard(
-                    name: group['name'],
-                    lastMessage: group['lastMessage'],
-                    time: group['time'],
-                    color: group['color'],
-                    unreadCount: group['unreadCount'],
-                    isOnline: group['isOnline'],
-                  );
-                },
-              ),
+              child: groups.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.group_outlined,
+                              size: 64,
+                              color: Colors.grey[300],
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No communities yet',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Join a community to connect with people who understand what you are going through.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[400],
+                              ),
+                            ),
+                            SizedBox(height: 24),
+                            GestureDetector(
+                              onTap: onFindGroups,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Color(0xFF185FA5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Find a community',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: groups.length,
+                      separatorBuilder: (context, index) =>
+                          SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final group = groups[index];
+                        return GroupCard(
+                          name: group['name'],
+                          lastMessage: group['lastMessage'],
+                          time: group['time'],
+                          color: group['color'],
+                          unreadCount: group['unreadCount'],
+                          isOnline: group['isOnline'],
+                        );
+                      },
+                    ),
             ),
           ],
         ),

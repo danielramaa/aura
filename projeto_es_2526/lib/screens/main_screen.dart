@@ -12,17 +12,23 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    HomeScreen(), //index 0
-    const Center(child: Text('Find Groups')), //index 1
-    const Center(child: Text('Notifications')), //index 2
-    const Center(child: Text('Profile')), //index 3
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(onFindGroups: () => setState(() => _currentIndex = 1)), //index 0
+      const Center(child: Text('Find Groups')), //index 1
+      const Center(child: Text('Notifications')), //index 2
+      const Center(child: Text('Profile')), //index 3
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_currentIndex], 
+      body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
