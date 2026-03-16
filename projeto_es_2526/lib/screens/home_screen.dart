@@ -3,24 +3,26 @@ import '../widgets/group_card.dart';
 
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
+  static const Color defaultGroupColor = Color(0xFF378ADD);
+
   final List<Map<String, dynamic>> groups = [
     {
       'name': 'Diabetes Tipo 2',
       'lastMessage': 'User123: "Olá!"',
       'time': '14:32',
-      'color': Color(0xFF1D9E75),
+      'color': defaultGroupColor,
     },
     {
       'name': 'Hipertensão',
       'lastMessage': 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
       'time': '11:05',
-      'color': Color(0xFF378ADD),
+      'color': defaultGroupColor,
     },
     {
       'name': 'Asma',
       'lastMessage': 'Sem novas mensagens',
       'time': 'Mon',
-      'color': Color(0xFFD4537E),
+      'color': defaultGroupColor,
     },
   ];
 
