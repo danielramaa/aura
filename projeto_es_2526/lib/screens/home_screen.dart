@@ -11,18 +11,24 @@ class HomeScreen extends StatelessWidget {
       'lastMessage': 'User123: "Olá!"',
       'time': '14:32',
       'color': defaultGroupColor,
+      'unreadCount': 2,
+      'isOnline': true,
     },
     {
       'name': 'Hipertensão',
       'lastMessage': 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
       'time': '11:05',
       'color': defaultGroupColor,
+      'unreadCount': 0,
+      'isOnline': false,
     },
     {
       'name': 'Asma',
       'lastMessage': 'Sem novas mensagens',
       'time': 'Mon',
       'color': defaultGroupColor,
+      'unreadCount': 5,
+      'isOnline': false,
     },
   ];
 
@@ -89,6 +95,8 @@ class HomeScreen extends StatelessWidget {
                     lastMessage: group['lastMessage'],
                     time: group['time'],
                     color: group['color'],
+                    unreadCount: group['unreadCount'],
+                    isOnline: group['isOnline'],
                   );
                 },
               ),
