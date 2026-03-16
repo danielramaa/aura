@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
-class GroupCard extends StatelessWidget{
+class GroupCard extends StatelessWidget {
   final String name;
   final String lastMessage;
   final String time;
   final Color color;
+  final int unreadCount;
+  final bool isOnline;
 
   const GroupCard({
     super.key,
@@ -12,6 +14,8 @@ class GroupCard extends StatelessWidget{
     required this.lastMessage,
     required this.time,
     required this.color,
+    this.unreadCount = 0,
+    this.isOnline = false,
   });
 
   @override
@@ -20,7 +24,7 @@ class GroupCard extends StatelessWidget{
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),        
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         children: [
@@ -46,19 +50,33 @@ class GroupCard extends StatelessWidget{
                 children: [
                   Text(
                     name,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                   ),
                   SizedBox(height: 4),
                   Text(
                     lastMessage,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isOnline
+                              ? Color(0xFF1D9E75)
+                              : Colors.grey[400],
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        isOnline ? 'Online now' : 'Nobody online',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -67,9 +85,30 @@ class GroupCard extends StatelessWidget{
           // time
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Text(
-              time,
-              style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  time,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                ),
+                SizedBox(height: 6),
+                if (unreadCount > 0)
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$unreadCount',
+                        style: TextStyle(fontSize: 11, color: Colors.white),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
