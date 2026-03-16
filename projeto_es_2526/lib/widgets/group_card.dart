@@ -58,6 +58,7 @@ class GroupCard extends StatelessWidget {
                   Text(
                     lastMessage,
                     style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   SizedBox(height: 8),
