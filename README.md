@@ -1,7 +1,5 @@
 <!-- Template file for README.md for LEIC-ES-2025-26 -->
 
-> [!NOTE] In this file, you will find the structure you should follow to document your mobile app in the README.md file for LEIC-ES-2025-26. It is a single file with guidelines, as comments, only seen in Edit mode, not in Preview mode. You can add more sections, but for assessment reasons and automation, please make sure to include all sections of this template. Your professors will clarify about specificities of your app.
-
 # _[your product name]_ Development Report
 
 Welcome to the documentation of _[your product name]_!
@@ -82,36 +80,103 @@ Indicate an  initial/tentative list of high-level features - high-level capabili
 Optionally, indicate an initial/tentative list of assumptions that you are doing about the app and dependencies of the app to other systems.
 -->
 
+### Features:
+
+#### 1. Authentication and account management
+- Registration with e-mail and password
+- Password recovery
+- Private profile editing (name, date of birth, e-mail)
+- Account privacy settings
+- Notification management (push and e-mail)
+- Account deletion and data export (GDPR)
+- Terms of service and privacy policy (acceptance)
+
+#### 2. Onboarding and health selection
+- Initial health/interests questionnaire
+- Health condition search and selection (catalogue)
+- Suggest new conditions (form)
+- Manage list of followed conditions
+- Define experience level with the condition (patient/doctor)
+
+#### 3. Anonymity system
+- Automatic anonymous avatar generation
+- Random anonymous nickname generation (e.g. *CalmWolf*)
+- Option to generate a new anonymous identity (reset)
+- Identity isolation (a different nickname per room/condition)
+- User metadata concealment (registration date, location, IP)
+
+#### 4. Directory and navigation
+- Main list of subscribed rooms/conditions
+- Explore new rooms by category (mental health, autoimmune, chronic, etc.)
+- Sub-rooms or specific topics (e.g. Diabetes > Insulin Pumps)
+- Global search bar (rooms, conditions, topics)
+- Online user count per room
+
+#### 5. Chat and interaction
+- Real-time text chat (public within rooms)
+- Reply to specific messages (threads)
+- Anonymous user mentions (@nickname)
+- Typing indicator
+- Empathetic emoji reactions (hug, I understand, stay strong, etc.)
+- Link sharing with preview (and automatic medical disclaimer warning)
+- Anonymous polls within rooms
+- Save messages (bookmarks/favourites) in a private area
+- Message history search within a room
+- Pinned messages at the top of the chat
+
+#### 6. Safety and moderation
+- Mandatory medical disclaimer acceptance on room entry
+- Global SOS button (link to local support and emergency lines)
+- Report message (spam, misinformation, bullying, risk to life)
+- Report anonymous user
+- Block/mute anonymous user (hide their messages)
+- Automatic profanity and hate speech filter
+- Automatic personal data sharing filter (phone numbers, e-mails)
+- Detection and blocking of prescription medication names (illegal sales)
+- Shadowban system for offending users
+- Moderator status (verified medical professionals only)
+
+#### 7. Engagement and community
+- Karma/thanks system (give anonymous kudos for good advice)
+- Welcome bot in rooms
+
+#### 8. Notifications and accessibility
+- Push notifications for replies and mentions
+- Activity notifications for saved topics
+- Do not disturb mode / silence schedules
+- Font size adjustment (accessibility)
+- Screen reader support (VoiceOver/TalkBack)
+
+#### 9. Future features
+- Live Q&A sessions with invited doctors/specialists (they are real, users remain anonymous)
+- Temporary private rooms created by users
+- In-app donations to keep the project running
+
+### Assumptions
+
+- Users have an Android device running Android 8.0 or above with a stable internet connection
+- Users are willing to register with a real e-mail and password for account recovery purposes
+- Firebase Authentication (e-mail/password) is sufficient for account management in the MVP
+- Auto-generated anonymous nicknames and avatars are accepted by users as their in-room identity
+- A single anonymous identity per room is enough — users do not need cross-room identity persistence
+- Medical disclaimers displayed at room entry are sufficient to mitigate liability around shared health content
+- The health condition catalogue is manually curated by the team for the MVP — no external medical database integration
+- Content moderation in the MVP is semi-manual (automated filters + user reports reviewed by the team)
+- Push notifications are delivered via Firebase Cloud Messaging (FCM) and require user permission on device
+- GDPR compliance is limited to account deletion and basic data export in the MVP — full compliance is a post-MVP concern
+- The SOS button links to static, pre-defined crisis lines — no dynamic geolocation-based lookup in the MVP
+- Live Q&A sessions, private rooms, and donations are out of scope for the MVP and treated as future features
+- The app targets Android only — iOS support is deferred
+
 ## Requirements
 
+
 ### User Stories
-<!-- 
-In this section you should describe all kinds of requirements for your module: functional and non-functional requirements.
 
-For LEIC-ES-2025-26, the requirements will be gathered and documented as user stories. 
+The user stories for this project are managed and tracked in our [GitHub Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC14/projects/3/views/1).
 
-Please add in this section a concise summary of all the user stories (not each user story!).
+### User Interface:
 
-**User stories as GitHub Project Items**
-The user stories themselves should be created and described as items in your GitHub Project with the label "user story". 
-
-A user story is a description of a desired functionality told from the perspective of the user or customer. A starting template for the description of a user story is *As a < user role >, I want < goal > so that < reason >.*
-
-Name the item with either the full user story or a shorter name (recommended). In the “comments” field, add relevant notes, mockup images, and acceptance test scenarios, linking to the acceptance tests when available, and finally estimate value and effort.
-
-**INVEST in good user stories**. 
-You may add more details after, but the shorter and complete, the better. In order to decide if the user story is good, please follow the [INVEST guidelines](https://xp123.com/articles/invest-in-good-stories-and-smart-tasks/).
-
-**User interface mockups**.
-After the user story text, you should add a draft of the corresponding user interfaces, a simple mockup or draft, if applicable.
-
-**Acceptance tests**.
-For each user story you should write also the acceptance tests (textually in [Gherkin](https://cucumber.io/docs/gherkin/reference/)), i.e., a description of scenarios (situations) that will help to confirm that the system satisfies the requirements addressed by the user story.
-
-**Value and effort**.
-At the end, it is good to add a rough indication of the value of the user story to the customers (e.g. [MoSCoW](https://en.wikipedia.org/wiki/MoSCoW_method) method) and the team should add an estimation of the effort to implement it using points in a kind-of-a Fibonnacci scale (1,2,3,5,8,13,20,40, no idea).
-
--->
 
 ### Domain model
 
