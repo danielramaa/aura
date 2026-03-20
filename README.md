@@ -14,7 +14,6 @@ It is organised by the following activities:
   * [Product Vision](#Product-Vision)
   * [Features and Assumptions](#Features-and-Assumptions)
 * [Requirements](#Requirements)
-  * [User stories](#User-stories)
   * [Domain model](#Domain-model)
   * [User interfaces](#User-interfaces)
 * [Architecture and Design](#Architecture-And-Design)
