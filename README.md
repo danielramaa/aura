@@ -37,7 +37,7 @@ Thank you!
 * Bruno da Fonseca Nicolau Costa Dias - up202405613@up.pt
 * Carolina Oliveira Dias - up202406310@up.pt
 * Daniel Morais Rama - up202409357@up.pt
-* Francisco Almeida Henriques dos Santos Poeira - up202406310@up.pt
+* Francisco Almeida Henriques dos Santos Poeira - up202406330@up.pt
 * Pedro Oliveira Soares Lopes - up202405618@up.pt
 
 ---
