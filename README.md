@@ -1,10 +1,10 @@
 <!-- Template file for README.md for LEIC-ES-2025-26 -->
 
-# _[your product name]_ Development Report
+# _Aura_ Development Report
 
-Welcome to the documentation of _[your product name]_!
+Welcome to the documentation of _Aura_!
 
-This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about _[your product name]_, starting from an high-level vision and going into low-level implementation decisions. 
+This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about _Aura_, starting from an high-level vision and going into low-level implementation decisions. 
 
 It is organised by the following activities: 
 
