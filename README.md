@@ -175,7 +175,21 @@ Optionally, indicate an initial/tentative list of assumptions that you are doing
 
 The user stories for this project are managed and tracked in our [GitHub Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC14/projects/3/views/1).
 
-### User Interface:
+### User Interface
+
+#### Home screen
+<p align="center">
+  <img src="assets/ui_home.png" width="300"/>
+</p>
+
+The home screen displays the list of health condition communities the user has joined, showing the group name, description, number of online members, and an unread message badge. Users can tap a group to enter the chat room or navigate to other sections via the bottom tab bar.
+
+#### Navigation
+The app navigation is organised around a bottom tab bar with four main sections:
+- **Communities** — list of joined groups (home screen)
+- **Find groups** — explore and join new condition-specific communities
+- **Notifications** — alerts for replies, mentions and activity
+- **Profile** — account settings and anonymous identity management
 
 
 ### Domain model
@@ -259,6 +273,34 @@ You can find below information and references related with the project managemen
 -->
 
 ### Sprint 0
+
+#### Board screenshots
+
+**Beginning of sprint:**
+
+<p align="center">
+  <img src="assets/Sprint0_inicio.png"/>
+</p>
+
+**End of sprint:**
+
+<p align="center">
+  <img src="assets/sprint0_end.png"/>
+</p>
+
+#### Retrospective
+**Did well:**
+- Defined a clear and shared product vision early on
+- Set up the GitHub repository, Projects board and initial backlog
+- Divided tasks evenly across the team
+- Built the home screen UI with key features (group list, unread badge, online indicator)
+
+**Do differently:**
+- Start the sprint earlier to avoid time pressure towards the end
+
+**Do differently:**
+- 
+
 
 ### Sprint 1
 
