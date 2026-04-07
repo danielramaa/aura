@@ -194,15 +194,89 @@ The app navigation is organised around a bottom tab bar with four main sections:
 
 ### Domain model
 
-<!-- 
-To better understand the context of the software system, it is useful to have a simple UML class diagram with all and only the key concepts (names, attributes) and relationships involved of the problem domain addressed by your app. 
-Also provide a short textual description of each concept (domain class). 
+The domain model captures the core concepts of Aura and their relationships. The central concern is preserving anonymity: a **User** has a real account but interacts inside each **Community** through a separate **AnonymousIdentity**, so their real identity is never exposed to other members.
 
-Example:
- <p align="center" justify="center">
-  <img src="https://github.com/FEUP-LEIC-ES-2022-23/templates/blob/main/images/DomainModel.png"/>
-</p>
--->
+```mermaid
+classDiagram
+    class User {
+        +String id
+        +String email
+        +Date dateOfBirth
+        +bool notificationsEnabled
+    }
+
+    class AnonymousIdentity {
+        +String nickname
+        +String avatarUrl
+    }
+
+    class HealthCondition {
+        +String id
+        +String name
+        +String category
+        +String description
+    }
+
+    class Community {
+        +String id
+        +String name
+        +int memberCount
+        +int onlineCount
+    }
+
+    class Message {
+        +String id
+        +String content
+        +DateTime timestamp
+        +bool isDeleted
+        +String replyToId
+    }
+
+    class Reaction {
+        +String emoji
+        +int count
+    }
+
+    class Report {
+        +String reason
+        +String status
+        +DateTime timestamp
+    }
+
+    class Notification {
+        +String type
+        +String content
+        +bool isRead
+        +DateTime timestamp
+    }
+
+    class Bookmark {
+        +DateTime savedAt
+    }
+
+    User "1" --> "0..*" AnonymousIdentity : has one per community
+    User "0..*" --> "0..*" Community : joins
+    User "1" --> "0..*" Notification : receives
+    User "1" --> "0..*" Bookmark : saves
+    Community "0..*" --> "1" HealthCondition : about
+    Community "1" --> "0..*" Message : contains
+    Message "0..*" --> "1" AnonymousIdentity : sentBy
+    Message "1" --> "0..*" Reaction : has
+    Message "1" --> "0..*" Report : receives
+    Bookmark "1" --> "1" Message : references
+```
+
+**Domain concepts:**
+
+- **User** — A registered account identified by email and password. Personal data is kept private and never shared with other users.
+- **AnonymousIdentity** — A randomly generated nickname and avatar assigned to a User for a specific Community. Each Community gives the User a different identity, ensuring cross-room anonymity.
+- **HealthCondition** — A medical condition (e.g. Diabetes, Fibromyalgia) used to categorise Communities. Curated by the team for the MVP.
+- **Community** — A real-time chat room built around a single HealthCondition. Tracks member count and current online count.
+- **Message** — A text post sent by an AnonymousIdentity inside a Community. Supports replies (via `replyToId`) and soft deletion.
+- **Reaction** — An empathetic emoji response (e.g. hug, "I understand") attached to a Message.
+- **Report** — A moderation flag raised by any member on a Message, stating a reason (spam, misinformation, bullying, etc.) and tracked through a review status.
+- **Notification** — An in-app alert sent to a User for events such as replies to their messages or mentions of their anonymous nickname.
+- **Bookmark** — A private reference saved by a User to a Message they want to revisit later.
 
 
 ## Architecture and Design
@@ -218,27 +292,84 @@ In this section you should start by briefly describing the components of the pro
 
 
 ### Logical architecture
-<!--
-The purpose of this subsection is to document the high-level logical structure of the code (Logical View), using a UML diagram with logical packages, without the worry of allocating to components, processes or machines.
 
-It can be beneficial to present the system in a horizontal decomposition, defining layers and implementation concepts, such as the user interface, business logic and concepts.
+Aura follows a layered architecture that separates concerns into four horizontal packages, keeping the Flutter UI independent of data sources and making each layer independently testable.
 
-Example of _UML package diagram_ showing a _logical view_ of the Eletronic Ticketing System (to be accompanied by a short description of each package):
+```mermaid
+graph TD
+    subgraph Presentation["«package» Presentation"]
+        SCREENS[Screens]
+        WIDGETS[Widgets]
+    end
 
-![LogicalView](https://user-images.githubusercontent.com/9655877/160585416-b1278ad7-18d7-463c-b8c6-afa4f7ac7639.png)
--->
+    subgraph BusinessLogic["«package» Business Logic"]
+        STATE[State Management]
+        SERVICES[Services]
+    end
+
+    subgraph DataLayer["«package» Data"]
+        REPOS[Repositories]
+        MODELS[Models / Entities]
+    end
+
+    subgraph ExternalServices["«package» External Services"]
+        FAUTH[Firebase Auth]
+        FIRESTORE[Cloud Firestore]
+        FCM[Firebase Cloud Messaging]
+        CFUNCTIONS[Cloud Functions]
+    end
+
+    Presentation --> BusinessLogic
+    BusinessLogic --> DataLayer
+    DataLayer --> ExternalServices
+```
+
+**Package descriptions:**
+
+- **Presentation** — Flutter screens and reusable widgets. Renders UI state and forwards user actions upward. Has no direct knowledge of data sources.
+- **Business Logic** — State management (e.g. Riverpod/Provider) and service classes that encode application rules such as anonymity assignment, moderation checks, and notification dispatch.
+- **Data** — Repository classes that abstract all read/write operations. Domain model classes (pure Dart) live here, decoupled from any Firebase SDK type.
+- **External Services** — Firebase platform: Auth for account management, Firestore for real-time data, Cloud Messaging for push notifications, and Cloud Functions for server-side logic (moderation filters, scheduled tasks).
 
 
 ### Physical architecture
-<!--
-The goal of this subsection is to document the high-level physical structure of the software system (machines, connections, software components installed, and their dependencies) using UML deployment diagrams (Deployment View) or component diagrams (Implementation View), separate or integrated, showing the physical structure of the system.
 
-It should describe also the technologies considered and justify the selections made. Examples of technologies relevant for ESOF are, for example, frameworks for mobile applications (such as Flutter).
+Aura is a Flutter mobile app deployed via Google Play and backed entirely by Firebase, which eliminates the need to maintain a dedicated backend server.
 
-Example of _UML deployment diagram_ showing a _deployment view_ of the Eletronic Ticketing System (please notice that, instead of software components, one should represent their physical/executable manifestations for deployment, called artifacts in UML; the diagram should be accompanied by a short description of each node and artifact):
+```mermaid
+graph LR
+    subgraph PlayStore["«device» Google Play Store"]
+        APK["«artifact»\naura.apk"]
+    end
 
-![DeploymentView](https://user-images.githubusercontent.com/9655877/160592491-20e85af9-0758-4e1e-a704-0db1be3ee65d.png)
--->
+    subgraph UserDevice["«device» Android Device (≥ 8.0)"]
+        APP["«artifact»\nAura Flutter App"]
+        SDK["«artifact»\nFirebase SDK"]
+        APP --> SDK
+    end
+
+    subgraph Firebase["«node» Firebase Cloud Platform"]
+        AUTH["«component»\nAuthentication"]
+        DB["«component»\nCloud Firestore"]
+        FCM["«component»\nCloud Messaging"]
+        CF["«component»\nCloud Functions"]
+    end
+
+    PlayStore -->|installs| UserDevice
+    SDK -->|email/password auth| AUTH
+    SDK -->|real-time read/write| DB
+    SDK -->|push notifications| FCM
+    SDK -->|moderation & triggers| CF
+```
+
+**Node and artifact descriptions:**
+
+- **Android Device** — The user's smartphone (Android 8.0+). Runs the compiled Flutter app (`aura.apk`) and the Firebase SDK, which handles all communication with the cloud platform.
+- **Google Play Store** — Distribution channel. The release `.apk` is uploaded here for users to install.
+- **Firebase Authentication** — Manages user accounts (email/password). Chosen because it integrates natively with Firestore security rules, removing the need for a custom auth server.
+- **Cloud Firestore** — NoSQL real-time database storing communities, messages, reactions, and reports. Firestore's real-time listeners drive live chat updates without polling.
+- **Firebase Cloud Messaging (FCM)** — Delivers push notifications to devices for mentions, replies, and moderation events.
+- **Cloud Functions** — Serverless Node.js functions triggered by Firestore events. Used for server-side moderation filters (profanity, personal data detection) and scheduled tasks (shadowban expiry, welcome bot messages). Chosen to keep sensitive logic off the client.
 
 
 ### Functional prototype
@@ -297,9 +428,7 @@ You can find below information and references related with the project managemen
 
 **Do differently:**
 - Start the sprint earlier to avoid time pressure towards the end
-
-**Do differently:**
-- 
+ 
 
 
 ### Sprint 1
