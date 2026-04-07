@@ -285,7 +285,7 @@ You can find below information and references related with the project managemen
 **End of sprint:**
 
 <p align="center">
-  <img src="assets/sprint0_end.png"/>
+  <img src="assets/Sprint0_end.png"/>
 </p>
 
 #### Retrospective
