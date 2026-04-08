@@ -22,7 +22,7 @@ class Group {
 }
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key, required this.onFindGroups});
+  const HomeScreen({super.key, required this.onFindGroups});
   static const Color defaultGroupColor = Color(0xFF378ADD);
   final VoidCallback onFindGroups;
 
