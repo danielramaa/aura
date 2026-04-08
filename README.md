@@ -468,13 +468,20 @@ graph LR
 
 
 ### Functional prototype
-<!--
-To help on validating all the architectural, design and technological decisions made, we usually implement a functional prototype, a thin vertical slice of the system integrating as much technologies as we can.
 
-In this subsection please describe which feature, or part of it, you have implemented, and how, together with a snapshot of the user interface, if applicable.
+The Sprint 0 prototype implements the **Communities home screen** — the most characteristic screen of Aura, showing the user's joined health condition groups with live status indicators and unread message badges. This demonstrates the core navigation structure and the main differentiating UI of the app.
 
-At this phase, instead of a complete user story, you can simply implement a small part of a feature that demonstrates thay you can use the technology, for example, show a screen with the app credits (name and authors).
--->
+<p align="center">
+  <img src="assets/demo.gif" width="300"/>
+</p>
+
+**What is demonstrated:**
+- Bottom tab bar navigation across all 4 sections (Communities, Find Groups, Notifications, Profile)
+- Group list with condition name, last message preview, member count, online status indicator, and unread badge
+- Unread badge logic: hidden at 0, exact count up to 99, "99+" cap above that
+- Empty state UI with CTA to find a community
+
+The prototype is available as a downloadable `.apk` in the [v0 release](https://github.com/LEIC-ES-2025-26-2LEIC14/T3/releases/tag/v0).
 
 ## Project management
 <!--
