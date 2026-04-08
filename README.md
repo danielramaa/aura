@@ -14,6 +14,7 @@ It is organised by the following activities:
 * [Requirements](#Requirements)
   * [Domain model](#Domain-model)
   * [User interfaces](#User-interfaces)
+  * [Requirements Validation](#Requirements-Validation)
 * [Architecture and Design](#Architecture-And-Design)
   * [Logical architecture](#Logical-Architecture)
   * [Physical architecture](#Physical-Architecture)
@@ -277,6 +278,100 @@ classDiagram
 - **Report** — A moderation flag raised by any member on a Message, stating a reason (spam, misinformation, bullying, etc.) and tracked through a review status.
 - **Notification** — An in-app alert sent to a User for events such as replies to their messages or mentions of their anonymous nickname.
 - **Bookmark** — A private reference saved by a User to a Message they want to revisit later.
+
+
+### Requirements Validation
+
+To validate the product backlog and core assumptions, we ran an anonymous online survey (Google Forms) with **11 respondents** — people who have experience managing a chronic or rare health condition. The survey covered sharing habits, fears, desired features, and deal-breakers.
+
+---
+
+#### Q1 — Do you currently share your health experiences online?
+| Answer | % |
+|---|---|
+| No — fear of exposure or judgment | **63.6%** |
+| Yes — open social networks (Facebook, Instagram) | 9.1% |
+| Yes — specific forums or private groups | 9.1% |
+| No — no interest | 9.1% |
+| No — doesn't apply to me | 9.1% |
+| No — see no reason to | 9.1% |
+
+**Insight:** Nearly two thirds of respondents don't share online due to fear of exposure. This directly validates anonymity as the core differentiator of our App — not a nice-to-have, but the primary barrier to entry for this audience.
+
+---
+
+#### Q2 — What is your biggest fear when talking about your health condition online?
+| Answer | % |
+|---|---|
+| Being identified by acquaintances or employer | **36.4%** |
+| Receiving wrong or dangerous medical advice | **27.3%** |
+| Being a victim of bullying or spam | 9.1% |
+| Exposing myself online | 9.1% |
+| No fears | 9.1% |
+
+**Insight:** The top two fears — identity exposure and medical misinformation — map directly to two of our planned feature sets: the anonymity system and moderation/expert validation. Both need to be prominent from day one.
+
+---
+
+#### Q3 — Which features would give you the most confidence to use the app? *(select up to 2)*
+| Feature | Votes |
+|---|---|
+| Medication tips validated by medical experts | **9 (81.8%)** |
+| Simple tools to report medical misinformation | 3 (27.3%) |
+| System that automatically prevents sharing of personal data | 3 (27.3%) |
+| Immediate access to local emergency lines | 3 (27.3%) |
+| Quick reactions (Hug / Stay Strong) without typing | 2 (18.2%) |
+| User reliability shown through kudos received | 0 (0%) |
+
+**Insight:** Expert validation of medical content is overwhelmingly the most trust-building feature (81.8%). The karma/kudos system scored 0% — users don't associate it with trustworthiness. Emergency line access and automatic data-sharing prevention scored equally, suggesting safety features are valued as a group.
+
+---
+
+#### Q4 — How would you like to show gratitude for useful advice without writing much?
+| Answer | % |
+|---|---|
+| Both — reactions AND a kudos button | **45.5%** |
+| Kudos button that increases the other's reputation | 27.3% |
+| Quick reactions (Hug, Heart, "I'm here") | 27.3% |
+
+**Insight:** The majority want both systems. We should implement quick reactions (already planned) and keep the kudos/karma feature — but reframe it as an expression of gratitude rather than a trust/reliability signal, since Q3 showed it doesn't convey reliability to users.
+
+---
+
+#### Q5 — What would make you abandon Aura immediately?
+| Answer | % |
+|---|---|
+| Feeling there are trolls or people mocking the situation | **45.5%** |
+| Too much uncorrected medical misinformation | **36.4%** |
+| Receiving unsolicited private messages | 18.2% |
+
+**Insight:** Trolling and misinformation are the two biggest churn risks. The shadowban system and moderation pipeline must be implemented before the app goes public. Unsolicited private messages are also a significant concern — direct messaging between users should be blocked or heavily restricted in the MVP.
+
+---
+
+#### Q6 — Open question: one thing to make your journey lighter
+Selected responses (filtered for relevance):
+- *"Conseguir ver a experiência de outros com a minha condição e como a superam"* — Being able to see how others with the same condition cope and overcome it
+- *"Respeito"* — Respect
+- *"Seriedade"* — Seriousness (the app must feel safe and earnest, not casual)
+- *"amigos"* — Friends / community connection
+
+**Insight:** Users are looking for genuine peer experiences — not advice per se, but solidarity and lived knowledge. This reinforces the community/room structure over a Q&A format.
+
+---
+
+#### Backlog impact
+
+Based on the survey findings, the following changes were made to the product backlog:
+
+| Change | Reason |
+|---|---|
+| **Elevated priority** — Verified moderator / expert badge system | 81.8% say expert validation is the top trust factor |
+| **Elevated priority** — Troll detection and shadowban system | 45.5% would abandon the app due to trolls |
+| **Elevated priority** — Medical misinformation reporting | 36.4% would abandon the app due to uncorrected misinformation |
+| **Added / confirmed** — Both reactions AND kudos (not either/or) | 45.5% want both; kudos reframed as gratitude, not reliability |
+| **Added** — Block or restrict unsolicited private messages in MVP | 18.2% churn risk; DMs undermine anonymity and safety |
+| **Confirmed** — Anonymity system as Sprint 1 priority | 63.6% won't share health info without guaranteed anonymity |
 
 
 ## Architecture and Design
