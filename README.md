@@ -530,8 +530,6 @@ You can find below information and references related with the project managemen
 
 **Do differently:**
 - Start the sprint earlier to avoid time pressure towards the end
- 
-
 
 ### Sprint 1
 
