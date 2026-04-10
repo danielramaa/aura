@@ -34,5 +34,18 @@ class HomeController extends ChangeNotifier {
     ),
   ];
 
-  List<Group> get groups => List.unmodifiable(_groups);
+  String _searchQuery = '';
+
+  String get searchQuery => _searchQuery;
+
+  void setSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
+
+  List<Group> get groups => List.unmodifiable(
+    _groups.where(
+      (g) => g.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+    ),
+  );
 }
