@@ -388,43 +388,44 @@ In this section you should start by briefly describing the components of the pro
 
 ### Logical architecture
 
-Aura follows a layered architecture that separates concerns into four horizontal packages, keeping the Flutter UI independent of data sources and making each layer independently testable.
+Aura follows the **MVC (Model–View–Controller)** pattern, keeping data, business logic, and presentation in separate layers. Controllers use Flutter's `ChangeNotifier` for reactive state management, and Views rebuild automatically via `ListenableBuilder`.
 
 ```mermaid
 graph TD
-    subgraph Presentation["«package» Presentation"]
-        SCREENS[Screens]
-        WIDGETS[Widgets]
+    subgraph View["«package» View (screens + widgets)"]
+        SCREENS["Screens\n(MainScreen, HomeScreen)"]
+        WIDGETS["Widgets\n(GroupCard)"]
     end
 
-    subgraph BusinessLogic["«package» Business Logic"]
-        STATE[State Management]
-        SERVICES[Services]
+    subgraph Controller["«package» Controller"]
+        MC["MainController\n(tab navigation)"]
+        HC["HomeController\n(group list, search)"]
     end
 
-    subgraph DataLayer["«package» Data"]
-        REPOS[Repositories]
-        MODELS[Models / Entities]
+    subgraph Model["«package» Model"]
+        GROUP["Group"]
     end
 
-    subgraph ExternalServices["«package» External Services"]
+    subgraph ExternalServices["«package» External Services (planned)"]
         FAUTH[Firebase Auth]
         FIRESTORE[Cloud Firestore]
         FCM[Firebase Cloud Messaging]
         CFUNCTIONS[Cloud Functions]
     end
 
-    Presentation --> BusinessLogic
-    BusinessLogic --> DataLayer
-    DataLayer --> ExternalServices
+    SCREENS --> MC
+    SCREENS --> HC
+    SCREENS --> WIDGETS
+    HC --> GROUP
+    Controller -.->|future integration| ExternalServices
 ```
 
 **Package descriptions:**
 
-- **Presentation** — Flutter screens and reusable widgets. Renders UI state and forwards user actions upward. Has no direct knowledge of data sources.
-- **Business Logic** — State management (e.g. Riverpod/Provider) and service classes that encode application rules such as anonymity assignment, moderation checks, and notification dispatch.
-- **Data** — Repository classes that abstract all read/write operations. Domain model classes (pure Dart) live here, decoupled from any Firebase SDK type.
-- **External Services** — Firebase platform: Auth for account management, Firestore for real-time data, Cloud Messaging for push notifications, and Cloud Functions for server-side logic (moderation filters, scheduled tasks).
+- **View** (`lib/screens/`, `lib/widgets/`) — Flutter screens and reusable widgets. Screens observe controllers via `ListenableBuilder` and forward user actions to the appropriate controller. Widgets are stateless, presentation-only components.
+- **Controller** (`lib/controllers/`) — `ChangeNotifier` classes that hold application state and business logic. `MainController` manages bottom-tab navigation; `HomeController` owns the group list and search/filter logic.
+- **Model** (`lib/models/`) — Pure Dart data classes (e.g. `Group`) with no framework dependencies. Define the shape of domain data consumed by controllers and rendered by views.
+- **External Services** *(planned)* — Firebase platform: Auth for account management, Firestore for real-time data, Cloud Messaging for push notifications, and Cloud Functions for server-side logic (moderation filters, scheduled tasks). Will be integrated via repository/service classes injected into controllers.
 
 
 ### Physical architecture
