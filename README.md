@@ -434,7 +434,7 @@ Aura is a Flutter mobile app deployed via Google Play and backed entirely by Fir
 
 ```mermaid
 graph LR
-    subgraph PlayStore["«device» Google Play Store"]
+    subgraph PlayStore["«device» Files"]
         APK["«artifact»\naura.apk"]
     end
 
