@@ -8,6 +8,7 @@ class Group {
   final int unreadCount;
   final bool isOnline;
   final int memberCount;
+  final String description;
 
   const Group({
     required this.name,
@@ -17,5 +18,6 @@ class Group {
     required this.unreadCount,
     required this.isOnline,
     required this.memberCount,
+    required this.description,
   });
 }

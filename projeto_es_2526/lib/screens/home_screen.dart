@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/group_card.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final HomeController controller;
@@ -121,14 +122,28 @@ class _HomeScreenState extends State<HomeScreen> {
                         separatorBuilder: (context, index) => SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final group = groups[index];
-                          return GroupCard(
-                            name: group.name,
-                            lastMessage: group.lastMessage,
-                            time: group.time,
-                            color: group.color,
-                            unreadCount: group.unreadCount,
-                            isOnline: group.isOnline,
-                            memberCount: group.memberCount,
+                          return InkWell( 
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    groupName: group.name, 
+                                    memberCount: group.memberCount.toString(),
+                                    groupDescription: group.description,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: GroupCard(
+                              name: group.name,
+                              lastMessage: group.lastMessage,
+                              time: group.time,
+                              color: group.color,
+                              unreadCount: group.unreadCount,
+                              isOnline: group.isOnline,
+                              memberCount: group.memberCount,
+                            ),
                           );
                         },
                       ),
