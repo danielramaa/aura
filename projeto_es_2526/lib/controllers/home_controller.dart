@@ -13,6 +13,7 @@ class HomeController extends ChangeNotifier {
       unreadCount: 2,
       isOnline: true,
       memberCount: 2400,
+      description: 'Grupo dedicado a compartilhar receitas, rotinas e apoio mútuo para o controle da Diabetes Tipo 2.',
     ),
     Group(
       name: 'Hipertensão',
@@ -22,6 +23,7 @@ class HomeController extends ChangeNotifier {
       unreadCount: 0,
       isOnline: false,
       memberCount: 1100,
+      description: 'Espaço seguro para debatermos sobre controle de pressão, dicas de exercícios e redução de sódio no dia a dia.',
     ),
     Group(
       name: 'Asma',
@@ -31,6 +33,7 @@ class HomeController extends ChangeNotifier {
       unreadCount: 5,
       isOnline: false,
       memberCount: 890,
+      description: 'Comunidade de apoio para pessoas com asma. Troque experiências sobre tratamentos, gatilhos e qualidade de vida.',
     ),
   ];
 
