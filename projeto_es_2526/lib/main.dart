@@ -51,19 +51,45 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class AuthGate extends StatelessWidget {
-  final Stream<User?> _authStream;
-  final MainController? _mainController;
-  final HomeController? _homeController;
+class AuthGate extends StatefulWidget {
+  final Stream<User?>? authStream;
+  final MainController? mainController;
+  final HomeController? homeController;
 
-  AuthGate({
+  const AuthGate({
     super.key,
-    Stream<User?>? authStream,
-    MainController? mainController,
-    HomeController? homeController,
-  })  : _authStream = authStream ?? FirebaseAuth.instance.authStateChanges(),
-        _mainController = mainController,
-        _homeController = homeController;
+    this.authStream,
+    this.mainController,
+    this.homeController,
+  });
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  late final Stream<User?> _authStream;
+  late final MainController _mainController;
+  late final HomeController _homeController;
+  late final bool _ownsControllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _authStream = widget.authStream ?? FirebaseAuth.instance.authStateChanges();
+    _ownsControllers = widget.mainController == null;
+    _mainController = widget.mainController ?? MainController();
+    _homeController = widget.homeController ?? HomeController();
+  }
+
+  @override
+  void dispose() {
+    if (_ownsControllers) {
+      _mainController.dispose();
+      _homeController.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,8 +103,8 @@ class AuthGate extends StatelessWidget {
         }
         if (snapshot.hasData) {
           return MainScreen(
-            mainController: _mainController ?? MainController(),
-            homeController: _homeController ?? HomeController(),
+            mainController: _mainController,
+            homeController: _homeController,
           );
         }
         return const LoginScreen();
