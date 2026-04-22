@@ -107,12 +107,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Enter your email' : null,
+                    validator: (v) {
+                      final email = v?.trim() ?? '';
+                      if (email.isEmpty) return 'Enter your email';
+                      final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+                      if (!emailRegex.hasMatch(email)) return 'Enter a valid email address';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
