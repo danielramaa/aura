@@ -39,6 +39,12 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
     _filteredCommunities = _allCommunities;
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   void _filterCommunities(String query) {
     setState(() {
       if (query.isEmpty) {
