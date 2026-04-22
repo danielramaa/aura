@@ -1,6 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class Group {
+  static const int _defaultColorValue = 0xFF378ADD;
+
   final String id;
   final String name;
   final String description;
@@ -14,4 +17,15 @@ class Group {
     required this.memberCount,
     required this.color,
   });
+
+  factory Group.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data()!;
+    return Group(
+      id: doc.id,
+      name: data['name'] as String,
+      description: data['description'] as String,
+      memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
+      color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
+    );
+  }
 }

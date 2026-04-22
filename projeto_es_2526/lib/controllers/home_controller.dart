@@ -1,35 +1,28 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
 import '../models/group.dart';
+import '../services/group_service.dart';
 
 class HomeController extends ChangeNotifier {
-  static const Color _defaultGroupColor = Color(0xFF378ADD);
+  final GroupService _service;
+  late final StreamSubscription<List<Group>> _subscription;
 
-  final List<Group> _groups = const [
-    Group(
-      id: 'diabetes_tipo_2',
-      name: 'Diabetes Tipo 2',
-      description: 'Grupo dedicado a compartilhar receitas, rotinas e apoio mútuo para o controle da Diabetes Tipo 2.',
-      memberCount: 2400,
-      color: _defaultGroupColor,
-    ),
-    Group(
-      id: 'hipertensao',
-      name: 'Hipertensão',
-      description: 'Espaço seguro para debatermos sobre controle de pressão, dicas de exercícios e redução de sódio no dia a dia.',
-      memberCount: 1100,
-      color: _defaultGroupColor,
-    ),
-    Group(
-      id: 'asma',
-      name: 'Asma',
-      description: 'Comunidade de apoio para pessoas com asma. Troque experiências sobre tratamentos, gatilhos e qualidade de vida.',
-      memberCount: 890,
-      color: _defaultGroupColor,
-    ),
-  ];
-
+  List<Group> _groups = const [];
+  bool _isLoading = true;
   String _searchQuery = '';
 
+  HomeController({GroupService? service})
+      : _service = service ?? GroupService() {
+    _subscription = _service.streamGroups().listen((groups) {
+      _groups = groups;
+      _isLoading = false;
+      notifyListeners();
+    });
+  }
+
+  bool get isLoading => _isLoading;
   String get searchQuery => _searchQuery;
 
   void setSearchQuery(String query) {
@@ -42,4 +35,10 @@ class HomeController extends ChangeNotifier {
       (g) => g.name.toLowerCase().contains(_searchQuery.toLowerCase()),
     ),
   );
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
 }
