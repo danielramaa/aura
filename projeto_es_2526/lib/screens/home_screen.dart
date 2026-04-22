@@ -54,7 +54,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // card list
               Expanded(
-                child: groups.isEmpty
+                child: widget.controller.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : groups.isEmpty
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40),
