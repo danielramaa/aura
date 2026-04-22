@@ -6,6 +6,8 @@ import 'firebase_options.dart';
 import 'controllers/home_controller.dart';
 import 'controllers/main_controller.dart';
 import 'screens/main_screen.dart';
+import 'screens/login_screen.dart';
+import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,12 +17,11 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    if (FirebaseAuth.instance.currentUser == null) {
-      try {
-        await FirebaseAuth.instance.signInAnonymously();
-      } catch (_) {
-        // App continues; unauthenticated state is handled per-screen.
-      }
+
+    final authService = AuthService();
+    final stayLoggedIn = await authService.getStayLoggedIn();
+    if (!stayLoggedIn && authService.currentUser != null) {
+      await authService.logout();
     }
   }
   runApp(const MyApp());
@@ -43,10 +44,32 @@ class MyApp extends StatelessWidget {
     }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MainScreen(
-        mainController: MainController(),
-        homeController: HomeController(),
-      ),
+      home: const AuthGate(),
+    );
+  }
+}
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasData) {
+          return MainScreen(
+            mainController: MainController(),
+            homeController: HomeController(),
+          );
+        }
+        return const LoginScreen();
+      },
     );
   }
 }
