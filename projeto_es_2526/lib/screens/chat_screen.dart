@@ -56,7 +56,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendMessage() async {
     final text = _messageController.text;
     try {
-      await _controller.send(text);
+      await _controller.send(text, replyToText: _replyingTo?.text);
       if (_controller.error != null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -294,7 +294,28 @@ class _MessageBubble extends StatelessWidget {
             color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Text(message.text, style: const TextStyle(fontSize: 14)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (message.replyToText != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: Colors.grey[400]!, width: 3)),
+                  ),
+                  child: Text(
+                    message.replyToText!,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              Text(message.text, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
         ),
       ),
     );
