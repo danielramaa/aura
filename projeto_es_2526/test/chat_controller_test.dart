@@ -19,7 +19,7 @@ class _FakeChatService implements ChatServiceInterface {
       _messagesController.stream;
 
   @override
-  Future<void> sendMessage({required String groupId, required String text}) {
+  Future<void> sendMessage({required String groupId, required String text, String? replyToText}) {
     if (sendError != null) return Future.error(sendError!);
     sentTexts.add(text);
     return sendCompleter?.future ?? Future.value();
