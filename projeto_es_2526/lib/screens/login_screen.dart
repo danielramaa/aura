@@ -65,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'email-already-in-use':
         return 'An account with this email already exists.';
       case 'weak-password':
-        return 'Password must be at least 6 characters.';
+        return 'Password must be at least 8 characters.';
       case 'invalid-email':
         return 'Please enter a valid email address.';
       case 'too-many-requests':
@@ -128,8 +128,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       labelText: 'Password',
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Enter your password' : null,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter your password';
+                      if (!_isLogin && v.length < 8) return 'Password must be at least 8 characters';
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 8),
                   Row(
