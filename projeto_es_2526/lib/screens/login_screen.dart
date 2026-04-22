@@ -73,9 +73,17 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  static const _blue = Color(0xFF185FA5);
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Theme(
+      data: Theme.of(context).copyWith(
+        colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: _blue,
+            ),
+      ),
+      child: Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -168,6 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
+    ));
   }
 }
