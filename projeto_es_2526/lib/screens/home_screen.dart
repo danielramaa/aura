@@ -56,6 +56,26 @@ class _HomeScreenState extends State<HomeScreen> {
               Expanded(
                 child: widget.controller.isLoading
                     ? const Center(child: CircularProgressIndicator())
+                    : widget.controller.error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 64, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text(
+                                widget.controller.error!,
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     : groups.isEmpty
                     ? Center(
                         child: Padding(

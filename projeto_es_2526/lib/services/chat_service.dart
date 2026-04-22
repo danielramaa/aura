@@ -31,10 +31,10 @@ class ChatService implements ChatServiceInterface {
   Future<void> sendMessage({
     required String groupId,
     required String text,
-  }) {
+  }) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) throw StateError('sendMessage called while unauthenticated');
-    return _messagesRef(groupId).add(
+    await _messagesRef(groupId).add(
       Message.newMessagePayload(text: text, senderId: currentUser.uid),
     );
   }
