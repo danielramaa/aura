@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../controllers/home_controller.dart';
 import '../controllers/main_controller.dart';
 import 'home_screen.dart';
+import 'find_groups_screen.dart';
 
 class MainScreen extends StatelessWidget {
   final MainController mainController;
@@ -23,7 +24,7 @@ class MainScreen extends StatelessWidget {
             controller: homeController,
             onFindGroups: () => mainController.navigateTo(1),
           ),
-          const Center(child: Text('Find Groups')),
+          const FindGroupsScreen(),
           const Center(child: Text('Notifications')),
           const Center(child: Text('Profile')),
         ];
