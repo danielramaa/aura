@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class Group {
+  final String id;
   final String name;
   final String lastMessage;
   final String time;
@@ -11,6 +12,7 @@ class Group {
   final String description;
 
   const Group({
+    required this.id,
     required this.name,
     required this.lastMessage,
     required this.time,

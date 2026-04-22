@@ -6,6 +6,7 @@ class HomeController extends ChangeNotifier {
 
   final List<Group> _groups = const [
     Group(
+      id: 'diabetes_tipo_2',
       name: 'Diabetes Tipo 2',
       lastMessage: 'User123: "Olá!"',
       time: '14:32',
@@ -16,6 +17,7 @@ class HomeController extends ChangeNotifier {
       description: 'Grupo dedicado a compartilhar receitas, rotinas e apoio mútuo para o controle da Diabetes Tipo 2.',
     ),
     Group(
+      id: 'hipertensao',
       name: 'Hipertensão',
       lastMessage: 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
       time: '11:05',
@@ -26,6 +28,7 @@ class HomeController extends ChangeNotifier {
       description: 'Espaço seguro para debatermos sobre controle de pressão, dicas de exercícios e redução de sódio no dia a dia.',
     ),
     Group(
+      id: 'asma',
       name: 'Asma',
       lastMessage: 'Sem novas mensagens',
       time: 'Mon',
