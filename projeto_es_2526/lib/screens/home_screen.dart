@@ -128,7 +128,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ChatScreen(
-                                    groupName: group.name, 
+                                    groupId: group.id,
+                                    groupName: group.name,
                                     memberCount: group.memberCount.toString(),
                                     groupDescription: group.description,
                                   ),
