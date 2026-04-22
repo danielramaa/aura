@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 class GroupCard extends StatelessWidget {
   final String name;
-  final String lastMessage;
-  final String time;
+  final String? lastMessage;
+  final String? time;
   final Color color;
   final int unreadCount;
   final bool isOnline;
@@ -12,9 +12,9 @@ class GroupCard extends StatelessWidget {
   const GroupCard({
     super.key,
     required this.name,
-    required this.lastMessage,
-    required this.time,
     required this.color,
+    this.lastMessage,
+    this.time,
     this.unreadCount = 0,
     this.isOnline = false,
     this.memberCount = 0,
@@ -54,13 +54,15 @@ class GroupCard extends StatelessWidget {
                     name,
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    lastMessage,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  if (lastMessage != null) ...[
+                    SizedBox(height: 4),
+                    Text(
+                      lastMessage!,
+                      style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                   SizedBox(height: 8),
                   Row(
                     children: [
@@ -98,10 +100,11 @@ class GroupCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  time,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
-                ),
+                if (time != null)
+                  Text(
+                    time!,
+                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  ),
                 SizedBox(height: 6),
                 if (unreadCount > 0)
                   Container(
