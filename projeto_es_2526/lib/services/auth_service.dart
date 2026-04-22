@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AuthService {
   static const _stayLoggedInKey = 'stay_logged_in';
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseAuth _auth;
+
+  AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
 
   User? get currentUser => _auth.currentUser;
 
