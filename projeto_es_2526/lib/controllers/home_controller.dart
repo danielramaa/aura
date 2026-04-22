@@ -1,44 +1,38 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+
 import '../models/group.dart';
+import '../services/group_service.dart';
 
 class HomeController extends ChangeNotifier {
-  static const Color _defaultGroupColor = Color(0xFF378ADD);
+  final GroupService _service;
+  late final StreamSubscription<List<Group>> _subscription;
 
-  final List<Group> _groups = const [
-    Group(
-      name: 'Diabetes Tipo 2',
-      lastMessage: 'User123: "Olá!"',
-      time: '14:32',
-      color: _defaultGroupColor,
-      unreadCount: 2,
-      isOnline: true,
-      memberCount: 2400,
-      description: 'Grupo dedicado a compartilhar receitas, rotinas e apoio mútuo para o controle da Diabetes Tipo 2.',
-    ),
-    Group(
-      name: 'Hipertensão',
-      lastMessage: 'Anonymous: "Alguém tem dicas para controlar a pressão?"',
-      time: '11:05',
-      color: _defaultGroupColor,
-      unreadCount: 0,
-      isOnline: false,
-      memberCount: 1100,
-      description: 'Espaço seguro para debatermos sobre controle de pressão, dicas de exercícios e redução de sódio no dia a dia.',
-    ),
-    Group(
-      name: 'Asma',
-      lastMessage: 'Sem novas mensagens',
-      time: 'Mon',
-      color: _defaultGroupColor,
-      unreadCount: 5,
-      isOnline: false,
-      memberCount: 890,
-      description: 'Comunidade de apoio para pessoas com asma. Troque experiências sobre tratamentos, gatilhos e qualidade de vida.',
-    ),
-  ];
-
+  List<Group> _groups = const [];
+  bool _isLoading = true;
   String _searchQuery = '';
+  String? _error;
 
+  HomeController({GroupService? service})
+      : _service = service ?? GroupService() {
+    _subscription = _service.streamGroups().listen(
+      (groups) {
+        _groups = groups;
+        _isLoading = false;
+        _error = null;
+        notifyListeners();
+      },
+      onError: (Object e) {
+        _isLoading = false;
+        _error = 'Failed to load groups.';
+        notifyListeners();
+      },
+    );
+  }
+
+  bool get isLoading => _isLoading;
+  String? get error => _error;
   String get searchQuery => _searchQuery;
 
   void setSearchQuery(String query) {
@@ -51,4 +45,10 @@ class HomeController extends ChangeNotifier {
       (g) => g.name.toLowerCase().contains(_searchQuery.toLowerCase()),
     ),
   );
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
 }

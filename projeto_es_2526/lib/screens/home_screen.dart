@@ -54,7 +54,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // card list
               Expanded(
-                child: groups.isEmpty
+                child: widget.controller.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : widget.controller.error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 64, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text(
+                                widget.controller.error!,
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : groups.isEmpty
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -128,7 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => ChatScreen(
-                                    groupName: group.name, 
+                                    groupId: group.id,
+                                    groupName: group.name,
                                     memberCount: group.memberCount.toString(),
                                     groupDescription: group.description,
                                   ),
@@ -137,11 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: GroupCard(
                               name: group.name,
-                              lastMessage: group.lastMessage,
-                              time: group.time,
                               color: group.color,
-                              unreadCount: group.unreadCount,
-                              isOnline: group.isOnline,
                               memberCount: group.memberCount,
                             ),
                           );
