@@ -16,13 +16,15 @@ void main() {
   group('AuthGate', () {
     testWidgets('shows LoginScreen when unauthenticated', (tester) async {
       final auth = MockFirebaseAuth(signedIn: false);
+      final mainController = MainController();
+      addTearDown(mainController.dispose);
       final homeController = makeHomeController();
       addTearDown(homeController.dispose);
 
       await tester.pumpWidget(MaterialApp(
         home: AuthGate(
           authStream: auth.authStateChanges(),
-          mainController: MainController(),
+          mainController: mainController,
           homeController: homeController,
         ),
       ));
