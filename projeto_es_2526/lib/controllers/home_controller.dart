@@ -12,17 +12,27 @@ class HomeController extends ChangeNotifier {
   List<Group> _groups = const [];
   bool _isLoading = true;
   String _searchQuery = '';
+  String? _error;
 
   HomeController({GroupService? service})
       : _service = service ?? GroupService() {
-    _subscription = _service.streamGroups().listen((groups) {
-      _groups = groups;
-      _isLoading = false;
-      notifyListeners();
-    });
+    _subscription = _service.streamGroups().listen(
+      (groups) {
+        _groups = groups;
+        _isLoading = false;
+        _error = null;
+        notifyListeners();
+      },
+      onError: (Object e) {
+        _isLoading = false;
+        _error = 'Failed to load groups.';
+        notifyListeners();
+      },
+    );
   }
 
   bool get isLoading => _isLoading;
+  String? get error => _error;
   String get searchQuery => _searchQuery;
 
   void setSearchQuery(String query) {

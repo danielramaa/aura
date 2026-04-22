@@ -140,8 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                             child: GroupCard(
                               name: group.name,
-                              lastMessage: group.description,
-                              time: '',
                               color: group.color,
                               memberCount: group.memberCount,
                             ),

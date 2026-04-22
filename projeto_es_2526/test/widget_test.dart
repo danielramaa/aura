@@ -7,23 +7,26 @@ import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 import 'package:projeto_es_2526/widgets/group_card.dart';
 
-Widget buildApp() {
-  final fakeFirestore = FakeFirebaseFirestore();
+Widget buildApp(HomeController homeController) {
   return MaterialApp(
     home: MainScreen(
       mainController: MainController(),
-      homeController: HomeController(
-        service: GroupService(firestore: fakeFirestore),
-      ),
+      homeController: homeController,
     ),
   );
 }
+
+HomeController makeHomeController() =>
+    HomeController(service: GroupService(firestore: FakeFirebaseFirestore()));
 
 void main() {
   testWidgets('App starts on home with bottom navigation', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(buildApp());
+    final homeController = makeHomeController();
+    addTearDown(homeController.dispose);
+
+    await tester.pumpWidget(buildApp(homeController));
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomNavigationBar), findsOneWidget);
@@ -36,7 +39,10 @@ void main() {
   testWidgets('Bottom navigation changes visible screen', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(buildApp());
+    final homeController = makeHomeController();
+    addTearDown(homeController.dispose);
+
+    await tester.pumpWidget(buildApp(homeController));
     await tester.pumpAndSettle();
 
     final bottomNav = find.byType(BottomNavigationBar);

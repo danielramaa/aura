@@ -31,7 +31,13 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _controller = ChatController(groupId: widget.groupId);
-    _currentUserId = FirebaseAuth.instance.currentUser!.uid;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      _currentUserId = '';
+      WidgetsBinding.instance.addPostFrameCallback((_) => Navigator.of(context).pop());
+    } else {
+      _currentUserId = currentUser.uid;
+    }
   }
 
   @override
@@ -43,8 +49,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
-    _messageController.clear();
-    await _controller.send(text);
+    try {
+      await _controller.send(text);
+      if (_controller.error != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_controller.error!)),
+        );
+        return;
+      }
+      _messageController.clear();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to send message. Please try again.')),
+      );
+    }
   }
 
   @override

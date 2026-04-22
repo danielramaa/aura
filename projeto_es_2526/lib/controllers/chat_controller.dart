@@ -7,31 +7,49 @@ import '../services/chat_service.dart';
 
 class ChatController extends ChangeNotifier {
   final String groupId;
-  final ChatService _service;
+  final ChatServiceInterface _service;
   late final StreamSubscription<List<Message>> _subscription;
+
+  static const int maxMessageLength = 2000;
 
   List<Message> _messages = const [];
   bool _isLoading = true;
   bool _isSending = false;
+  String? _error;
 
   ChatController({
     required this.groupId,
-    ChatService? service,
+    ChatServiceInterface? service,
   }) : _service = service ?? ChatService() {
-    _subscription = _service.streamMessages(groupId).listen((messages) {
-      _messages = messages;
-      _isLoading = false;
-      notifyListeners();
-    });
+    _subscription = _service.streamMessages(groupId).listen(
+      (messages) {
+        _messages = messages;
+        _isLoading = false;
+        _error = null;
+        notifyListeners();
+      },
+      onError: (Object e) {
+        _isLoading = false;
+        _error = 'Failed to load messages.';
+        notifyListeners();
+      },
+    );
   }
 
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
+  String? get error => _error;
 
   Future<void> send(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending) return;
+    if (trimmed.length > maxMessageLength) {
+      _error = 'Message cannot exceed $maxMessageLength characters.';
+      notifyListeners();
+      return;
+    }
+    _error = null;
     _isSending = true;
     notifyListeners();
     try {
