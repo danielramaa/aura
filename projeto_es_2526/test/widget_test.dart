@@ -1,13 +1,29 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:projeto_es_2526/controllers/home_controller.dart';
+import 'package:projeto_es_2526/controllers/main_controller.dart';
+import 'package:projeto_es_2526/screens/main_screen.dart';
+import 'package:projeto_es_2526/services/group_service.dart';
 import 'package:projeto_es_2526/widgets/group_card.dart';
-import 'package:projeto_es_2526/main.dart';
+
+Widget buildApp() {
+  final fakeFirestore = FakeFirebaseFirestore();
+  return MaterialApp(
+    home: MainScreen(
+      mainController: MainController(),
+      homeController: HomeController(
+        service: GroupService(firestore: fakeFirestore),
+      ),
+    ),
+  );
+}
 
 void main() {
   testWidgets('App starts on home with bottom navigation', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomNavigationBar), findsOneWidget);
@@ -20,7 +36,7 @@ void main() {
   testWidgets('Bottom navigation changes visible screen', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
     final bottomNav = find.byType(BottomNavigationBar);
