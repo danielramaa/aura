@@ -5,7 +5,7 @@ import '../models/message.dart';
 
 abstract class ChatServiceInterface {
   Stream<List<Message>> streamMessages(String groupId);
-  Future<void> sendMessage({required String groupId, required String text});
+  Future<void> sendMessage({required String groupId, required String text, String? replyToText});
 }
 
 class ChatService implements ChatServiceInterface {
@@ -31,11 +31,12 @@ class ChatService implements ChatServiceInterface {
   Future<void> sendMessage({
     required String groupId,
     required String text,
+    String? replyToText,
   }) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) throw StateError('sendMessage called while unauthenticated');
     await _messagesRef(groupId).add(
-      Message.newMessagePayload(text: text, senderId: currentUser.uid),
+      Message.newMessagePayload(text: text, senderId: currentUser.uid, replyToText: replyToText),
     );
   }
 }

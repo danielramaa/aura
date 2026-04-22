@@ -41,7 +41,7 @@ class ChatController extends ChangeNotifier {
   bool get isSending => _isSending;
   String? get error => _error;
 
-  Future<void> send(String text) async {
+  Future<void> send(String text, {String? replyToText}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending) return;
     if (trimmed.length > maxMessageLength) {
@@ -53,7 +53,7 @@ class ChatController extends ChangeNotifier {
     _isSending = true;
     notifyListeners();
     try {
-      await _service.sendMessage(groupId: groupId, text: trimmed);
+      await _service.sendMessage(groupId: groupId, text: trimmed, replyToText: replyToText);
     } finally {
       _isSending = false;
       notifyListeners();

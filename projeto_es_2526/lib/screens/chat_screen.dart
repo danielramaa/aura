@@ -26,6 +26,9 @@ class _ChatScreenState extends State<ChatScreen> {
   late final ChatController _controller;
   late final String _currentUserId;
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  Message? _replyingTo;
 
   @override
   void initState() {
@@ -34,7 +37,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
       _currentUserId = '';
-      WidgetsBinding.instance.addPostFrameCallback((_) => Navigator.of(context).pop());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => Navigator.of(context).pop(),
+      );
     } else {
       _currentUserId = currentUser.uid;
     }
@@ -44,13 +49,14 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _controller.dispose();
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
     try {
-      await _controller.send(text);
+      await _controller.send(text, replyToText: _replyingTo?.text);
       if (_controller.error != null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -59,12 +65,73 @@ class _ChatScreenState extends State<ChatScreen> {
         return;
       }
       _messageController.clear();
+      setState(() => _replyingTo = null);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to send message. Please try again.')),
+        const SnackBar(
+          content: Text('Failed to send message. Please try again.'),
+        ),
       );
     }
+  }
+
+  void _startReply(Message message) {
+    setState(() => _replyingTo = message);
+  }
+
+  void _cancelReply() {
+    setState(() => _replyingTo = null);
+  }
+
+  Widget _buildQuotedBox({
+    required String text,
+    VoidCallback? onTap,
+    bool isPreview = false,
+  }) {
+    final color = isPreview ? const Color(0xFF185FA5) : Colors.grey[400]!;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isPreview ? const Color(0xFFE8F0FB) : Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
+          border: Border(left: BorderSide(color: color, width: 3)),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReplyPreview() {
+    if (_replyingTo == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildQuotedBox(text: _replyingTo!.text, isPreview: true),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+            onPressed: _cancelReply,
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -102,16 +169,17 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(widget.groupName),
-                  content: Text(widget.groupDescription),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Close'),
+                builder:
+                    (context) => AlertDialog(
+                      title: Text(widget.groupName),
+                      content: Text(widget.groupDescription),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
               );
             },
           ),
@@ -123,6 +191,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return Column(
             children: [
               Expanded(child: _buildBody()),
+              _buildReplyPreview(),
               _buildInputRow(),
             ],
           );
@@ -139,12 +208,14 @@ class _ChatScreenState extends State<ChatScreen> {
     if (messages.isEmpty) {
       return Center(
         child: Text(
-          'No messages yet. Say hi!',
-          style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          'Sem mensagens ainda.\nSeja o primeiro a escrever!',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey[400], fontSize: 14),
         ),
       );
     }
     return ListView.builder(
+      controller: _scrollController,
       reverse: true,
       padding: const EdgeInsets.all(16),
       itemCount: messages.length,
@@ -153,6 +224,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return _MessageBubble(
           message: message,
           isOwn: message.senderId == _currentUserId,
+          onReply: () => _startReply(message),
         );
       },
     );
@@ -169,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
               controller: _messageController,
               enabled: !isSending,
               decoration: InputDecoration(
-                hintText: 'Type and send a message',
+                hintText: 'Escreva uma mensagem...',
                 filled: true,
                 fillColor: Colors.grey[100],
                 border: OutlineInputBorder(
@@ -198,23 +270,52 @@ class _ChatScreenState extends State<ChatScreen> {
 class _MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
+  final VoidCallback onReply;
 
-  const _MessageBubble({required this.message, required this.isOwn});
+  const _MessageBubble({
+    required this.message,
+    required this.isOwn,
+    required this.onReply,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          message.text,
-          style: const TextStyle(fontSize: 14),
+    return GestureDetector(
+      onLongPress: onReply,
+      child: Align(
+        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.75,
+          ),
+          decoration: BoxDecoration(
+            color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (message.replyToText != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border(left: BorderSide(color: Colors.grey[400]!, width: 3)),
+                  ),
+                  child: Text(
+                    message.replyToText!,
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              Text(message.text, style: const TextStyle(fontSize: 14)),
+            ],
+          ),
         ),
       ),
     );
