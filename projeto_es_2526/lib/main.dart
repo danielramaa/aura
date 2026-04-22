@@ -46,18 +46,29 @@ class MyApp extends StatelessWidget {
     }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const AuthGate(),
+      home: AuthGate(),
     );
   }
 }
 
 class AuthGate extends StatelessWidget {
-  const AuthGate({super.key});
+  final Stream<User?> _authStream;
+  final MainController? _mainController;
+  final HomeController? _homeController;
+
+  AuthGate({
+    super.key,
+    Stream<User?>? authStream,
+    MainController? mainController,
+    HomeController? homeController,
+  })  : _authStream = authStream ?? FirebaseAuth.instance.authStateChanges(),
+        _mainController = mainController,
+        _homeController = homeController;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: _authStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -66,8 +77,8 @@ class AuthGate extends StatelessWidget {
         }
         if (snapshot.hasData) {
           return MainScreen(
-            mainController: MainController(),
-            homeController: HomeController(),
+            mainController: _mainController ?? MainController(),
+            homeController: _homeController ?? HomeController(),
           );
         }
         return const LoginScreen();
