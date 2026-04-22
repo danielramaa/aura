@@ -12,20 +12,23 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
   
   final List<Group> _allCommunities = const [
     Group(
+      id: 'ansiedade-e-foco',
       name: 'Ansiedade e Foco',
-      lastMessage: '', time: '', color: Colors.blue, unreadCount: 0, isOnline: false,
+      color: Colors.blue,
       memberCount: 3500,
       description: 'Estratégias diárias e meditação para lidar com a ansiedade e melhorar o foco no trabalho e estudos.',
     ),
     Group(
+      id: 'vida-com-endometriose',
       name: 'Vida com Endometriose',
-      lastMessage: '', time: '', color: Colors.pink, unreadCount: 0, isOnline: false,
+      color: Colors.pink,
       memberCount: 1200,
       description: 'Apoio mútuo, troca de experiências sobre médicos, tratamentos e como lidar com a dor no dia a dia.',
     ),
     Group(
+      id: 'pais-de-criancas-autistas',
       name: 'Pais de Crianças Autistas',
-      lastMessage: '', time: '', color: Colors.orange, unreadCount: 0, isOnline: false,
+      color: Colors.orange,
       memberCount: 4800,
       description: 'Comunidade acolhedora para partilhar vitórias, desafios e recursos sobre o espetro autista.',
     ),
