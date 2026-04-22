@@ -21,12 +21,33 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _stayLoggedIn = true;
   bool _loading = false;
   String? _errorMessage;
+  String _password = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(
+      () => setState(() => _password = _passwordController.text),
+    );
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  ({String label, Color color}) _passwordStrength(String p) {
+    if (p.isEmpty) return (label: '', color: Colors.transparent);
+    int score = 0;
+    if (p.length >= 8) score++;
+    if (p.contains(RegExp(r'[A-Z]'))) score++;
+    if (p.contains(RegExp(r'[0-9]'))) score++;
+    if (p.contains(RegExp(r'[^A-Za-z0-9]'))) score++;
+    if (score <= 1) return (label: 'Weak', color: Colors.red);
+    if (score <= 2) return (label: 'Medium', color: Colors.orange);
+    return (label: 'Strong', color: Colors.green);
   }
 
   Future<void> _submit() async {
@@ -134,6 +155,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       return null;
                     },
                   ),
+                  if (!_isLogin && _password.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Builder(builder: (context) {
+                      final s = _passwordStrength(_password);
+                      return Row(
+                        children: [
+                          Text(
+                            'Strength: ${s.label}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: s.color,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 8),
                   Row(
                     children: [
