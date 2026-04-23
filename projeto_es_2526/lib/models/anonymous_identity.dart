@@ -11,9 +11,9 @@ class AnonymousIdentity {
 
   factory AnonymousIdentity.fromMap(Map<String, dynamic> map) {
     return AnonymousIdentity(
-      anonymousId: map['anonymousId'],
-      nickname: map['nickname'],
-      avatarUrl: map['avatarUrl'],
+      anonymousId: map['anonymousId'] as String? ?? '',
+      nickname: map['nickname'] as String? ?? 'Anonymous',
+      avatarUrl: map['avatarUrl'] as String? ?? '',
     );
   }
 

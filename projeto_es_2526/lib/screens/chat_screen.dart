@@ -39,10 +39,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
     _messageController.dispose();
     _scrollController.dispose();
-    _controller.removeListener(_handleControllerChanges);
     super.dispose();
   }
 
@@ -64,7 +64,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Failed to send message. Please try again.'),
+          content: Text('Erro ao enviar mensagem. Tente novamente.'),
         ),
       );
     }
@@ -198,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Text(
-                  'Erro Crítico:\n${_controller.error}',
+                  'Não foi possível carregar o chat. Tente novamente mais tarde.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.red, fontSize: 14),
                 ),
@@ -235,10 +235,10 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: messages.length,
       itemBuilder: (context, index) {
-        final message = messages[messages.length - 1 - index];
+        final message = messages[index];
         return _MessageBubble(
-          message: message, // The controller provides the anonymous ID
-          isOwn: message.senderId == _controller.anonymousIdentity?.anonymousId,
+          message: message,
+          isOwn: message.anonymousId == _controller.anonymousIdentity?.anonymousId,
           onReply: () => _startReply(message),
         );
       },

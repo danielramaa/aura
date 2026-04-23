@@ -7,28 +7,39 @@ import '../models/message.dart';
 import '../services/identity_service.dart';
 
 class ChatController extends ChangeNotifier {
+  static const int maxMessageLength = 2000;
+
   final String groupId;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final IdentityService _identityService = IdentityService();
-  final _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore;
+  final IdentityService _identityService;
+  final FirebaseAuth _auth;
 
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
+  String? _groupName;
 
   List<Message> _messages = [];
   StreamSubscription? _messagesSubscription;
 
+  bool _isDisposed = false;
   bool _isLoading = true;
   bool _isSending = false;
   String? _error;
 
-  ChatController({required this.groupId}) {
+  ChatController({
+    required this.groupId,
+    FirebaseFirestore? firestore,
+    IdentityService? identityService,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _identityService = identityService ?? IdentityService(),
+        _auth = auth ?? FirebaseAuth.instance {
     final user = _auth.currentUser;
     if (user != null) {
       _userId = user.uid;
       _initialize();
     } else {
-      _error = "Sessão expirada ou não iniciada (FirebaseAuth.instance.currentUser é null).";
+      _error = "Sessão expirada. Por favor, volta a iniciar sessão.";
       _isLoading = false;
     }
   }
@@ -44,6 +55,13 @@ class ChatController extends ChangeNotifier {
     try {
       _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
 
+      if (_isDisposed) return;
+
+      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
+      _groupName = groupDoc.data()?['name'] as String? ?? 'Community';
+
+      if (_isDisposed) return;
+
       final messagesRef = _firestore
           .collection('groups')
           .doc(groupId)
@@ -51,23 +69,32 @@ class ChatController extends ChangeNotifier {
           .orderBy('timestamp', descending: true);
 
       _messagesSubscription = messagesRef.snapshots().listen((snapshot) {
+        if (_isDisposed) return;
         _messages = snapshot.docs.map((doc) => Message.fromFirestore(doc)).toList();
         _isLoading = false;
         notifyListeners();
       }, onError: (e) {
-        _error = "Erro ao carregar mensagens:\n$e";
+        if (_isDisposed) return;
+        _error = "Não foi possível carregar as mensagens.";
         _isLoading = false;
         notifyListeners();
       });
     } catch (e) {
-      _error = "Erro técnico no Firebase:\n$e";
+      if (_isDisposed) return;
+      _error = "Não foi possível inicializar o chat.";
       _isLoading = false;
       notifyListeners();
     }
   }
 
   Future<void> send(String text, {String? replyToText}) async {
-    if (text.trim().isEmpty || _anonymousIdentity == null) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _isSending || _anonymousIdentity == null) return;
+    if (trimmed.length > maxMessageLength) {
+      _error = 'A mensagem não pode exceder $maxMessageLength caracteres.';
+      notifyListeners();
+      return;
+    }
 
     _isSending = true;
     notifyListeners();
@@ -75,23 +102,42 @@ class ChatController extends ChangeNotifier {
     try {
       final messagesRef = _firestore.collection('groups').doc(groupId).collection('messages');
       await messagesRef.add({
-        'text': text.trim(),
+        'text': trimmed,
         'timestamp': FieldValue.serverTimestamp(),
-        'senderId': _anonymousIdentity!.anonymousId, // Use anonymous ID
-        'senderNickname': _anonymousIdentity!.nickname, // Use anonymous nickname
+        'senderId': _anonymousIdentity!.anonymousId,
+        'senderNickname': _anonymousIdentity!.nickname,
         'replyToText': replyToText,
       });
       _error = null;
-    } catch (e) {
-      _error = "Failed to send message.";
+      unawaited(_createNotification());
+    } catch (_) {
+      _error = "Não foi possível enviar a mensagem.";
     } finally {
       _isSending = false;
       notifyListeners();
     }
   }
 
+  Future<void> _createNotification() async {
+    try {
+      final groupName = _groupName ?? 'Community';
+      await _firestore.collection('notifications').add({
+        'groupId': groupId,
+        'groupName': groupName,
+        'description': 'Nova mensagem no grupo "$groupName".',
+        'senderId': _userId,
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'message',
+        'isRead': false,
+      });
+    } catch (e) {
+      debugPrint('Failed to create notification for group "$groupId": $e');
+    }
+  }
+
   @override
   void dispose() {
+    _isDisposed = true;
     _messagesSubscription?.cancel();
     super.dispose();
   }
