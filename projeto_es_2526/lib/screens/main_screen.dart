@@ -4,6 +4,7 @@ import '../controllers/main_controller.dart';
 import 'home_screen.dart';
 import 'find_groups_screen.dart';
 import 'profile_screen.dart';
+import 'notification_screen.dart';
 
 class MainScreen extends StatelessWidget {
   final MainController mainController;
@@ -26,7 +27,7 @@ class MainScreen extends StatelessWidget {
             onFindGroups: () => mainController.navigateTo(1),
           ),
           const FindGroupsScreen(),
-          const Center(child: Text('Notifications')),
+          const NotificationScreen(),
           const ProfileScreen(),
         ];
 
