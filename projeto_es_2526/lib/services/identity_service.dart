@@ -64,27 +64,36 @@ class IdentityService {
         .doc(groupId)
         .collection('takenNicknames');
 
-    for (int i = 0; i < 10; i++) {
-      final candidate =
-          '${_adjectives[random.nextInt(_adjectives.length)]}'
-          '${_nouns[random.nextInt(_nouns.length)]}'
-          '${random.nextInt(99)}';
+    String _candidate() =>
+        '${_adjectives[random.nextInt(_adjectives.length)]}'
+        '${_nouns[random.nextInt(_nouns.length)]}'
+        '${random.nextInt(99)}';
 
+    Future<bool> _tryReserve(String nickname) async {
       try {
         await _firestore.runTransaction((tx) async {
-          final doc = await tx.get(takenRef.doc(candidate));
+          final doc = await tx.get(takenRef.doc(nickname));
           if (doc.exists) throw Exception('taken');
-          tx.set(takenRef.doc(candidate), {'takenAt': FieldValue.serverTimestamp()});
+          tx.set(takenRef.doc(nickname), {'takenAt': FieldValue.serverTimestamp()});
         });
-        return candidate;
-      } catch (_) {
-        continue;
+        return true;
+      } on Exception catch (e) {
+        if (e.toString().contains('taken')) return false;
+        rethrow; // surface real errors (permission, network, etc.)
       }
     }
 
-    // Fallback after 10 failed attempts: use milliseconds for uniqueness
-    return '${_adjectives[random.nextInt(_adjectives.length)]}'
+    for (int i = 0; i < 10; i++) {
+      final candidate = _candidate();
+      if (await _tryReserve(candidate)) return candidate;
+    }
+
+    // Fallback after 10 collisions: timestamp suffix guarantees uniqueness
+    final fallback =
+        '${_adjectives[random.nextInt(_adjectives.length)]}'
         '${_nouns[random.nextInt(_nouns.length)]}'
         '${DateTime.now().millisecondsSinceEpoch % 9999}';
+    await _tryReserve(fallback); // reserve it too; rethrows on real errors
+    return fallback;
   }
 }
