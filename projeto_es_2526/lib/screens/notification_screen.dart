@@ -131,7 +131,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             itemBuilder: (context, index) {
               final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
-              final isRead = data['isRead'] ?? false;
+              final isRead = data['isRead'] as bool? ?? false;
 
               String timeString = 'Now';
               if (data['timestamp'] != null) {
