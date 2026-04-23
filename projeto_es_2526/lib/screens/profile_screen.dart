@@ -2,18 +2,28 @@ import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final ProfileController? controller;
+
+  const ProfileScreen({super.key, this.controller});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ProfileController _controller = ProfileController();
+  late final ProfileController _controller;
+  late final bool _ownsController;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownsController = widget.controller == null;
+    _controller = widget.controller ?? ProfileController();
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (_ownsController) _controller.dispose();
     super.dispose();
   }
 

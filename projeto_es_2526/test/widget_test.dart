@@ -1,17 +1,23 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:projeto_es_2526/controllers/home_controller.dart';
 import 'package:projeto_es_2526/controllers/main_controller.dart';
+import 'package:projeto_es_2526/controllers/profile_controller.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 import 'package:projeto_es_2526/widgets/group_card.dart';
 
-Widget buildApp(HomeController homeController) {
+Widget buildApp(
+  HomeController homeController,
+  ProfileController profileController,
+) {
   return MaterialApp(
     home: MainScreen(
       mainController: MainController(),
       homeController: homeController,
+      profileController: profileController,
     ),
   );
 }
@@ -19,15 +25,22 @@ Widget buildApp(HomeController homeController) {
 HomeController makeHomeController() =>
     HomeController(service: GroupService(firestore: FakeFirebaseFirestore()));
 
+ProfileController makeProfileController() => ProfileController(
+      auth: MockFirebaseAuth(),
+      firestore: FakeFirebaseFirestore(),
+    );
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('App starts on home with bottom navigation', (
     WidgetTester tester,
   ) async {
     final homeController = makeHomeController();
+    final profileController = makeProfileController();
     addTearDown(homeController.dispose);
+    addTearDown(profileController.dispose);
 
-    await tester.pumpWidget(buildApp(homeController));
+    await tester.pumpWidget(buildApp(homeController, profileController));
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomNavigationBar), findsOneWidget);
@@ -41,9 +54,11 @@ void main() {
     WidgetTester tester,
   ) async {
     final homeController = makeHomeController();
+    final profileController = makeProfileController();
     addTearDown(homeController.dispose);
+    addTearDown(profileController.dispose);
 
-    await tester.pumpWidget(buildApp(homeController));
+    await tester.pumpWidget(buildApp(homeController, profileController));
     await tester.pumpAndSettle();
 
     final bottomNav = find.byType(BottomNavigationBar);
