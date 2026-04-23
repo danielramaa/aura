@@ -107,6 +107,10 @@ class _AuthGateState extends State<AuthGate> {
             homeController: _homeController!,
           );
         }
+        if (_ownsControllers) {
+          _homeController?.dispose();
+          _homeController = null;
+        }
         return const LoginScreen();
       },
     );
