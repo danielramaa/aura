@@ -41,7 +41,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
       if (mounted) setState(() => _emailSent = true);
     } on FirebaseAuthException catch (e) {
-      setState(() => _errorMessage = _friendlyError(e.code));
+      if (mounted) setState(() => _errorMessage = _friendlyError(e.code));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
