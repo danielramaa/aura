@@ -32,17 +32,21 @@ class _NotificationScreenState extends State<NotificationScreen> {
       if (mounted) setState(() => _userGroupIds = []);
       return;
     }
-    final snap = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(_currentUid)
-        .collection('anonymousIdentities')
-        .get();
-    if (mounted) {
-      setState(() {
-        // whereIn is limited to 30 values; users in >30 groups will only see
-        // notifications for their most recently joined 30.
-        _userGroupIds = snap.docs.map((d) => d.id).take(30).toList();
-      });
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUid)
+          .collection('anonymousIdentities')
+          .get();
+      if (mounted) {
+        setState(() {
+          // whereIn is limited to 30 values; users in >30 groups will only see
+          // notifications for their most recently joined 30.
+          _userGroupIds = snap.docs.map((d) => d.id).take(30).toList();
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _userGroupIds = []);
     }
   }
 
