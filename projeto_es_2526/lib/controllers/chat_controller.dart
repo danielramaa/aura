@@ -26,6 +26,10 @@ class ChatController extends ChangeNotifier {
   bool _isSending = false;
   String? _error;
 
+  Timer? _typingTimer;
+  bool _isTyping = false;
+  late final Stream<List<String>> typingNamesStream;
+
   ChatController({
     required this.groupId,
     FirebaseFirestore? firestore,
@@ -34,6 +38,13 @@ class ChatController extends ChangeNotifier {
   })  : _firestore = firestore ?? FirebaseFirestore.instance,
         _identityService = identityService ?? IdentityService(),
         _auth = auth ?? FirebaseAuth.instance {
+    typingNamesStream = _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('typing')
+        .snapshots()
+        .map(_toTypingNames);
+
     final user = _auth.currentUser;
     if (user != null) {
       _userId = user.uid;
@@ -42,6 +53,53 @@ class ChatController extends ChangeNotifier {
       _error = "Sessão expirada. Por favor, volta a iniciar sessão.";
       _isLoading = false;
     }
+  }
+
+  List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
+    final cutoff = Timestamp.fromDate(
+      DateTime.now().subtract(const Duration(seconds: 10)),
+    );
+    return snap.docs
+        .where((d) => d.id != _anonymousIdentity?.anonymousId)
+        .where((d) {
+          final ts = d.data()['timestamp'] as Timestamp?;
+          return ts != null && ts.compareTo(cutoff) >= 0;
+        })
+        .map((d) => d.data()['nickname'] as String)
+        .toList();
+  }
+
+  /// Call on every keystroke. Writes to Firestore only on the first keystroke
+  /// of a new typing session; resets the 3-second inactivity timer each time.
+  void notifyTyping() {
+    if (_anonymousIdentity == null || _isDisposed) return;
+
+    if (!_isTyping) {
+      _isTyping = true;
+      unawaited(_firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('typing')
+          .doc(_anonymousIdentity!.anonymousId)
+          .set({
+        'nickname': _anonymousIdentity!.nickname,
+        'timestamp': FieldValue.serverTimestamp(),
+      }));
+    }
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 3), _clearTypingStatus);
+  }
+
+  void _clearTypingStatus() {
+    _isTyping = false;
+    if (_anonymousIdentity == null) return;
+    unawaited(_firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('typing')
+        .doc(_anonymousIdentity!.anonymousId)
+        .delete());
   }
 
   // Getters
@@ -96,6 +154,7 @@ class ChatController extends ChangeNotifier {
       return;
     }
 
+    _clearTypingStatus();
     _isSending = true;
     notifyListeners();
 
@@ -138,6 +197,8 @@ class ChatController extends ChangeNotifier {
   @override
   void dispose() {
     _isDisposed = true;
+    _typingTimer?.cancel();
+    _clearTypingStatus();
     _messagesSubscription?.cancel();
     super.dispose();
   }

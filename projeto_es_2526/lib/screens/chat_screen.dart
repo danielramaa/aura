@@ -46,6 +46,32 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  Widget _buildTypingIndicator() {
+    return StreamBuilder<List<String>>(
+      stream: _controller.typingNamesStream,
+      builder: (context, snapshot) {
+        final names = snapshot.data ?? [];
+        if (names.isEmpty) return const SizedBox.shrink();
+
+        final label = names.length == 1
+            ? '${names.first} is typing...'
+            : '${names.join(', ')} are typing...';
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _handleControllerChanges() {
     if (mounted) {
       setState(() {});
@@ -209,6 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return Column(
             children: [
               Expanded(child: _buildBody()),
+              _buildTypingIndicator(),
               _buildReplyPreview(),
               _buildInputRow(),
             ],
@@ -255,6 +282,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: TextField(
               controller: _messageController,
               enabled: !isSending,
+              onChanged: (_) => _controller.notifyTyping(),
               decoration: InputDecoration(
                 hintText: 'Escreva uma mensagem...',
                 filled: true,

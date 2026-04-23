@@ -107,6 +107,73 @@ void main() {
     });
   });
 
+  group('ChatController — typing indicator', () {
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
+    late ChatController controller;
+
+    CollectionReference<Map<String, dynamic>> typingRef(
+      FakeFirebaseFirestore fs,
+    ) => fs.collection('groups').doc('g1').collection('typing');
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'user-1'));
+      controller = makeController(firestore, auth);
+      await waitForInit(controller);
+    });
+
+    tearDown(() => controller.dispose());
+
+    test('notifyTyping does nothing before identity is loaded', () async {
+      final earlyController = makeController(firestore, auth);
+      earlyController.notifyTyping();
+      final snap = await typingRef(firestore).get();
+      expect(snap.docs, isEmpty);
+      earlyController.dispose();
+    });
+
+    test('notifyTyping writes typing doc on first call', () async {
+      controller.notifyTyping();
+      await Future.delayed(Duration.zero);
+      final snap = await typingRef(firestore).get();
+      expect(snap.docs.length, 1);
+      expect(snap.docs.first.data()['nickname'], isNotNull);
+    });
+
+    test('notifyTyping does not write again on subsequent calls', () async {
+      controller.notifyTyping();
+      controller.notifyTyping();
+      controller.notifyTyping();
+      await Future.delayed(Duration.zero);
+      final snap = await typingRef(firestore).get();
+      expect(snap.docs.length, 1);
+    });
+
+    test('send clears typing doc', () async {
+      controller.notifyTyping();
+      await Future.delayed(Duration.zero);
+      expect((await typingRef(firestore).get()).docs, isNotEmpty);
+
+      await controller.send('hello');
+      await Future.delayed(Duration.zero);
+      expect((await typingRef(firestore).get()).docs, isEmpty);
+    });
+
+    test('dispose clears typing doc', () async {
+      final c = makeController(firestore, auth);
+      await waitForInit(c);
+
+      c.notifyTyping();
+      await Future.delayed(Duration.zero);
+      expect((await typingRef(firestore).get()).docs, isNotEmpty);
+
+      c.dispose();
+      await Future.delayed(Duration.zero);
+      expect((await typingRef(firestore).get()).docs, isEmpty);
+    });
+  });
+
   group('AnonymousIdentity.fromMap', () {
     test('parses a complete map', () {
       final identity = AnonymousIdentity.fromMap({
