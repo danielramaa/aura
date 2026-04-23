@@ -1,117 +1,172 @@
-import 'dart:async';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projeto_es_2526/controllers/chat_controller.dart';
+import 'package:projeto_es_2526/models/anonymous_identity.dart';
 import 'package:projeto_es_2526/models/message.dart';
-import 'package:projeto_es_2526/services/chat_service.dart';
+import 'package:projeto_es_2526/services/identity_service.dart';
 
-class _FakeChatService implements ChatServiceInterface {
-  final List<String> sentTexts = [];
-  Object? sendError;
-  Completer<void>? sendCompleter;
-  final _messagesController = StreamController<List<Message>>.broadcast();
+ChatController makeController(
+  FakeFirebaseFirestore firestore,
+  MockFirebaseAuth auth, {
+  String groupId = 'g1',
+}) {
+  return ChatController(
+    groupId: groupId,
+    firestore: firestore,
+    auth: auth,
+    identityService: IdentityService(firestore: firestore),
+  );
+}
 
-  void emitMessages(List<Message> messages) =>
-      _messagesController.add(messages);
-
-  @override
-  Stream<List<Message>> streamMessages(String groupId) =>
-      _messagesController.stream;
-
-  @override
-  Future<void> sendMessage({required String groupId, required String text, String? replyToText}) {
-    if (sendError != null) return Future.error(sendError!);
-    sentTexts.add(text);
-    return sendCompleter?.future ?? Future.value();
+Future<void> waitForInit(ChatController controller) async {
+  while (controller.isLoading) {
+    await Future.delayed(Duration.zero);
   }
-
-  void dispose() => _messagesController.close();
 }
 
 void main() {
   group('ChatController', () {
-    late _FakeChatService service;
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
     late ChatController controller;
 
-    setUp(() {
-      service = _FakeChatService();
-      controller = ChatController(groupId: 'g1', service: service);
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'user-1'));
+      controller = makeController(firestore, auth);
+      await waitForInit(controller);
     });
 
-    tearDown(() {
-      controller.dispose();
-      service.dispose();
+    tearDown(() => controller.dispose());
+
+    test('maxMessageLength is 2000', () {
+      expect(ChatController.maxMessageLength, equals(2000));
     });
 
     test('ignores empty or whitespace-only text', () async {
       await controller.send('   ');
-      expect(service.sentTexts, isEmpty);
+      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      expect(snap.docs, isEmpty);
       expect(controller.error, isNull);
     });
 
     test('trims whitespace before sending', () async {
       await controller.send('  hello  ');
-      expect(service.sentTexts, ['hello']);
+      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      expect(snap.docs.length, 1);
+      expect(snap.docs.first.data()['text'], 'hello');
     });
 
-    test('sets error and does not send when text exceeds maxMessageLength',
-        () async {
+    test('sets error and does not send when text exceeds maxMessageLength', () async {
       final longText = 'a' * (ChatController.maxMessageLength + 1);
       await controller.send(longText);
-      expect(service.sentTexts, isEmpty);
+      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      expect(snap.docs, isEmpty);
       expect(controller.error, isNotNull);
     });
 
-    test('clears error on valid send', () async {
-      final longText = 'a' * (ChatController.maxMessageLength + 1);
-      await controller.send(longText);
+    test('clears error after valid send following an error', () async {
+      await controller.send('a' * (ChatController.maxMessageLength + 1));
       expect(controller.error, isNotNull);
-
       await controller.send('valid message');
       expect(controller.error, isNull);
     });
 
     test('isSending is true during send and false after', () async {
-      final sendingStates = <bool>[];
-      controller.addListener(() => sendingStates.add(controller.isSending));
-
+      final states = <bool>[];
+      controller.addListener(() => states.add(controller.isSending));
       await controller.send('hello');
-
-      expect(sendingStates, containsAllInOrder([true, false]));
+      expect(states, containsAllInOrder([true, false]));
     });
 
     test('concurrent send is blocked while isSending', () async {
-      final completer = Completer<void>();
-      service.sendCompleter = completer;
-
-      // Start first send (won't complete until completer resolves)
       final first = controller.send('first');
       expect(controller.isSending, isTrue);
 
-      // Second send should be a no-op while isSending
-      await controller.send('second');
-      expect(service.sentTexts, ['first']); // 'second' not yet sent
-
-      completer.complete();
+      await controller.send('second'); // blocked — isSending is true
       await first;
 
-      expect(service.sentTexts, ['first']); // 'second' was blocked
-      expect(controller.isSending, isFalse);
+      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      expect(snap.docs.length, 1);
+      expect(snap.docs.first.data()['text'], 'first');
     });
 
     test('messages stream is reflected in controller', () async {
-      final messages = [
-        Message(
-          id: '1',
-          text: 'hi',
-          senderId: 'u1',
-          createdAt: DateTime(2025),
-        ),
-      ];
-      service.emitMessages(messages);
+      await firestore.collection('groups').doc('g1').collection('messages').add({
+        'text': 'stream message',
+        'senderId': 'anon-external',
+        'senderNickname': 'BraveOwl7',
+        'timestamp': Timestamp.now(),
+        'replyToText': null,
+      });
       await Future.microtask(() {});
-      expect(controller.messages, messages);
+      expect(controller.messages.any((m) => m.text == 'stream message'), isTrue);
       expect(controller.isLoading, isFalse);
+    });
+  });
+
+  group('AnonymousIdentity.fromMap', () {
+    test('parses a complete map', () {
+      final identity = AnonymousIdentity.fromMap({
+        'anonymousId': 'anon-123',
+        'nickname': 'CalmWolf42',
+        'avatarUrl': 'https://example.com/avatar.png',
+      });
+      expect(identity.anonymousId, 'anon-123');
+      expect(identity.nickname, 'CalmWolf42');
+      expect(identity.avatarUrl, 'https://example.com/avatar.png');
+    });
+
+    test('uses fallbacks for missing fields', () {
+      final identity = AnonymousIdentity.fromMap({});
+      expect(identity.anonymousId, '');
+      expect(identity.nickname, 'Anonymous');
+      expect(identity.avatarUrl, '');
+    });
+
+    test('toMap round-trips through fromMap', () {
+      final original = AnonymousIdentity(
+        anonymousId: 'id1',
+        nickname: 'BraveOwl7',
+        avatarUrl: 'https://example.com/owl.png',
+      );
+      final copy = AnonymousIdentity.fromMap(original.toMap());
+      expect(copy.anonymousId, original.anonymousId);
+      expect(copy.nickname, original.nickname);
+      expect(copy.avatarUrl, original.avatarUrl);
+    });
+  });
+
+  group('Message', () {
+    test('stores all fields', () {
+      final ts = Timestamp.fromDate(DateTime(2025));
+      final msg = Message(
+        id: '1',
+        text: 'hello',
+        anonymousId: 'anon-1',
+        senderNickname: 'CalmWolf42',
+        timestamp: ts,
+        replyToText: 'original',
+      );
+      expect(msg.id, '1');
+      expect(msg.text, 'hello');
+      expect(msg.anonymousId, 'anon-1');
+      expect(msg.senderNickname, 'CalmWolf42');
+      expect(msg.timestamp, ts);
+      expect(msg.replyToText, 'original');
+    });
+
+    test('replyToText defaults to null', () {
+      final msg = Message(
+        id: '2',
+        text: 'hi',
+        anonymousId: 'anon-2',
+        senderNickname: 'BraveOwl7',
+        timestamp: Timestamp.now(),
+      );
+      expect(msg.replyToText, isNull);
     });
   });
 }
