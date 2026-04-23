@@ -16,6 +16,7 @@ class ChatController extends ChangeNotifier {
 
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
+  String? _groupName;
 
   List<Message> _messages = [];
   StreamSubscription? _messagesSubscription;
@@ -53,6 +54,11 @@ class ChatController extends ChangeNotifier {
   Future<void> _initialize() async {
     try {
       _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
+
+      if (_isDisposed) return;
+
+      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
+      _groupName = groupDoc.data()?['name'] as String? ?? 'Community';
 
       if (_isDisposed) return;
 
@@ -114,8 +120,7 @@ class ChatController extends ChangeNotifier {
 
   Future<void> _createNotification() async {
     try {
-      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
-      final groupName = groupDoc.data()?['name'] ?? 'Community';
+      final groupName = _groupName ?? 'Community';
       await _firestore.collection('notifications').add({
         'groupId': groupId,
         'groupName': groupName,
