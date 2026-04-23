@@ -16,6 +16,8 @@ class ProfileController extends ChangeNotifier {
   String? _communityError;
   String? get communityError => _communityError;
 
+  bool _isDisposed = false;
+
   List<Group> _joinedCommunities = const [];
   List<Group> get joinedCommunities => List.unmodifiable(_joinedCommunities);
 
@@ -39,21 +41,28 @@ class ProfileController extends ChangeNotifier {
           .collection('anonymousIdentities')
           .get();
 
+      if (_isDisposed) return;
+
       final groupDocs = await Future.wait(
         identitiesSnap.docs.map(
           (doc) => _firestore.collection('groups').doc(doc.id).get(),
         ),
       );
 
+      if (_isDisposed) return;
+
       _joinedCommunities = groupDocs
           .where((doc) => doc.exists)
           .map(Group.fromFirestore)
           .toList();
     } catch (_) {
+      if (_isDisposed) return;
       _communityError = 'Failed to load communities.';
     } finally {
-      _isLoadingCommunities = false;
-      notifyListeners();
+      if (!_isDisposed) {
+        _isLoadingCommunities = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -105,6 +114,12 @@ class ProfileController extends ChangeNotifier {
   Future<void> logout() async {
     await _auth.signOut();
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 
   static String _authErrorMessage(String code) {
