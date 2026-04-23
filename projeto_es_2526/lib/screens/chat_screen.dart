@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
@@ -27,6 +30,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   Message? _replyingTo;
+  Timer? _typingTimer;
 
   @override
   void initState() {
@@ -39,11 +43,79 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _typingTimer?.cancel();
+    _clearTypingStatus();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _clearTypingStatus() {
+    final identity = _controller.anonymousIdentity;
+    if (identity == null) return;
+    FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupId)
+        .collection('typing')
+        .doc(identity.anonymousId)
+        .delete();
+  }
+
+  void _onTyping() {
+    final identity = _controller.anonymousIdentity;
+    if (identity == null) return;
+
+    FirebaseFirestore.instance
+        .collection('groups')
+        .doc(widget.groupId)
+        .collection('typing')
+        .doc(identity.anonymousId)
+        .set({
+      'nickname': identity.nickname,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _typingTimer?.cancel();
+    _typingTimer = Timer(const Duration(seconds: 3), _clearTypingStatus);
+  }
+
+  Widget _buildTypingIndicator() {
+    final myId = _controller.anonymousIdentity?.anonymousId;
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .collection('typing')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final others = snapshot.data!.docs
+            .where((d) => d.id != myId)
+            .toList();
+
+        if (others.isEmpty) return const SizedBox.shrink();
+
+        final names = others.map((d) => d['nickname'] as String).toList();
+        final label = names.length == 1
+            ? '${names.first} is typing...'
+            : '${names.join(', ')} are typing...';
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _handleControllerChanges() {
@@ -209,6 +281,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return Column(
             children: [
               Expanded(child: _buildBody()),
+              _buildTypingIndicator(),
               _buildReplyPreview(),
               _buildInputRow(),
             ],
@@ -255,6 +328,7 @@ class _ChatScreenState extends State<ChatScreen> {
             child: TextField(
               controller: _messageController,
               enabled: !isSending,
+              onChanged: (_) => _onTyping(),
               decoration: InputDecoration(
                 hintText: 'Escreva uma mensagem...',
                 filled: true,
