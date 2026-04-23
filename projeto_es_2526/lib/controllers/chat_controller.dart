@@ -130,7 +130,9 @@ class ChatController extends ChangeNotifier {
         'type': 'message',
         'isRead': false,
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to create notification for group "$groupId": $e');
+    }
   }
 
   @override
