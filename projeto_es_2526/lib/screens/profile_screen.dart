@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -17,84 +17,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  void _showEditProfileDialog() {
-    final nameController = TextEditingController(text: _controller.currentUser?.displayName);
-    final photoController = TextEditingController(text: _controller.currentUser?.photoURL);
-    final emailController = TextEditingController(text: _controller.currentUser?.email);
-    final passwordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
-
-    showDialog(
+  Future<void> _showEditProfileDialog() async {
+    await showDialog<void>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Edit Profile'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Name'),
-                ),
-                TextField(
-                  controller: photoController,
-                  decoration: const InputDecoration(labelText: 'Photo URL'),
-                ),
-                TextField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  keyboardType: TextInputType.emailAddress,
-                ),
-                TextField(
-                  controller: passwordController,
-                  decoration: const InputDecoration(
-                    labelText: 'New Password',
-                    hintText: 'Leave blank to keep current',
-                  ),
-                  obscureText: true,
-                ),
-                TextField(
-                  controller: confirmPasswordController,
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm New Password',
-                    hintText: 'Leave blank to keep current',
-                  ),
-                  obscureText: true,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final password = passwordController.text.trim();
-                final confirmPassword = confirmPasswordController.text.trim();
-
-                if (password.isNotEmpty && password != confirmPassword) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Passwords do not match!')),
-                  );
-                  return;
-                }
-
-                _controller.updateProfile(
-                  displayName: nameController.text.trim(),
-                  photoURL: photoController.text.trim(),
-                  email: emailController.text.trim(),
-                  password: password,
-                );
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => _EditProfileDialog(controller: _controller),
     );
   }
 
@@ -108,7 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: const Icon(Icons.edit),
             tooltip: 'Edit Profile',
             onPressed: _showEditProfileDialog,
-          )
+          ),
         ],
       ),
       body: ListenableBuilder(
@@ -123,14 +49,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
-              // 1. Avatar, Name and Email
               Center(
                 child: CircleAvatar(
                   radius: 50,
-                  backgroundImage: user.photoURL != null && user.photoURL!.isNotEmpty
+                  backgroundImage: user.photoURL?.isNotEmpty == true
                       ? NetworkImage(user.photoURL!)
                       : null,
-                  child: (user.photoURL == null || user.photoURL!.isEmpty)
+                  child: user.photoURL?.isNotEmpty != true
                       ? const Icon(Icons.person, size: 50)
                       : null,
                 ),
@@ -152,46 +77,198 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-
-              // 2. Communities List
               Text(
                 'My Communities',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
-              if (_controller.isLoading)
+              if (_controller.isLoadingCommunities)
                 const Center(child: CircularProgressIndicator())
+              else if (_controller.communityError != null)
+                Text(
+                  _controller.communityError!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                )
               else if (_controller.joinedCommunities.isEmpty)
                 const Text('You have not joined any communities yet.')
               else
-                ..._controller.joinedCommunities.map((communityId) {
-                  return Card(
+                ..._controller.joinedCommunities.map(
+                  (community) => Card(
                     child: ListTile(
                       leading: const Icon(Icons.group),
-                      title: Text(
-                        communityId
-                            .split('-')
-                            .map((word) => word.isNotEmpty
-                                ? '${word[0].toUpperCase()}${word.substring(1)}'
-                                : '')
-                            .join(' '),
-                      ),
+                      title: Text(community.name),
                     ),
-                  );
-                }).toList(),
-
+                  ),
+                ),
               const SizedBox(height: 32),
-
-              // 3. Logout Button
               ElevatedButton.icon(
                 icon: const Icon(Icons.logout),
                 label: const Text('Logout'),
-                onPressed: () => _controller.logout(),
+                onPressed: _controller.logout,
               ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+class _EditProfileDialog extends StatefulWidget {
+  final ProfileController controller;
+
+  const _EditProfileDialog({required this.controller});
+
+  @override
+  State<_EditProfileDialog> createState() => _EditProfileDialogState();
+}
+
+class _EditProfileDialogState extends State<_EditProfileDialog> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _photoCtrl;
+  late final TextEditingController _emailCtrl;
+  late final TextEditingController _newPasswordCtrl;
+  late final TextEditingController _confirmPasswordCtrl;
+  late final TextEditingController _currentPasswordCtrl;
+
+  bool _isSaving = false;
+  bool _needsCurrentPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = widget.controller.currentUser;
+    _nameCtrl = TextEditingController(text: user?.displayName);
+    _photoCtrl = TextEditingController(text: user?.photoURL);
+    _emailCtrl = TextEditingController(text: user?.email);
+    _newPasswordCtrl = TextEditingController();
+    _confirmPasswordCtrl = TextEditingController();
+    _currentPasswordCtrl = TextEditingController();
+
+    _emailCtrl.addListener(_onSensitiveFieldChanged);
+    _newPasswordCtrl.addListener(_onSensitiveFieldChanged);
+  }
+
+  void _onSensitiveFieldChanged() {
+    final emailChanged =
+        _emailCtrl.text.trim() != (widget.controller.currentUser?.email ?? '');
+    final passwordProvided = _newPasswordCtrl.text.isNotEmpty;
+    final needs = emailChanged || passwordProvided;
+    if (needs != _needsCurrentPassword) {
+      setState(() => _needsCurrentPassword = needs);
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _photoCtrl.dispose();
+    _emailCtrl.dispose();
+    _newPasswordCtrl.dispose();
+    _confirmPasswordCtrl.dispose();
+    _currentPasswordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final newPassword = _newPasswordCtrl.text.trim();
+    final confirmPassword = _confirmPasswordCtrl.text.trim();
+
+    if (newPassword.isNotEmpty && newPassword != confirmPassword) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Passwords do not match.')),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final error = await widget.controller.updateProfile(
+      displayName: _nameCtrl.text.trim(),
+      photoURL: _photoCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      newPassword: newPassword,
+      currentPassword: _currentPasswordCtrl.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _isSaving = false);
+
+    if (error == null) {
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit Profile'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: _photoCtrl,
+              decoration: const InputDecoration(labelText: 'Photo URL'),
+            ),
+            TextField(
+              controller: _emailCtrl,
+              decoration: const InputDecoration(labelText: 'Email'),
+              keyboardType: TextInputType.emailAddress,
+            ),
+            TextField(
+              controller: _newPasswordCtrl,
+              decoration: const InputDecoration(
+                labelText: 'New Password',
+                hintText: 'Leave blank to keep current',
+              ),
+              obscureText: true,
+            ),
+            TextField(
+              controller: _confirmPasswordCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Confirm New Password',
+              ),
+              obscureText: true,
+            ),
+            if (_needsCurrentPassword)
+              TextField(
+                controller: _currentPasswordCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Current Password',
+                  helperText: 'Required to change email or password.',
+                ),
+                obscureText: true,
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _isSaving ? null : _save,
+          child: _isSaving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
+        ),
+      ],
     );
   }
 }
