@@ -41,6 +41,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       );
       if (mounted) setState(() => _emailSent = true);
     } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        if (mounted) setState(() => _emailSent = true);
+        return;
+      }
       if (mounted) setState(() => _errorMessage = _friendlyError(e.code));
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -49,9 +53,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   String _friendlyError(String code) {
     switch (code) {
-      case 'user-not-found':
       case 'invalid-email':
-        return 'No account found for this email address.';
+        return 'Enter a valid email address.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
       default:
