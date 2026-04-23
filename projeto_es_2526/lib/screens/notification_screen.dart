@@ -122,6 +122,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            debugPrint('Notification stream error: ${snapshot.error}');
+            return _buildEmptyState();
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
