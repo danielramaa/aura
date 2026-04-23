@@ -30,7 +30,7 @@ class ChatController extends ChangeNotifier {
       _userId = user.uid;
       _initialize();
     } else {
-      _error = "Sessão expirada ou não iniciada (FirebaseAuth.instance.currentUser é null).";
+      _error = "Sessão expirada. Por favor, volta a iniciar sessão.";
       _isLoading = false;
     }
   }
@@ -57,12 +57,12 @@ class ChatController extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
       }, onError: (e) {
-        _error = "Erro ao carregar mensagens:\n$e";
+        _error = "Não foi possível carregar as mensagens.";
         _isLoading = false;
         notifyListeners();
       });
     } catch (e) {
-      _error = "Erro técnico no Firebase:\n$e";
+      _error = "Não foi possível inicializar o chat.";
       _isLoading = false;
       notifyListeners();
     }
@@ -90,8 +90,8 @@ class ChatController extends ChangeNotifier {
         'replyToText': replyToText,
       });
       _error = null;
-    } catch (e) {
-      _error = e.toString();
+    } catch (_) {
+      _error = "Não foi possível enviar a mensagem.";
     } finally {
       _isSending = false;
       notifyListeners();
