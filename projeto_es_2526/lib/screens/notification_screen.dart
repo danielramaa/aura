@@ -44,7 +44,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  void _openChat(BuildContext context, DocumentSnapshot doc) async {
+  Future<void> _openChat(BuildContext context, DocumentSnapshot doc) async {
     final data = doc.data() as Map<String, dynamic>;
 
     if (data['isRead'] != true) {
