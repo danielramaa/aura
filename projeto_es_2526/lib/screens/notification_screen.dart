@@ -12,14 +12,53 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
+  List<String>? _userGroupIds;
+  String? _currentUid;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserGroups();
+  }
+
+  Future<void> _loadUserGroups() async {
+    try {
+      _currentUid = FirebaseAuth.instance.currentUser?.uid;
+    } catch (_) {
+      if (mounted) setState(() => _userGroupIds = []);
+      return;
+    }
+    if (_currentUid == null) {
+      if (mounted) setState(() => _userGroupIds = []);
+      return;
+    }
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(_currentUid)
+        .collection('anonymousIdentities')
+        .get();
+    if (mounted) {
+      setState(() {
+        _userGroupIds = snap.docs.map((d) => d.id).toList();
+      });
+    }
+  }
+
   void _openChat(BuildContext context, DocumentSnapshot doc) async {
     final data = doc.data() as Map<String, dynamic>;
 
     if (data['isRead'] != true) {
-      await FirebaseFirestore.instance.collection('notifications').doc(doc.id).update({
-        'isRead': true,
-      });
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .doc(doc.id)
+          .update({'isRead': true});
     }
+
+    final groupDoc = await FirebaseFirestore.instance
+        .collection('groups')
+        .doc(data['groupId'] as String? ?? '')
+        .get();
+    final memberCount = (groupDoc.data()?['memberCount'] as num?)?.toInt() ?? 0;
 
     if (!context.mounted) return;
     Navigator.push(
@@ -28,7 +67,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         builder: (context) => ChatScreen(
           groupId: data['groupId'] ?? '',
           groupName: data['groupName'] ?? 'Community',
-          memberCount: '150',
+          memberCount: memberCount.toString(),
           groupDescription: data['description'] ?? 'New message in community',
         ),
       ),
@@ -53,21 +92,27 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_userGroupIds == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_userGroupIds!.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _buildAppBar(),
+        body: _buildEmptyState(),
+      );
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-      ),
+      appBar: _buildAppBar(),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('notifications')
-            .where('senderId', isNotEqualTo: FirebaseAuth.instance.currentUser?.uid)
-            .orderBy('senderId') 
+            .where('groupId', whereIn: _userGroupIds)
             .orderBy('timestamp', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -75,31 +120,29 @@ class _NotificationScreenState extends State<NotificationScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyState();
-          }
+          final docs = snapshot.data?.docs
+              .where((d) => (d.data() as Map<String, dynamic>)['senderId'] != _currentUid)
+              .toList() ?? [];
 
-          final notifications = snapshot.data!.docs;
+          if (docs.isEmpty) return _buildEmptyState();
 
           return ListView.builder(
-            itemCount: notifications.length,
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              final doc = notifications[index];
+              final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
-              
               final isRead = data['isRead'] ?? false;
-              
+
               String timeString = 'Now';
               if (data['timestamp'] != null) {
-                 final Timestamp timestamp = data['timestamp'] as Timestamp;
-                 final DateTime dateTime = timestamp.toDate();
-                 timeString = timeago.format(dateTime, locale: 'en'); 
+                final timestamp = data['timestamp'] as Timestamp;
+                timeString = timeago.format(timestamp.toDate(), locale: 'en');
               }
 
               return InkWell(
                 onTap: () => _openChat(context, doc),
                 child: Container(
-                  color: isRead ? Colors.white : Colors.blue[50]?..withValues(alpha: 0.5),
+                  color: isRead ? Colors.white : Colors.blue[50]?.withValues(alpha: 0.5),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -107,7 +150,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.blue..withValues(alpha: 0.1),
+                          color: Colors.blue.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.message, color: Colors.blue, size: 24),
@@ -148,7 +191,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                             shape: BoxShape.circle,
                           ),
                         ),
-                      ]
+                      ],
                     ],
                   ),
                 ),
@@ -159,4 +202,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
     );
   }
+
+  AppBar _buildAppBar() => AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'Notifications',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+      );
 }

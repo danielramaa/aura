@@ -20,7 +20,6 @@ HomeController makeHomeController() =>
     HomeController(service: GroupService(firestore: FakeFirebaseFirestore()));
 
 void main() {
-
   TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('App starts on home with bottom navigation', (
     WidgetTester tester,
@@ -55,13 +54,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Find Groups'), findsWidgets);
 
-    await tester.tap(find.text('Notifications'));
-    await tester.pump(); 
-    await tester.pump(const Duration(milliseconds: 500)); 
-    expect(find.text('Notifications'), findsWidgets);
-
-    await tester.pump(); 
-    expect(find.text('Notifications'), findsWidgets);
+    await tester.tap(
+      find.descendant(of: bottomNav, matching: find.text('Notifications')).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No new notifications'), findsOneWidget);
 
     await tester.tap(
       find.descendant(of: bottomNav, matching: find.text('Profile')).first,
