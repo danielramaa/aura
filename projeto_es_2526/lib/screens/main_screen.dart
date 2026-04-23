@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/home_controller.dart';
 import '../controllers/main_controller.dart';
+import '../controllers/profile_controller.dart';
 import 'home_screen.dart';
 import 'find_groups_screen.dart';
 import 'profile_screen.dart';
@@ -9,11 +10,13 @@ import 'notification_screen.dart';
 class MainScreen extends StatelessWidget {
   final MainController mainController;
   final HomeController homeController;
+  final ProfileController? profileController;
 
   const MainScreen({
     super.key,
     required this.mainController,
     required this.homeController,
+    this.profileController,
   });
 
   @override
@@ -28,7 +31,7 @@ class MainScreen extends StatelessWidget {
           ),
           const FindGroupsScreen(),
           const NotificationScreen(),
-          const ProfileScreen(),
+          ProfileScreen(controller: profileController),
         ];
 
         return Scaffold(
