@@ -36,27 +36,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit Profile',
-            onPressed: _showEditProfileDialog,
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        final user = _controller.currentUser;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Profile'),
+            actions: [
+              if (user != null)
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit Profile',
+                  onPressed: _showEditProfileDialog,
+                ),
+            ],
           ),
-        ],
-      ),
-      body: ListenableBuilder(
-        listenable: _controller,
-        builder: (context, _) {
-          final user = _controller.currentUser;
+          body: user == null
+              ? const Center(child: Text('User not logged in.'))
+              : _buildBody(context, user),
+        );
+      },
+    );
+  }
 
-          if (user == null) {
-            return const Center(child: Text('User not logged in.'));
-          }
-
-          return ListView(
+  Widget _buildBody(BuildContext context, user) {
+    return ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
               Center(
@@ -119,9 +125,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onPressed: _controller.logout,
               ),
             ],
-          );
-        },
-      ),
     );
   }
 }
