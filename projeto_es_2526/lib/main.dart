@@ -71,22 +71,22 @@ class _AuthGateState extends State<AuthGate> {
   late final Stream<User?> _authStream;
   late final MainController _mainController;
   HomeController? _homeController;
-  late final bool _ownsControllers;
+  late final bool _ownsMainController;
+  late final bool _ownsHomeController;
 
   @override
   void initState() {
     super.initState();
     _authStream = widget.authStream ?? FirebaseAuth.instance.authStateChanges();
-    _ownsControllers = widget.mainController == null;
+    _ownsMainController = widget.mainController == null;
+    _ownsHomeController = widget.homeController == null;
     _mainController = widget.mainController ?? MainController();
   }
 
   @override
   void dispose() {
-    if (_ownsControllers) {
-      _mainController.dispose();
-      _homeController?.dispose();
-    }
+    if (_ownsMainController) _mainController.dispose();
+    if (_ownsHomeController) _homeController?.dispose();
     super.dispose();
   }
 
@@ -106,6 +106,10 @@ class _AuthGateState extends State<AuthGate> {
             mainController: _mainController,
             homeController: _homeController!,
           );
+        }
+        if (_ownsHomeController) {
+          _homeController?.dispose();
+          _homeController = null;
         }
         return const LoginScreen();
       },
