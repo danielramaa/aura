@@ -235,9 +235,9 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.all(16),
       itemCount: messages.length,
       itemBuilder: (context, index) {
-        final message = messages[messages.length - 1 - index];
+        final message = messages[index];
         return _MessageBubble(
-          message: message, // The controller provides the anonymous ID
+          message: message,
           isOwn: message.anonymousId == _controller.anonymousIdentity?.anonymousId,
           onReply: () => _startReply(message),
         );
