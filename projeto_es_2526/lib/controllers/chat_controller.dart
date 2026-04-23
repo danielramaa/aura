@@ -77,13 +77,13 @@ class ChatController extends ChangeNotifier {
       await messagesRef.add({
         'text': text.trim(),
         'timestamp': FieldValue.serverTimestamp(),
-        'senderId': _anonymousIdentity!.anonymousId, // Use anonymous ID
-        'senderNickname': _anonymousIdentity!.nickname, // Use anonymous nickname
+        'senderId': _anonymousIdentity!.anonymousId,
+        'senderNickname': _anonymousIdentity!.nickname,
         'replyToText': replyToText,
       });
       _error = null;
     } catch (e) {
-      _error = "Failed to send message.";
+      _error = e.toString();
     } finally {
       _isSending = false;
       notifyListeners();
