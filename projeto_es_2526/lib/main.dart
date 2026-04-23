@@ -70,7 +70,7 @@ class AuthGate extends StatefulWidget {
 class _AuthGateState extends State<AuthGate> {
   late final Stream<User?> _authStream;
   late final MainController _mainController;
-  late final HomeController _homeController;
+  HomeController? _homeController;
   late final bool _ownsControllers;
 
   @override
@@ -79,14 +79,13 @@ class _AuthGateState extends State<AuthGate> {
     _authStream = widget.authStream ?? FirebaseAuth.instance.authStateChanges();
     _ownsControllers = widget.mainController == null;
     _mainController = widget.mainController ?? MainController();
-    _homeController = widget.homeController ?? HomeController();
   }
 
   @override
   void dispose() {
     if (_ownsControllers) {
       _mainController.dispose();
-      _homeController.dispose();
+      _homeController?.dispose();
     }
     super.dispose();
   }
@@ -102,9 +101,10 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
         if (snapshot.hasData) {
+          _homeController ??= widget.homeController ?? HomeController();
           return MainScreen(
             mainController: _mainController,
-            homeController: _homeController,
+            homeController: _homeController!,
           );
         }
         return const LoginScreen();
