@@ -198,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Text(
-                  'Erro Crítico:\n${_controller.error}',
+                  'Não foi possível carregar o chat. Tente novamente mais tarde.',
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.red, fontSize: 14),
                 ),
