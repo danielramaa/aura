@@ -84,6 +84,10 @@ class ProfileController extends ChangeNotifier {
     final emailChanged = email.isNotEmpty && email != currentUser!.email;
     final passwordChanged = newPassword.isNotEmpty;
 
+    if (passwordChanged && newPassword.length < 8) {
+      return 'Password must be at least 8 characters.';
+    }
+
     if ((emailChanged || passwordChanged) && currentPassword.isEmpty) {
       return 'Current password is required to change email or password.';
     }
@@ -138,7 +142,7 @@ class ProfileController extends ChangeNotifier {
       case 'email-already-in-use':
         return 'This email is already in use.';
       case 'weak-password':
-        return 'Password must be at least 6 characters.';
+        return 'Password must be at least 8 characters.';
       case 'requires-recent-login':
         return 'Please sign in again before making this change.';
       case 'invalid-email':
