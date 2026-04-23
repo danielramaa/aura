@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../utils/validators.dart';
 import 'forgot_password.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -134,13 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         labelText: 'Email',
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) {
-                        final email = v?.trim() ?? '';
-                        if (email.isEmpty) return 'Enter your email';
-                        final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-                        if (!emailRegex.hasMatch(email)) return 'Enter a valid email address';
-                        return null;
-                      },
+                      validator: validateEmail,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
