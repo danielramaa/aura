@@ -132,6 +132,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
               final doc = docs[index];
               final data = doc.data() as Map<String, dynamic>;
               final isRead = data['isRead'] as bool? ?? false;
+              final type = data['type'] as String? ?? 'message';
+              final typeIcon = switch (type) {
+                'message' => Icons.message,
+                'reaction' => Icons.favorite,
+                _ => Icons.notifications,
+              };
 
               String timeString = 'Now';
               if (data['timestamp'] != null) {
@@ -153,7 +159,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           color: Colors.blue.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.message, color: Colors.blue, size: 24),
+                        child: Icon(typeIcon, color: Colors.blue, size: 24),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
