@@ -43,18 +43,22 @@ class ProfileController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      final groupDocs = await Future.wait(
-        identitiesSnap.docs.map(
-          (doc) => _firestore.collection('groups').doc(doc.id).get(),
-        ),
-      );
+      // whereIn is limited to 30 values; users in >30 groups see their first 30.
+      final groupIds = identitiesSnap.docs.map((d) => d.id).take(30).toList();
+
+      if (groupIds.isEmpty) {
+        _joinedCommunities = const [];
+        return;
+      }
+
+      final groupsSnap = await _firestore
+          .collection('groups')
+          .where(FieldPath.documentId, whereIn: groupIds)
+          .get();
 
       if (_isDisposed) return;
 
-      _joinedCommunities = groupDocs
-          .where((doc) => doc.exists)
-          .map(Group.fromFirestore)
-          .toList();
+      _joinedCommunities = groupsSnap.docs.map(Group.fromFirestore).toList();
     } catch (_) {
       if (_isDisposed) return;
       _communityError = 'Failed to load communities.';
