@@ -17,15 +17,17 @@ class Message {
     this.replyToText,
   });
 
-  factory Message.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+  factory Message.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
     return Message(
       id: doc.id,
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
       senderNickname: data['senderNickname'] ?? 'Anonymous',
-      timestamp: data['timestamp'] ?? Timestamp.now(),
-      replyToText: data['replyToText'],
+      timestamp: data['timestamp'] as Timestamp? ??
+          data['createdAt'] as Timestamp? ??
+          Timestamp.now(),
+      replyToText: data['replyToText'] as String?,
     );
   }
 }
