@@ -30,7 +30,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_emailSent && !_formKey.currentState!.validate()) return;
     setState(() {
       _loading = true;
       _errorMessage = null;
