@@ -21,7 +21,7 @@ HomeController makeHomeController() =>
 
 void main() {
 
-  WidgetsFlutterBinding.ensureInitialized();
+  TestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('App starts on home with bottom navigation', (
     WidgetTester tester,
   ) async {
@@ -55,9 +55,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Find Groups'), findsWidgets);
 
-    await tester.tap(
-      find.descendant(of: bottomNav, matching: find.text('Notifications')).first,
-    );
+    await tester.tap(find.text('Notifications'));
+    await tester.pump(); 
+    await tester.pump(const Duration(milliseconds: 500)); 
+    expect(find.text('Notifications'), findsWidgets);
 
     await tester.pump(); 
     expect(find.text('Notifications'), findsWidgets);
