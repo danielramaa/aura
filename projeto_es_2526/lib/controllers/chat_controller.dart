@@ -7,6 +7,8 @@ import '../models/message.dart';
 import '../services/identity_service.dart';
 
 class ChatController extends ChangeNotifier {
+  static const int maxMessageLength = 2000;
+
   final String groupId;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final IdentityService _identityService = IdentityService();
@@ -67,7 +69,13 @@ class ChatController extends ChangeNotifier {
   }
 
   Future<void> send(String text, {String? replyToText}) async {
-    if (text.trim().isEmpty || _anonymousIdentity == null) return;
+    final trimmed = text.trim();
+    if (trimmed.isEmpty || _isSending || _anonymousIdentity == null) return;
+    if (trimmed.length > maxMessageLength) {
+      _error = 'A mensagem não pode exceder $maxMessageLength caracteres.';
+      notifyListeners();
+      return;
+    }
 
     _isSending = true;
     notifyListeners();
@@ -75,7 +83,7 @@ class ChatController extends ChangeNotifier {
     try {
       final messagesRef = _firestore.collection('groups').doc(groupId).collection('messages');
       await messagesRef.add({
-        'text': text.trim(),
+        'text': trimmed,
         'timestamp': FieldValue.serverTimestamp(),
         'senderId': _anonymousIdentity!.anonymousId,
         'senderNickname': _anonymousIdentity!.nickname,
