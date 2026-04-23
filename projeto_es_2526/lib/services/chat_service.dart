@@ -35,8 +35,25 @@ class ChatService implements ChatServiceInterface {
   }) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) throw StateError('sendMessage called while unauthenticated');
+    
     await _messagesRef(groupId).add(
       Message.newMessagePayload(text: text, senderId: currentUser.uid, replyToText: replyToText),
     );
+
+    try {
+      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
+      final groupName = groupDoc.data()?['name'] ?? 'Comunidade'; 
+
+      await _firestore.collection('notifications').add({
+        'groupId': groupId,
+        'groupName': groupName,
+        'description': 'Nova mensagem no grupo "$groupName".',
+        'senderId': currentUser.uid, 
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'message',
+      });
+    } catch (e) {
+      //se der erro ignoramos
+    }
   }
 }
