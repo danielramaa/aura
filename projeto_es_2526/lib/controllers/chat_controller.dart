@@ -109,7 +109,7 @@ class ChatController extends ChangeNotifier {
         'replyToText': replyToText,
       });
       _error = null;
-      _createNotification();
+      unawaited(_createNotification());
     } catch (_) {
       _error = "Não foi possível enviar a mensagem.";
     } finally {
