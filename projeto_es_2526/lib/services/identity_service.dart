@@ -3,7 +3,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/anonymous_identity.dart';
 
 class IdentityService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  IdentityService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const _adjectives = [
     'Calm', 'Brave', 'Curious', 'Gentle', 'Silent', 'Wise', 'Happy',

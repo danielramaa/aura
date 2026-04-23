@@ -10,9 +10,9 @@ class ChatController extends ChangeNotifier {
   static const int maxMessageLength = 2000;
 
   final String groupId;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final IdentityService _identityService = IdentityService();
-  final _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore;
+  final IdentityService _identityService;
+  final FirebaseAuth _auth;
 
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
@@ -24,7 +24,14 @@ class ChatController extends ChangeNotifier {
   bool _isSending = false;
   String? _error;
 
-  ChatController({required this.groupId}) {
+  ChatController({
+    required this.groupId,
+    FirebaseFirestore? firestore,
+    IdentityService? identityService,
+    FirebaseAuth? auth,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _identityService = identityService ?? IdentityService(),
+        _auth = auth ?? FirebaseAuth.instance {
     final user = _auth.currentUser;
     if (user != null) {
       _userId = user.uid;
