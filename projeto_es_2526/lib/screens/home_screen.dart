@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/group_card.dart';
+import 'chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final HomeController controller;
@@ -53,7 +54,29 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               // card list
               Expanded(
-                child: groups.isEmpty
+                child: widget.controller.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : widget.controller.error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline,
+                                  size: 64, color: Colors.grey[400]),
+                              const SizedBox(height: 16),
+                              Text(
+                                widget.controller.error!,
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : groups.isEmpty
                     ? Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 40),
@@ -121,14 +144,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         separatorBuilder: (context, index) => SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final group = groups[index];
-                          return GroupCard(
-                            name: group.name,
-                            lastMessage: group.lastMessage,
-                            time: group.time,
-                            color: group.color,
-                            unreadCount: group.unreadCount,
-                            isOnline: group.isOnline,
-                            memberCount: group.memberCount,
+                          return InkWell( 
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ChatScreen(
+                                    groupId: group.id,
+                                    groupName: group.name,
+                                    memberCount: group.memberCount.toString(),
+                                    groupDescription: group.description,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: GroupCard(
+                              name: group.name,
+                              color: group.color,
+                              memberCount: group.memberCount,
+                            ),
                           );
                         },
                       ),
