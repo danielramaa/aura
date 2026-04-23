@@ -20,6 +20,7 @@ class ChatController extends ChangeNotifier {
   List<Message> _messages = [];
   StreamSubscription? _messagesSubscription;
 
+  bool _isDisposed = false;
   bool _isLoading = true;
   bool _isSending = false;
   String? _error;
@@ -53,6 +54,8 @@ class ChatController extends ChangeNotifier {
     try {
       _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
 
+      if (_isDisposed) return;
+
       final messagesRef = _firestore
           .collection('groups')
           .doc(groupId)
@@ -60,15 +63,18 @@ class ChatController extends ChangeNotifier {
           .orderBy('timestamp', descending: true);
 
       _messagesSubscription = messagesRef.snapshots().listen((snapshot) {
+        if (_isDisposed) return;
         _messages = snapshot.docs.map((doc) => Message.fromFirestore(doc)).toList();
         _isLoading = false;
         notifyListeners();
       }, onError: (e) {
+        if (_isDisposed) return;
         _error = "Não foi possível carregar as mensagens.";
         _isLoading = false;
         notifyListeners();
       });
     } catch (e) {
+      if (_isDisposed) return;
       _error = "Não foi possível inicializar o chat.";
       _isLoading = false;
       notifyListeners();
@@ -107,6 +113,7 @@ class ChatController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
     _messagesSubscription?.cancel();
     super.dispose();
   }
