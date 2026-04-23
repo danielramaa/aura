@@ -1,59 +1,89 @@
 import 'dart:async';
-
-import 'package:flutter/foundation.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import '../models/anonymous_identity.dart';
 import '../models/message.dart';
-import '../services/chat_service.dart';
+import '../services/identity_service.dart';
 
 class ChatController extends ChangeNotifier {
   final String groupId;
-  final ChatServiceInterface _service;
-  late final StreamSubscription<List<Message>> _subscription;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final IdentityService _identityService = IdentityService();
+  final _auth = FirebaseAuth.instance;
 
-  static const int maxMessageLength = 2000;
+  late final String _userId;
+  AnonymousIdentity? _anonymousIdentity;
 
-  List<Message> _messages = const [];
+  List<Message> _messages = [];
+  StreamSubscription? _messagesSubscription;
+
   bool _isLoading = true;
   bool _isSending = false;
   String? _error;
 
-  ChatController({
-    required this.groupId,
-    ChatServiceInterface? service,
-  }) : _service = service ?? ChatService() {
-    _subscription = _service.streamMessages(groupId).listen(
-      (messages) {
-        _messages = messages;
-        _isLoading = false;
-        _error = null;
-        notifyListeners();
-      },
-      onError: (Object e) {
-        _isLoading = false;
-        _error = 'Failed to load messages.';
-        notifyListeners();
-      },
-    );
+  ChatController({required this.groupId}) {
+    final user = _auth.currentUser;
+    if (user != null) {
+      _userId = user.uid;
+      _initialize();
+    } else {
+      _error = "Sessão expirada ou não iniciada (FirebaseAuth.instance.currentUser é null).";
+      _isLoading = false;
+    }
   }
 
+  // Getters
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
   String? get error => _error;
+  AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
+
+  Future<void> _initialize() async {
+    try {
+      _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
+
+      final messagesRef = _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true);
+
+      _messagesSubscription = messagesRef.snapshots().listen((snapshot) {
+        _messages = snapshot.docs.map((doc) => Message.fromFirestore(doc)).toList();
+        _isLoading = false;
+        notifyListeners();
+      }, onError: (e) {
+        _error = "Erro ao carregar mensagens:\n$e";
+        _isLoading = false;
+        notifyListeners();
+      });
+    } catch (e) {
+      _error = "Erro técnico no Firebase:\n$e";
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> send(String text, {String? replyToText}) async {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty || _isSending) return;
-    if (trimmed.length > maxMessageLength) {
-      _error = 'Message cannot exceed $maxMessageLength characters.';
-      notifyListeners();
-      return;
-    }
-    _error = null;
+    if (text.trim().isEmpty || _anonymousIdentity == null) return;
+
     _isSending = true;
     notifyListeners();
+
     try {
-      await _service.sendMessage(groupId: groupId, text: trimmed, replyToText: replyToText);
+      final messagesRef = _firestore.collection('groups').doc(groupId).collection('messages');
+      await messagesRef.add({
+        'text': text.trim(),
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderId': _anonymousIdentity!.anonymousId, // Use anonymous ID
+        'senderNickname': _anonymousIdentity!.nickname, // Use anonymous nickname
+        'replyToText': replyToText,
+      });
+      _error = null;
+    } catch (e) {
+      _error = "Failed to send message.";
     } finally {
       _isSending = false;
       notifyListeners();
@@ -62,7 +92,7 @@ class ChatController extends ChangeNotifier {
 
   @override
   void dispose() {
-    _subscription.cancel();
+    _messagesSubscription?.cancel();
     super.dispose();
   }
 }

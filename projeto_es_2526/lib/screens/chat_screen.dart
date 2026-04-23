@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
@@ -24,7 +23,6 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   late final ChatController _controller;
-  late final String _currentUserId;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
 
@@ -34,14 +32,8 @@ class _ChatScreenState extends State<ChatScreen> {
   void initState() {
     super.initState();
     _controller = ChatController(groupId: widget.groupId);
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      _currentUserId = '';
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => Navigator.of(context).pop(),
-      );
-    } else {
-      _currentUserId = currentUser.uid;
+    if (_controller.anonymousIdentity == null && _controller.isLoading) {
+      _controller.addListener(_handleControllerChanges);
     }
   }
 
@@ -50,28 +42,37 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.dispose();
     _messageController.dispose();
     _scrollController.dispose();
+    _controller.removeListener(_handleControllerChanges);
     super.dispose();
+  }
+
+  void _handleControllerChanges() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
+    if (text.trim().isEmpty) return;
+
     try {
       await _controller.send(text, replyToText: _replyingTo?.text);
-      if (_controller.error != null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_controller.error!)),
-        );
-        return;
-      }
       _messageController.clear();
       setState(() => _replyingTo = null);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Failed to send message. Please try again.'),
         ),
+      );
+    }
+
+    // Show error from controller if it exists after sending
+    if (_controller.error != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_controller.error!)),
       );
     }
   }
@@ -188,6 +189,23 @@ class _ChatScreenState extends State<ChatScreen> {
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {
+          if (_controller.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
+          if (_controller.error != null && _controller.anonymousIdentity == null) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  'Erro Crítico:\n${_controller.error}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                ),
+              ),
+            );
+          }
+
           return Column(
             children: [
               Expanded(child: _buildBody()),
@@ -201,9 +219,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildBody() {
-    if (_controller.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
     final messages = _controller.messages;
     if (messages.isEmpty) {
       return Center(
@@ -222,8 +237,8 @@ class _ChatScreenState extends State<ChatScreen> {
       itemBuilder: (context, index) {
         final message = messages[messages.length - 1 - index];
         return _MessageBubble(
-          message: message,
-          isOwn: message.senderId == _currentUserId,
+          message: message, // The controller provides the anonymous ID
+          isOwn: message.senderId == _controller.anonymousIdentity?.anonymousId,
           onReply: () => _startReply(message),
         );
       },
@@ -297,6 +312,14 @@ class _MessageBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!isOwn)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4.0),
+                  child: Text(
+                    message.senderNickname,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF185FA5)),
+                  ),
+                ),
               if (message.replyToText != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
