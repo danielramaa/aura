@@ -88,6 +88,10 @@ class ProfileController extends ChangeNotifier {
       return 'Current password is required to change email or password.';
     }
 
+    if ((emailChanged || passwordChanged) && currentUser!.email == null) {
+      return 'Re-authentication is not supported for this account type.';
+    }
+
     try {
       if (emailChanged || passwordChanged) {
         final credential = EmailAuthProvider.credential(
