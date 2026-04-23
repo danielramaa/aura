@@ -170,7 +170,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'We sent a password reset link to\n${_emailController.text.trim()}',
+          'If the email exists, you\'ll receive a password reset link.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey[600],
               ),
