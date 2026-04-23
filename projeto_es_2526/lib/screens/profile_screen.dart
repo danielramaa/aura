@@ -165,8 +165,9 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
   }
 
   void _onSensitiveFieldChanged() {
-    final emailChanged =
-        _emailCtrl.text.trim() != (widget.controller.currentUser?.email ?? '');
+    final newEmail = _emailCtrl.text.trim();
+    final emailChanged = newEmail.isNotEmpty &&
+        newEmail != (widget.controller.currentUser?.email ?? '');
     final passwordProvided = _newPasswordCtrl.text.isNotEmpty;
     final needs = emailChanged || passwordProvided;
     if (needs != _needsCurrentPassword) {
