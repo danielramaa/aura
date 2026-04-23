@@ -54,6 +54,8 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
     try {
       await _service.sendMessage(groupId: groupId, text: trimmed, replyToText: replyToText);
+    } catch (e) {
+      _error = e.toString();
     } finally {
       _isSending = false;
       notifyListeners();
