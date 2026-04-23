@@ -35,8 +35,11 @@ class ChatService implements ChatServiceInterface {
   }) async {
     final currentUser = _auth.currentUser;
     if (currentUser == null) throw StateError('sendMessage called while unauthenticated');
-    await _messagesRef(groupId).add(
-      Message.newMessagePayload(text: text, senderId: currentUser.uid, replyToText: replyToText),
-    );
+    await _messagesRef(groupId).add({
+      'text': text,
+      'senderId': currentUser.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+      'replyToText': replyToText,
+    });
   }
 }
