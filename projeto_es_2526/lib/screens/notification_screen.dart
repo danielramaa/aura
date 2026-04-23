@@ -39,7 +39,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
         .get();
     if (mounted) {
       setState(() {
-        _userGroupIds = snap.docs.map((d) => d.id).toList();
+        // whereIn is limited to 30 values; users in >30 groups will only see
+        // notifications for their most recently joined 30.
+        _userGroupIds = snap.docs.map((d) => d.id).take(30).toList();
       });
     }
   }
