@@ -388,54 +388,89 @@ In this section you should start by briefly describing the components of the pro
 
 ### Logical architecture
 
-Aura follows the **MVC (Model–View–Controller)** pattern, keeping data, business logic, and presentation in separate layers. Controllers use Flutter's `ChangeNotifier` for reactive state management, and Views rebuild automatically via `ListenableBuilder`.
+Aura follows the **MVC (Model–View–Controller)** pattern extended with a **Services** layer that isolates all Firebase calls from business logic. Controllers use Flutter's `ChangeNotifier` for reactive state management; screens rebuild automatically via `ListenableBuilder`.
 
 ```mermaid
 graph TD
-    subgraph View["«package» View (screens + widgets)"]
-        SCREENS["Screens\n(MainScreen, HomeScreen)"]
+    subgraph View["«package» View"]
+        SCREENS["Screens\n(LoginScreen · MainScreen · HomeScreen\nChatScreen · FindGroupsScreen\nNotificationScreen · ProfileScreen\nForgotPasswordScreen · SettingsScreen)"]
         WIDGETS["Widgets\n(GroupCard)"]
     end
 
     subgraph Controller["«package» Controller"]
         MC["MainController\n(tab navigation)"]
         HC["HomeController\n(group list, search)"]
+        CC["ChatController\n(messages, typing, identity)"]
+        PC["ProfileController\n(profile edit, re-auth)"]
     end
 
     subgraph Model["«package» Model"]
         GROUP["Group"]
+        MSG["Message"]
+        ANON["AnonymousIdentity"]
     end
 
-    subgraph ExternalServices["«package» External Services (planned)"]
-        FAUTH[Firebase Auth]
-        FIRESTORE[Cloud Firestore]
-        FCM[Firebase Cloud Messaging]
-        CFUNCTIONS[Cloud Functions]
+    subgraph Services["«package» Services"]
+        AS["AuthService\n(email/password auth,\nstay-logged-in)"]
+        CS["ChatService\n(read/write messages)"]
+        GS["GroupService\n(stream groups)"]
+        IS["IdentityService\n(nickname generation,\navatar URL)"]
+    end
+
+    subgraph Firebase["«package» Firebase (integrated)"]
+        FAUTH["Firebase Auth"]
+        FIRESTORE["Cloud Firestore"]
+    end
+
+    subgraph FirebasePlanned["«package» Firebase (planned)"]
+        FCM["Cloud Messaging"]
+        CFUNCTIONS["Cloud Functions"]
     end
 
     SCREENS --> MC
     SCREENS --> HC
+    SCREENS --> CC
+    SCREENS --> PC
     SCREENS --> WIDGETS
-    HC --> GROUP
-    Controller -.->|future integration| ExternalServices
+
+    HC --> GS
+    CC --> CS
+    CC --> IS
+    PC --> AS
+
+    GS --> GROUP
+    CS --> MSG
+    IS --> ANON
+
+    AS --> FAUTH
+    CS --> FIRESTORE
+    GS --> FIRESTORE
+    IS --> FIRESTORE
+    PC --> FAUTH
+    PC --> FIRESTORE
+
+    HC -.->|future| FCM
+    CC -.->|future| CFUNCTIONS
 ```
 
 **Package descriptions:**
 
 - **View** (`lib/screens/`, `lib/widgets/`) — Flutter screens and reusable widgets. Screens observe controllers via `ListenableBuilder` and forward user actions to the appropriate controller. Widgets are stateless, presentation-only components.
-- **Controller** (`lib/controllers/`) — `ChangeNotifier` classes that hold application state and business logic. `MainController` manages bottom-tab navigation; `HomeController` owns the group list and search/filter logic.
-- **Model** (`lib/models/`) — Pure Dart data classes (e.g. `Group`) with no framework dependencies. Define the shape of domain data consumed by controllers and rendered by views.
-- **External Services** *(planned)* — Firebase platform: Auth for account management, Firestore for real-time data, Cloud Messaging for push notifications, and Cloud Functions for server-side logic (moderation filters, scheduled tasks). Will be integrated via repository/service classes injected into controllers.
+- **Controller** (`lib/controllers/`) — `ChangeNotifier` classes that own application state and business logic. `MainController` manages bottom-tab navigation; `HomeController` owns the group list and search; `ChatController` manages messages, the typing indicator, and anonymous identity resolution; `ProfileController` handles profile viewing and credential updates.
+- **Model** (`lib/models/`) — Pure Dart data classes (`Group`, `Message`, `AnonymousIdentity`) with no framework dependencies. Define the shape of domain data consumed by controllers and rendered by views.
+- **Services** (`lib/services/`) — Thin adapters over Firebase. Each service has a single responsibility: `AuthService` for email/password auth and session persistence; `ChatService` for Firestore message reads and writes; `GroupService` for streaming the group list; `IdentityService` for nickname generation and avatar URL derivation. Services are injected into controllers, making controllers testable without Firebase.
+- **Firebase (integrated)** — Firebase Authentication (email/password) and Cloud Firestore are live and used by all service classes. Firestore security rules enforce that messages can only be sent under a user's own anonymous identity.
+- **Firebase (planned)** — Cloud Messaging (push notifications) and Cloud Functions (server-side moderation, scheduled tasks) are not yet integrated.
 
 
 ### Physical architecture
 
-Aura is a Flutter mobile app deployed via Google Play and backed entirely by Firebase, which eliminates the need to maintain a dedicated backend server.
+Aura is a Flutter mobile app distributed as an `.apk` and backed by Firebase, which eliminates the need to maintain a dedicated backend server.
 
 ```mermaid
 graph LR
-    subgraph PlayStore["«device» Files"]
-        APK["«artifact»\naura.apk"]
+    subgraph Distribution["«artifact» Distribution"]
+        APK["app-debug.apk\n(GitHub Releases)"]
     end
 
     subgraph UserDevice["«device» Android Device (≥ 8.0)"]
@@ -444,28 +479,31 @@ graph LR
         APP --> SDK
     end
 
-    subgraph Firebase["«node» Firebase Cloud Platform"]
-        AUTH["«component»\nAuthentication"]
-        DB["«component»\nCloud Firestore"]
-        FCM["«component»\nCloud Messaging"]
-        CF["«component»\nCloud Functions"]
+    subgraph FirebaseLive["«node» Firebase — integrated"]
+        AUTH["«component»\nAuthentication\n(email/password)"]
+        DB["«component»\nCloud Firestore\n(groups · messages\nidentities · notifications)"]
     end
 
-    PlayStore -->|installs| UserDevice
+    subgraph FirebasePlanned["«node» Firebase — planned"]
+        FCM["«component»\nCloud Messaging\n(push notifications)"]
+        CF["«component»\nCloud Functions\n(moderation · scheduled tasks)"]
+    end
+
+    Distribution -->|sideload install| UserDevice
     SDK -->|email/password auth| AUTH
     SDK -->|real-time read/write| DB
-    SDK -->|push notifications| FCM
-    SDK -->|moderation & triggers| CF
+    SDK -.->|future| FCM
+    SDK -.->|future| CF
 ```
 
 **Node and artifact descriptions:**
 
-- **Android Device** — The user's smartphone (Android 8.0+). Runs the compiled Flutter app (`aura.apk`) and the Firebase SDK, which handles all communication with the cloud platform.
-- **Google Play Store** — Distribution channel. The release `.apk` is uploaded here for users to install.
-- **Firebase Authentication** — Manages user accounts (email/password). Chosen because it integrates natively with Firestore security rules, removing the need for a custom auth server.
-- **Cloud Firestore** — NoSQL real-time database storing communities, messages, reactions, and reports. Firestore's real-time listeners drive live chat updates without polling.
-- **Firebase Cloud Messaging (FCM)** — Delivers push notifications to devices for mentions, replies, and moderation events.
-- **Cloud Functions** — Serverless Node.js functions triggered by Firestore events. Used for server-side moderation filters (profanity, personal data detection) and scheduled tasks (shadowban expiry, welcome bot messages). Chosen to keep sensitive logic off the client.
+- **Android Device** — The user's smartphone (Android 8.0+). Runs the compiled Flutter app and the Firebase SDK, which handles all communication with the cloud platform.
+- **Distribution** — The release `.apk` is published on GitHub Releases. Users sideload it by enabling *Install from unknown sources*. Google Play distribution is planned for a later milestone.
+- **Firebase Authentication** — Manages user accounts (email/password). Integrates natively with Firestore security rules, removing the need for a custom auth server. Live since Sprint 1.
+- **Cloud Firestore** — NoSQL real-time database storing groups, messages, anonymous identities, typing state, and notifications. Real-time listeners drive live chat and typing indicator updates without polling. Live since Sprint 1.
+- **Firebase Cloud Messaging (FCM)** — Will deliver push notifications to devices for mentions, replies, and moderation events. Package is installed but integration is planned for a future sprint.
+- **Cloud Functions** — Serverless functions triggered by Firestore events, planned for server-side moderation filters (profanity, personal data detection) and scheduled tasks (shadowban expiry, welcome bot). Chosen to keep sensitive logic off the client.
 
 
 ### Functional prototype
@@ -494,7 +532,7 @@ Common practices of managing agile software development with Scrum are: backlog 
 
 You can find below information and references related with the project management: 
 
-* Backlog management: Product backlog and Sprint backlog in a [Github Projects board](https://github.com/orgs/FEUP-LEIC-ES-2023-24/projects/64);
+* Backlog management: Product backlog and Sprint backlog in a [Github Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC14/projects/3/views/1);
 * Release management: [v0](#), v1, v2, v3, ...;
 * Sprint planning and retrospectives: 
   * plans: screenshots of Github Projects board at begin and end of each Sprint;
@@ -534,10 +572,83 @@ You can find below information and references related with the project managemen
 
 ### Sprint 1
 
+#### What was delivered
+
+Sprint 1 turned the static prototype into a fully connected app with a real Firebase backend. Every major screen is now functional end-to-end.
+
+**Authentication**
+- Login screen with email/password, registration, and "stay logged in" preference (persisted via shared preferences)
+- Password strength indicator and email format validation
+- Forgot password — sends a Firebase password-reset email; prevents double-send
+
+**Firebase integration**
+- Cloud Firestore as the real-time database for groups, messages, and notifications
+- Firebase Authentication (email/password) wired to an `AuthGate` that routes users to the app or login screen
+- Firestore security rules for all collections (groups, messages, notifications, user identities)
+
+**Chat**
+- Real-time Firestore-backed chat with a `Message` model
+- Reply-to-message support — tapping a message quotes it in the reply bubble
+- Typing indicator — shows when another member is composing
+- Messages displayed in correct chronological order; 1000-character cap
+
+**Anonymous identity**
+- Unique nickname generated per user per group (adjective + noun + number format)
+- Collision-safe: retries until a unique name is found in Firestore
+- Avatar URL derived without leaking the user's IP
+- Identity stored in Firestore and attached to every outgoing message
+
+**Find Groups screen**
+- Browse available communities from Firestore
+- Search bar filters groups by name in real time
+
+**Profile management**
+- Profile screen showing display name, email, and joined groups
+- Edit email and password with Firebase re-authentication guard
+- Minimum 8-character password enforcement
+- Edit button hidden for auth providers that do not support credential updates
+
+**Notifications**
+- Notification screen listing alerts with per-type icons (message, mention, etc.)
+- Read/unread state stored and updated in Firestore
+- Notifications created asynchronously when a message is sent to a group
+
+**Tests**
+- Unit tests for all controllers (`HomeController`, `ChatController`, `ProfileController`, `MainController`)
+- Unit tests for all services (`AuthService`, `ChatService`, `GroupService`, `IdentityService`)
+- Widget tests for `GroupCard` and navigation
+- Integration tests covering the auth flow, chat flow, and profile flow
+
+#### Board screenshots
+
+**Beginning of sprint:**
+
+*(screenshot to be added)*
+
+**End of sprint:**
+
+<p align="center">
+  <img src="assets/Sprint1_end.png"/>
+</p>
+
+
+#### Retrospective
+
+**Did well:**
+- Delivered all planned Sprint 1 user stories
+- Established a working Firebase backend (Auth, Firestore, rules) shared across all features
+- Kept the MVC structure consistent across new screens and controllers
+- Wrote unit and integration tests alongside feature work
+
+**Do differently:**
+- Coordinate Firestore rule changes as a team to avoid merge conflicts
+- Define shared data contracts (Firestore document schemas) before starting parallel features
+
+**Puzzles:**
+- Whether to keep anonymous identity regeneration per-session or per-message
+
 ### Sprint 2
 
 ### Sprint 3
-
-### Sprint 4
 
 ### Final Release
