@@ -33,6 +33,11 @@ class ChatController extends ChangeNotifier {
   bool _isTyping = false;
   late final Stream<List<String>> typingNamesStream;
 
+  // Tracks which messageIds have a pending reaction error, for B1/B2.
+  final Set<String> _reactionErrors = {};
+  // Tracks which messageIds are currently retrying.
+  final Set<String> _reactionRetrying = {};
+
   ChatController({
     required this.groupId,
     FirebaseFirestore? firestore,
@@ -59,6 +64,24 @@ class ChatController extends ChangeNotifier {
       _isLoading = false;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Getters
+  // ---------------------------------------------------------------------------
+
+  List<Message> get messages => _messages;
+  List<String> get roomNicknames => _roomNicknames;
+  bool get isLoading => _isLoading;
+  bool get isSending => _isSending;
+  String? get error => _error;
+  AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
+
+  bool hasReactionError(String messageId) => _reactionErrors.contains(messageId);
+  bool isRetryingReaction(String messageId) => _reactionRetrying.contains(messageId);
+
+  // ---------------------------------------------------------------------------
+  // Typing
+  // ---------------------------------------------------------------------------
 
   List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
     final cutoff = Timestamp.fromDate(
@@ -105,21 +128,19 @@ class ChatController extends ChangeNotifier {
         .delete());
   }
 
-  // Getters
-  List<Message> get messages => _messages;
-  List<String> get roomNicknames => _roomNicknames;
-  bool get isLoading => _isLoading;
-  bool get isSending => _isSending;
-  String? get error => _error;
-  AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
 
   Future<void> _initialize() async {
     try {
-      _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
+      _anonymousIdentity =
+          await _identityService.getOrCreateIdentity(_userId, groupId);
 
       if (_isDisposed) return;
 
-      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
+      final groupDoc =
+          await _firestore.collection('groups').doc(groupId).get();
       _groupName = groupDoc.data()?['name'] as String? ?? 'Community';
 
       if (_isDisposed) return;
@@ -168,6 +189,10 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Send
+  // ---------------------------------------------------------------------------
+
   List<String> _extractMentions(String text) {
     final regex = RegExp(r'@(\w+)');
     return regex
@@ -214,6 +239,72 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Reactions (A2, A3, B1, B2, B3)
+  // ---------------------------------------------------------------------------
+
+  /// Toggles a reaction: if the user already reacted with [emoji], removes it.
+  /// If they reacted with a different emoji, replaces it. Otherwise adds it.
+  Future<void> toggleReaction(String messageId, String emoji) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return;
+
+    final message = _messages.firstWhere(
+      (m) => m.id == messageId,
+      orElse: () => throw StateError('Message not found'),
+    );
+
+    final existingEmoji = message.userReaction(identity.anonymousId);
+    final isRemoving = existingEmoji == emoji;
+
+    // Clear any previous error for this message before trying
+    _reactionErrors.remove(messageId);
+    notifyListeners();
+
+    String? err;
+    if (isRemoving) {
+      err = await _chatService.removeReaction(
+        groupId: groupId,
+        messageId: messageId,
+        emoji: emoji,
+        anonymousId: identity.anonymousId,
+      );
+    } else {
+      err = await _chatService.addReaction(
+        groupId: groupId,
+        messageId: messageId,
+        emoji: emoji,
+        anonymousId: identity.anonymousId,
+      );
+    }
+
+    if (_isDisposed) return;
+
+    if (err != null) {
+      // B1: mark error on this message without changing displayed count
+      _reactionErrors.add(messageId);
+    }
+    notifyListeners();
+  }
+
+  /// B3: Retry the last failed reaction attempt.
+  Future<void> retryReaction(String messageId, String emoji) async {
+    if (!_reactionErrors.contains(messageId)) return;
+
+    _reactionErrors.remove(messageId);
+    _reactionRetrying.add(messageId);
+    notifyListeners();
+
+    await toggleReaction(messageId, emoji);
+
+    _reactionRetrying.remove(messageId);
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------------------------
+
   Future<void> _createNotification({List<String> mentions = const []}) async {
     try {
       final groupName = _groupName ?? 'Community';
@@ -239,7 +330,6 @@ class ChatController extends ChangeNotifier {
 
         if (snap.docs.isEmpty) continue;
 
-        // Procura o userId em anonymousIdentities
         final identitySnap = await _firestore
             .collection('anonymousIdentities')
             .where('nickname', isEqualTo: nickname)
@@ -249,7 +339,8 @@ class ChatController extends ChangeNotifier {
 
         if (identitySnap.docs.isEmpty) continue;
 
-        final mentionedUserId = identitySnap.docs.first.data()['userId'] as String?;
+        final mentionedUserId =
+            identitySnap.docs.first.data()['userId'] as String?;
         if (mentionedUserId == null) continue;
 
         await _firestore.collection('notifications').add({
