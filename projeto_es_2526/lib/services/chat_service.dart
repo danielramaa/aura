@@ -14,6 +14,7 @@ abstract class ChatServiceInterface {
     required String text,
     required AnonymousIdentity identity,
     String? replyToText,
+    List<String> mentions = const [],
   });
 }
 
@@ -41,6 +42,7 @@ class ChatService implements ChatServiceInterface {
     required String text,
     required AnonymousIdentity identity,
     String? replyToText,
+    List<String> mentions = const [],
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return 'Message cannot be empty.';
@@ -55,6 +57,7 @@ class ChatService implements ChatServiceInterface {
         'senderId': identity.anonymousId,
         'senderNickname': identity.nickname,
         'replyToText': replyToText,
+        'mentions': mentions,
       });
       return null;
     } catch (_) {
