@@ -85,11 +85,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.notifications_off_outlined, size: 64, color: Colors.grey[300]),
+          Icon(
+            Icons.notifications_off_outlined,
+            size: 64,
+            color: Colors.grey[300],
+          ),
           const SizedBox(height: 16),
           Text(
             'No new notifications',
-            style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w500),
+            style: TextStyle(
+              fontSize: 18,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -99,9 +107,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_userGroupIds == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_userGroupIds!.isEmpty) {
@@ -131,9 +137,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data?.docs
-              .where((d) => (d.data() as Map<String, dynamic>)['senderId'] != _currentUid)
-              .toList() ?? [];
+          final docs =
+              snapshot.data?.docs
+                  .where(
+                    (d) =>
+                        (d.data() as Map<String, dynamic>)['senderId'] !=
+                        _currentUid,
+                  )
+                  .toList() ??
+              [];
 
           if (docs.isEmpty) return _buildEmptyState();
 
@@ -159,8 +171,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
               return InkWell(
                 onTap: () => _openChat(context, doc),
                 child: Container(
-                  color: isRead ? Colors.white : Colors.blue[50]?.withValues(alpha: 0.5),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  color: isRead
+                      ? Colors.white
+                      : Colors.blue[50]?.withValues(alpha: 0.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -181,7 +198,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                               data['description'] ?? 'New notification',
                               style: TextStyle(
                                 fontSize: 15,
-                                fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                                fontWeight: isRead
+                                    ? FontWeight.normal
+                                    : FontWeight.bold,
                                 color: Colors.black87,
                               ),
                             ),
@@ -190,8 +209,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
                               timeString,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isRead ? Colors.grey[500] : Colors.blue[600],
-                                fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
+                                color: isRead
+                                    ? Colors.grey[500]
+                                    : Colors.blue[600],
+                                fontWeight: isRead
+                                    ? FontWeight.normal
+                                    : FontWeight.w500,
                               ),
                             ),
                           ],
@@ -221,11 +244,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   AppBar _buildAppBar() => AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text(
-          'Notifications',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-      );
+    backgroundColor: Colors.white,
+    elevation: 0,
+    title: const Text(
+      'Notifications',
+      style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+    ),
+  );
 }

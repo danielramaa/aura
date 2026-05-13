@@ -26,7 +26,8 @@ class Message {
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
       senderNickname: data['senderNickname'] ?? 'Anonymous',
-      timestamp: data['timestamp'] as Timestamp? ??
+      timestamp:
+          data['timestamp'] as Timestamp? ??
           data['createdAt'] as Timestamp? ??
           Timestamp.now(),
       replyToText: data['replyToText'] as String?,

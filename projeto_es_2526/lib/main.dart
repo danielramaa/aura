@@ -44,10 +44,7 @@ class MyApp extends StatelessWidget {
         ),
       );
     }
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: AuthGate(),
-    );
+    return MaterialApp(debugShowCheckedModeBanner: false, home: AuthGate());
   }
 }
 

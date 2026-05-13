@@ -33,8 +33,7 @@ void main() {
       );
       final service = AuthService(auth: auth);
 
-      final credential =
-          await service.login('user@example.com', 'password123');
+      final credential = await service.login('user@example.com', 'password123');
       expect(credential.user, isNotNull);
       expect(auth.currentUser, isNotNull);
     });
@@ -45,8 +44,10 @@ void main() {
       );
       final service = AuthService(auth: auth);
 
-      final credential =
-          await service.register('new@example.com', 'password123');
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+      );
       expect(credential.user, isNotNull);
       expect(auth.currentUser, isNotNull);
     });

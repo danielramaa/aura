@@ -5,10 +5,10 @@ import 'package:projeto_es_2526/models/anonymous_identity.dart';
 import 'package:projeto_es_2526/services/chat_service.dart';
 
 AnonymousIdentity makeIdentity() => AnonymousIdentity(
-      anonymousId: 'anon-1',
-      nickname: 'CalmWolf42',
-      avatarUrl: '',
-    );
+  anonymousId: 'anon-1',
+  nickname: 'CalmWolf42',
+  avatarUrl: '',
+);
 
 void main() {
   group('ChatService — sendMessage', () {
@@ -104,12 +104,12 @@ void main() {
           .doc('g1')
           .collection('messages')
           .add({
-        'text': 'hello',
-        'senderId': 'anon-1',
-        'senderNickname': 'CalmWolf42',
-        'timestamp': Timestamp.now(),
-        'replyToText': null,
-      });
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': Timestamp.now(),
+            'replyToText': null,
+          });
 
       final messages = await service.streamMessages('g1').first;
       expect(messages.length, 1);

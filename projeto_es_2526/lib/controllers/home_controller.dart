@@ -15,7 +15,7 @@ class HomeController extends ChangeNotifier {
   String? _error;
 
   HomeController({GroupService? service})
-      : _service = service ?? GroupService() {
+    : _service = service ?? GroupService() {
     _subscription = _service.streamGroups().listen(
       (groups) {
         _groups = groups;

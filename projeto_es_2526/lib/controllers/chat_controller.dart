@@ -39,9 +39,9 @@ class ChatController extends ChangeNotifier {
     IdentityService? identityService,
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _identityService = identityService ?? IdentityService(),
-        _auth = auth ?? FirebaseAuth.instance {
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _identityService = identityService ?? IdentityService(),
+       _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
@@ -79,15 +79,17 @@ class ChatController extends ChangeNotifier {
 
     if (!_isTyping) {
       _isTyping = true;
-      unawaited(_firestore
-          .collection('groups')
-          .doc(groupId)
-          .collection('typing')
-          .doc(_anonymousIdentity!.anonymousId)
-          .set({
-        'nickname': _anonymousIdentity!.nickname,
-        'timestamp': FieldValue.serverTimestamp(),
-      }));
+      unawaited(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('typing')
+            .doc(_anonymousIdentity!.anonymousId)
+            .set({
+              'nickname': _anonymousIdentity!.nickname,
+              'timestamp': FieldValue.serverTimestamp(),
+            }),
+      );
     }
 
     _typingTimer?.cancel();
@@ -97,12 +99,14 @@ class ChatController extends ChangeNotifier {
   void _clearTypingStatus() {
     _isTyping = false;
     if (_anonymousIdentity == null) return;
-    unawaited(_firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('typing')
-        .doc(_anonymousIdentity!.anonymousId)
-        .delete());
+    unawaited(
+      _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('typing')
+          .doc(_anonymousIdentity!.anonymousId)
+          .delete(),
+    );
   }
 
   // Getters
@@ -115,7 +119,10 @@ class ChatController extends ChangeNotifier {
 
   Future<void> _initialize() async {
     try {
-      _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
+      _anonymousIdentity = await _identityService.getOrCreateIdentity(
+        _userId,
+        groupId,
+      );
 
       if (_isDisposed) return;
 
@@ -128,26 +135,35 @@ class ChatController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      _messagesSubscription = _chatService.streamMessages(groupId).listen(
-        (messages) {
-          if (_isDisposed) return;
-          _messages = messages;
-          _isLoading = false;
-          notifyListeners();
-        },
-        onError: (e) {
-          if (_isDisposed) return;
-          _error = "Não foi possível carregar as mensagens.";
-          _isLoading = false;
-          notifyListeners();
-        },
-      );
+      _messagesSubscription = _chatService
+          .streamMessages(groupId)
+          .listen(
+            (messages) {
+              if (_isDisposed) return;
+              _messages = messages;
+              _isLoading = false;
+              notifyListeners();
+            },
+            onError: (e) {
+              if (_isDisposed) return;
+              _error = "Não foi possível carregar as mensagens.";
+              _isLoading = false;
+              notifyListeners();
+            },
+          );
     } catch (e) {
       if (_isDisposed) return;
       _error = "Não foi possível inicializar o chat.";
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Reloads the nickname list from Firestore so recently joined members
+  /// appear in autocomplete suggestions.
+  Future<void> refreshRoomNicknames() async {
+    await _loadRoomNicknames();
+    if (!_isDisposed) notifyListeners();
   }
 
   Future<void> _loadRoomNicknames() async {
@@ -229,17 +245,6 @@ class ChatController extends ChangeNotifier {
       });
 
       for (final nickname in mentions) {
-        final snap = await _firestore
-            .collection('groups')
-            .doc(groupId)
-            .collection('takenNicknames')
-            .where(FieldPath.documentId, isEqualTo: nickname)
-            .limit(1)
-            .get();
-
-        if (snap.docs.isEmpty) continue;
-
-        // Procura o userId em anonymousIdentities
         final identitySnap = await _firestore
             .collection('anonymousIdentities')
             .where('nickname', isEqualTo: nickname)
@@ -249,7 +254,8 @@ class ChatController extends ChangeNotifier {
 
         if (identitySnap.docs.isEmpty) continue;
 
-        final mentionedUserId = identitySnap.docs.first.data()['userId'] as String?;
+        final mentionedUserId =
+            identitySnap.docs.first.data()['userId'] as String?;
         if (mentionedUserId == null) continue;
 
         await _firestore.collection('notifications').add({

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
- 
+
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
- 
+
 class ChatScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
   final String memberCount;
   final String groupDescription;
- 
+
   const ChatScreen({
     super.key,
     required this.groupId,
@@ -16,21 +16,20 @@ class ChatScreen extends StatefulWidget {
     required this.memberCount,
     required this.groupDescription,
   });
- 
+
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
- 
+
 class _ChatScreenState extends State<ChatScreen> {
   late final ChatController _controller;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
- 
+
   Message? _replyingTo;
- 
-  // Estado do autocomplete de menções
+
   List<String> _mentionSuggestions = [];
- 
+
   @override
   void initState() {
     super.initState();
@@ -40,7 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     _messageController.addListener(_onTextChanged);
   }
- 
+
   @override
   void dispose() {
     _controller.removeListener(_handleControllerChanges);
@@ -50,60 +49,66 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollController.dispose();
     super.dispose();
   }
- 
-  /// Chamado a cada keystroke — deteta se o utilizador está a escrever @...
+
   void _onTextChanged() {
     final text = _messageController.text;
     final cursor = _messageController.selection.baseOffset;
     if (cursor < 0) return;
- 
-    // Procura um @ antes do cursor sem espaços à frente
+
     final textBeforeCursor = text.substring(0, cursor);
     final match = RegExp(r'@(\w*)$').firstMatch(textBeforeCursor);
- 
+
     if (match != null) {
       final query = match.group(1)!.toLowerCase();
-      final suggestions = _controller.roomNicknames
-          .where((n) => n.toLowerCase().startsWith(query))
-          .toList();
-      setState(() => _mentionSuggestions = suggestions);
+      // Refresh on new @-trigger so recently joined members are included.
+      if (query.isEmpty) {
+        _controller.refreshRoomNicknames().then((_) {
+          if (mounted)
+            setState(() => _mentionSuggestions = _controller.roomNicknames);
+        });
+      }
+      setState(
+        () => _mentionSuggestions = _controller.roomNicknames
+            .where((n) => n.toLowerCase().startsWith(query))
+            .toList(),
+      );
     } else {
-      setState(() {
-        _mentionSuggestions = [];
-      });
+      setState(() => _mentionSuggestions = []);
     }
   }
- 
+
   /// Quando o utilizador seleciona uma sugestão, substitui o @query pelo @Nickname
   void _applyMention(String nickname) {
     final text = _messageController.text;
     final cursor = _messageController.selection.baseOffset;
     final textBeforeCursor = text.substring(0, cursor);
- 
+
     // Substitui o @query pelo @Nickname completo
-    final newTextBefore =
-        textBeforeCursor.replaceAll(RegExp(r'@\w*$'), '@$nickname ');
+    final newTextBefore = textBeforeCursor.replaceAll(
+      RegExp(r'@\w*$'),
+      '@$nickname ',
+    );
     final newText = newTextBefore + text.substring(cursor);
- 
+
     _messageController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newTextBefore.length),
     );
- 
+
     setState(() => _mentionSuggestions = []);
   }
- 
+
   Widget _buildTypingIndicator() {
     return StreamBuilder<List<String>>(
       stream: _controller.typingNamesStream,
       builder: (context, snapshot) {
         final names = snapshot.data ?? [];
         if (names.isEmpty) return const SizedBox.shrink();
- 
+
         final label = names.length == 1
             ? '${names.first} is typing...'
             : '${names.join(', ')} are typing...';
- 
+
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
@@ -118,15 +123,15 @@ class _ChatScreenState extends State<ChatScreen> {
       },
     );
   }
- 
+
   void _handleControllerChanges() {
     if (mounted) setState(() {});
   }
- 
+
   Future<void> _sendMessage() async {
     final text = _messageController.text;
     if (text.trim().isEmpty) return;
- 
+
     try {
       await _controller.send(text, replyToText: _replyingTo?.text);
       _messageController.clear();
@@ -142,29 +147,29 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     }
- 
+
     if (_controller.error != null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_controller.error!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_controller.error!)));
     }
   }
- 
+
   void _startReply(Message message) {
     setState(() => _replyingTo = message);
   }
- 
+
   void _cancelReply() {
     setState(() => _replyingTo = null);
   }
- 
+
   Widget _buildQuotedBox({
     required String text,
     VoidCallback? onTap,
     bool isPreview = false,
   }) {
     final color = isPreview ? const Color(0xFF185FA5) : Colors.grey[400]!;
- 
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -184,10 +189,10 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
- 
+
   Widget _buildReplyPreview() {
     if (_replyingTo == null) return const SizedBox.shrink();
- 
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -207,11 +212,11 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
- 
+
   /// Lista de sugestões de menção que aparece por cima do input
   Widget _buildMentionSuggestions() {
     if (_mentionSuggestions.isEmpty) return const SizedBox.shrink();
- 
+
     return Container(
       constraints: const BoxConstraints(maxHeight: 160),
       decoration: BoxDecoration(
@@ -234,14 +239,17 @@ class _ChatScreenState extends State<ChatScreen> {
           return InkWell(
             onTap: () => _applyMention(nickname),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
                   const CircleAvatar(
                     radius: 14,
                     backgroundColor: Color(0xFFDCE9F7),
-                    child: Icon(Icons.person, size: 16, color: Color(0xFF185FA5)),
+                    child: Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Color(0xFF185FA5),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Text(
@@ -260,7 +268,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
- 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -317,7 +325,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_controller.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
- 
+
           if (_controller.error != null &&
               _controller.anonymousIdentity == null) {
             return Center(
@@ -331,7 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             );
           }
- 
+
           return Column(
             children: [
               Expanded(child: _buildBody()),
@@ -345,7 +353,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
- 
+
   Widget _buildBody() {
     final messages = _controller.messages;
     if (messages.isEmpty) {
@@ -366,14 +374,14 @@ class _ChatScreenState extends State<ChatScreen> {
         final message = messages[index];
         return _MessageBubble(
           message: message,
-          isOwn: message.anonymousId ==
-              _controller.anonymousIdentity?.anonymousId,
+          isOwn:
+              message.anonymousId == _controller.anonymousIdentity?.anonymousId,
           onReply: () => _startReply(message),
         );
       },
     );
   }
- 
+
   Widget _buildInputRow() {
     final isSending = _controller.isSending;
     return Padding(
@@ -411,59 +419,67 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
- 
+
 // ---------------------------------------------------------------------------
 // Message Bubble com highlight de menções
 // ---------------------------------------------------------------------------
- 
+
+/// Returns RichText spans for [text], highlighting only @tokens whose word
+/// part appears in [mentions] (the validated list stored on the message).
+List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
+  final spans = <TextSpan>[];
+  final regex = RegExp(r'@(\w+)');
+  int lastEnd = 0;
+
+  for (final match in regex.allMatches(text)) {
+    if (match.start > lastEnd) {
+      spans.add(
+        TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+      );
+    }
+    final word = match.group(1)!;
+    final isValid = mentions.contains(word);
+    spans.add(
+      TextSpan(
+        text: match.group(0),
+        style: TextStyle(
+          fontSize: 14,
+          color: isValid ? const Color(0xFF185FA5) : Colors.black87,
+          fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+    lastEnd = match.end;
+  }
+
+  if (lastEnd < text.length) {
+    spans.add(
+      TextSpan(
+        text: text.substring(lastEnd),
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+      ),
+    );
+  }
+  return spans;
+}
+
 class _MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
   final VoidCallback onReply;
- 
+
   const _MessageBubble({
     required this.message,
     required this.isOwn,
     required this.onReply,
   });
- 
-  /// Constrói um RichText que coloca a cor azul nos @Nickname
-  Widget _buildMessageText(String text) {
-    final spans = <TextSpan>[];
-    final regex = RegExp(r'@(\w+)');
-    int lastEnd = 0;
- 
-    for (final match in regex.allMatches(text)) {
-      // Texto antes da menção
-      if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
-        ));
-      }
-      // A menção em si — destacada
-      spans.add(TextSpan(
-        text: match.group(0),
-        style: const TextStyle(
-          fontSize: 14,
-          color: Color(0xFF185FA5),
-          fontWeight: FontWeight.bold,
-        ),
-      ));
-      lastEnd = match.end;
-    }
- 
-    // Texto depois da última menção
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd),
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
-      ));
-    }
- 
-    return RichText(text: TextSpan(children: spans));
-  }
- 
+
+  Widget _buildMessageText(String text, List<String> mentions) =>
+      RichText(text: TextSpan(children: buildMentionSpans(text, mentions)));
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -499,23 +515,24 @@ class _MessageBubble extends StatelessWidget {
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                     border: Border(
-                        left:
-                            BorderSide(color: Colors.grey[400]!, width: 3)),
+                      left: BorderSide(color: Colors.grey[400]!, width: 3),
+                    ),
                   ),
                   child: Text(
                     message.replyToText!,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.black87),
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              _buildMessageText(message.text),
+              _buildMessageText(message.text, message.mentions),
             ],
           ),
         ),

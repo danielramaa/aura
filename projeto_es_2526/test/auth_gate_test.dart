@@ -21,13 +21,15 @@ void main() {
       final homeController = makeHomeController();
       addTearDown(homeController.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        home: AuthGate(
-          authStream: auth.authStateChanges(),
-          mainController: mainController,
-          homeController: homeController,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AuthGate(
+            authStream: auth.authStateChanges(),
+            mainController: mainController,
+            homeController: homeController,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(LoginScreen), findsOneWidget);
@@ -40,13 +42,15 @@ void main() {
       final mainController = MainController();
       addTearDown(mainController.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        home: AuthGate(
-          authStream: auth.authStateChanges(),
-          mainController: mainController,
-          homeController: homeController,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AuthGate(
+            authStream: auth.authStateChanges(),
+            mainController: mainController,
+            homeController: homeController,
+          ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(MainScreen), findsOneWidget);

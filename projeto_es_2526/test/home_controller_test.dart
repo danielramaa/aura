@@ -43,8 +43,9 @@ void main() {
         'color': 0xFF000000,
       });
 
-      final controller =
-          HomeController(service: GroupService(firestore: firestore));
+      final controller = HomeController(
+        service: GroupService(firestore: firestore),
+      );
       addTearDown(controller.dispose);
       await waitForStream();
 
@@ -53,41 +54,45 @@ void main() {
       expect(controller.groups.first.name, 'Alpha');
     });
 
-    test('search filter is case-insensitive and matches partial names',
-        () async {
-      final firestore = FakeFirebaseFirestore();
-      for (final entry in [
-        ('g1', 'Anxiety & Focus'),
-        ('g2', 'Parenting Support'),
-        ('g3', 'Meditation Circle'),
-      ]) {
-        await firestore.collection('groups').doc(entry.$1).set({
-          'name': entry.$2,
-          'description': '',
-          'memberCount': 0,
-          'color': 0xFF000000,
-        });
-      }
-      final controller =
-          HomeController(service: GroupService(firestore: firestore));
-      addTearDown(controller.dispose);
-      await waitForStream();
+    test(
+      'search filter is case-insensitive and matches partial names',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        for (final entry in [
+          ('g1', 'Anxiety & Focus'),
+          ('g2', 'Parenting Support'),
+          ('g3', 'Meditation Circle'),
+        ]) {
+          await firestore.collection('groups').doc(entry.$1).set({
+            'name': entry.$2,
+            'description': '',
+            'memberCount': 0,
+            'color': 0xFF000000,
+          });
+        }
+        final controller = HomeController(
+          service: GroupService(firestore: firestore),
+        );
+        addTearDown(controller.dispose);
+        await waitForStream();
 
-      controller.setSearchQuery('anxiety');
-      expect(controller.groups.length, 1);
-      expect(controller.groups.first.name, 'Anxiety & Focus');
+        controller.setSearchQuery('anxiety');
+        expect(controller.groups.length, 1);
+        expect(controller.groups.first.name, 'Anxiety & Focus');
 
-      controller.setSearchQuery('MED');
-      expect(controller.groups.length, 1);
-      expect(controller.groups.first.name, 'Meditation Circle');
+        controller.setSearchQuery('MED');
+        expect(controller.groups.length, 1);
+        expect(controller.groups.first.name, 'Meditation Circle');
 
-      controller.setSearchQuery('zzzz');
-      expect(controller.groups, isEmpty);
-    });
+        controller.setSearchQuery('zzzz');
+        expect(controller.groups, isEmpty);
+      },
+    );
 
     test('setSearchQuery notifies listeners', () async {
-      final controller =
-          HomeController(service: GroupService(firestore: FakeFirebaseFirestore()));
+      final controller = HomeController(
+        service: GroupService(firestore: FakeFirebaseFirestore()),
+      );
       addTearDown(controller.dispose);
 
       var notified = false;
@@ -121,8 +126,9 @@ void main() {
         'memberCount': 0,
         'color': 0xFF000000,
       });
-      final controller =
-          HomeController(service: GroupService(firestore: firestore));
+      final controller = HomeController(
+        service: GroupService(firestore: firestore),
+      );
       addTearDown(controller.dispose);
       await waitForStream();
 

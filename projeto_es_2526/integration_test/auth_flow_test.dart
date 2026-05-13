@@ -36,8 +36,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('full flow: register → MainScreen → logout → LoginScreen',
-      (tester) async {
+  testWidgets('full flow: register → MainScreen → logout → LoginScreen', (
+    tester,
+  ) async {
     final auth = MockFirebaseAuth();
     final firestore = FakeFirebaseFirestore();
     final authService = AuthService(auth: auth);
@@ -46,11 +47,13 @@ void main() {
     addTearDown(mainController.dispose);
     addTearDown(homeController.dispose);
 
-    await tester.pumpWidget(_buildGate(
-      auth: auth,
-      mainController: mainController,
-      homeController: homeController,
-    ));
+    await tester.pumpWidget(
+      _buildGate(
+        auth: auth,
+        mainController: mainController,
+        homeController: homeController,
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
 
@@ -63,8 +66,9 @@ void main() {
     expect(find.byType(LoginScreen), findsOneWidget);
   });
 
-  testWidgets('login flow: LoginScreen form accepts credentials and signs in',
-      (tester) async {
+  testWidgets('login flow: LoginScreen form accepts credentials and signs in', (
+    tester,
+  ) async {
     final auth = MockFirebaseAuth();
     final firestore = FakeFirebaseFirestore();
     final authService = AuthService(auth: auth);
@@ -73,9 +77,9 @@ void main() {
     addTearDown(mainController.dispose);
     addTearDown(homeController.dispose);
 
-    await tester.pumpWidget(MaterialApp(
-      home: LoginScreen(authService: authService),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: LoginScreen(authService: authService)),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -92,14 +96,15 @@ void main() {
     expect(auth.currentUser, isNotNull);
   });
 
-  testWidgets('LoginScreen — toggle between Login and Register',
-      (tester) async {
+  testWidgets('LoginScreen — toggle between Login and Register', (
+    tester,
+  ) async {
     final auth = MockFirebaseAuth();
     final authService = AuthService(auth: auth);
 
-    await tester.pumpWidget(MaterialApp(
-      home: LoginScreen(authService: authService),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: LoginScreen(authService: authService)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome back'), findsOneWidget);
@@ -108,14 +113,15 @@ void main() {
     expect(find.text('Create account'), findsOneWidget);
   });
 
-  testWidgets('LoginScreen — invalid email shows validation error',
-      (tester) async {
+  testWidgets('LoginScreen — invalid email shows validation error', (
+    tester,
+  ) async {
     final auth = MockFirebaseAuth();
     final authService = AuthService(auth: auth);
 
-    await tester.pumpWidget(MaterialApp(
-      home: LoginScreen(authService: authService),
-    ));
+    await tester.pumpWidget(
+      MaterialApp(home: LoginScreen(authService: authService)),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(
