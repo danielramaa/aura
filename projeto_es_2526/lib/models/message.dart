@@ -7,6 +7,7 @@ class Message {
   final String senderNickname;
   final Timestamp timestamp;
   final String? replyToText;
+  final List<String> mentions;
 
   Message({
     required this.id,
@@ -15,6 +16,7 @@ class Message {
     required this.senderNickname,
     required this.timestamp,
     this.replyToText,
+    this.mentions = const [],
   });
 
   factory Message.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -24,10 +26,12 @@ class Message {
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
       senderNickname: data['senderNickname'] ?? 'Anonymous',
-      timestamp: data['timestamp'] as Timestamp? ??
+      timestamp:
+          data['timestamp'] as Timestamp? ??
           data['createdAt'] as Timestamp? ??
           Timestamp.now(),
       replyToText: data['replyToText'] as String?,
+      mentions: List<String>.from(data['mentions'] ?? []),
     );
   }
 }

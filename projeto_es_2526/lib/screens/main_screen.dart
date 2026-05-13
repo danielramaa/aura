@@ -45,7 +45,10 @@ class MainScreen extends StatelessWidget {
             unselectedItemColor: Colors.grey,
             showUnselectedLabels: true,
             items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.group), label: 'My Groups'),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.group),
+                label: 'My Groups',
+              ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.search),
                 label: 'Find Groups',

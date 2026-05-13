@@ -66,8 +66,7 @@ void main() {
       });
 
       final emissions = <int>[];
-      final sub =
-          service.streamGroups().listen((g) => emissions.add(g.length));
+      final sub = service.streamGroups().listen((g) => emissions.add(g.length));
       await Future.delayed(Duration.zero);
 
       await firestore.collection('groups').doc('g2').set({

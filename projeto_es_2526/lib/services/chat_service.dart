@@ -14,6 +14,7 @@ abstract class ChatServiceInterface {
     required String text,
     required AnonymousIdentity identity,
     String? replyToText,
+    List<String> mentions = const [],
   });
 }
 
@@ -23,17 +24,16 @@ class ChatService implements ChatServiceInterface {
   final FirebaseFirestore _firestore;
 
   ChatService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _messagesRef(String groupId) =>
       _firestore.collection('groups').doc(groupId).collection('messages');
 
   @override
-  Stream<List<Message>> streamMessages(String groupId) =>
-      _messagesRef(groupId)
-          .orderBy('timestamp', descending: true)
-          .snapshots()
-          .map((snap) => snap.docs.map(Message.fromFirestore).toList());
+  Stream<List<Message>> streamMessages(String groupId) => _messagesRef(groupId)
+      .orderBy('timestamp', descending: true)
+      .snapshots()
+      .map((snap) => snap.docs.map(Message.fromFirestore).toList());
 
   @override
   Future<String?> sendMessage({
@@ -41,6 +41,7 @@ class ChatService implements ChatServiceInterface {
     required String text,
     required AnonymousIdentity identity,
     String? replyToText,
+    List<String> mentions = const [],
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return 'Message cannot be empty.';
@@ -55,6 +56,7 @@ class ChatService implements ChatServiceInterface {
         'senderId': identity.anonymousId,
         'senderNickname': identity.nickname,
         'replyToText': replyToText,
+        'mentions': mentions,
       });
       return null;
     } catch (_) {

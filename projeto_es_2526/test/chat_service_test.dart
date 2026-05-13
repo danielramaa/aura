@@ -5,10 +5,10 @@ import 'package:projeto_es_2526/models/anonymous_identity.dart';
 import 'package:projeto_es_2526/services/chat_service.dart';
 
 AnonymousIdentity makeIdentity() => AnonymousIdentity(
-      anonymousId: 'anon-1',
-      nickname: 'CalmWolf42',
-      avatarUrl: '',
-    );
+  anonymousId: 'anon-1',
+  nickname: 'CalmWolf42',
+  avatarUrl: '',
+);
 
 void main() {
   group('ChatService — sendMessage', () {
@@ -92,6 +92,25 @@ void main() {
       );
       expect((await messages()).first['replyToText'], 'original message');
     });
+
+    test('persists mentions list in the stored document', () async {
+      await service.sendMessage(
+        groupId: 'g1',
+        text: '@Alice hello',
+        identity: identity,
+        mentions: ['Alice'],
+      );
+      expect((await messages()).first['mentions'], ['Alice']);
+    });
+
+    test('persists empty mentions list when none provided', () async {
+      await service.sendMessage(
+        groupId: 'g1',
+        text: 'no mentions',
+        identity: identity,
+      );
+      expect((await messages()).first['mentions'], isEmpty);
+    });
   });
 
   group('ChatService — streamMessages', () {
@@ -104,12 +123,12 @@ void main() {
           .doc('g1')
           .collection('messages')
           .add({
-        'text': 'hello',
-        'senderId': 'anon-1',
-        'senderNickname': 'CalmWolf42',
-        'timestamp': Timestamp.now(),
-        'replyToText': null,
-      });
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': Timestamp.now(),
+            'replyToText': null,
+          });
 
       final messages = await service.streamMessages('g1').first;
       expect(messages.length, 1);
@@ -122,5 +141,24 @@ void main() {
       final messages = await service.streamMessages('g1').first;
       expect(messages, isEmpty);
     });
+
+    test(
+      'mentions round-trip through sendMessage and streamMessages',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final service = ChatService(firestore: firestore);
+        final identity = makeIdentity();
+
+        await service.sendMessage(
+          groupId: 'g1',
+          text: '@Alice and @Bob',
+          identity: identity,
+          mentions: ['Alice', 'Bob'],
+        );
+
+        final messages = await service.streamMessages('g1').first;
+        expect(messages.first.mentions, containsAll(['Alice', 'Bob']));
+      },
+    );
   });
 }

@@ -21,6 +21,7 @@ class ChatController extends ChangeNotifier {
   String? _groupName;
 
   List<Message> _messages = [];
+  List<String> _roomNicknames = [];
   StreamSubscription? _messagesSubscription;
 
   bool _isDisposed = false;
@@ -38,9 +39,9 @@ class ChatController extends ChangeNotifier {
     IdentityService? identityService,
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _identityService = identityService ?? IdentityService(),
-        _auth = auth ?? FirebaseAuth.instance {
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _identityService = identityService ?? IdentityService(),
+       _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
@@ -73,22 +74,22 @@ class ChatController extends ChangeNotifier {
         .toList();
   }
 
-  /// Call on every keystroke. Writes to Firestore only on the first keystroke
-  /// of a new typing session; resets the 3-second inactivity timer each time.
   void notifyTyping() {
     if (_anonymousIdentity == null || _isDisposed) return;
 
     if (!_isTyping) {
       _isTyping = true;
-      unawaited(_firestore
-          .collection('groups')
-          .doc(groupId)
-          .collection('typing')
-          .doc(_anonymousIdentity!.anonymousId)
-          .set({
-        'nickname': _anonymousIdentity!.nickname,
-        'timestamp': FieldValue.serverTimestamp(),
-      }));
+      unawaited(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('typing')
+            .doc(_anonymousIdentity!.anonymousId)
+            .set({
+              'nickname': _anonymousIdentity!.nickname,
+              'timestamp': FieldValue.serverTimestamp(),
+            }),
+      );
     }
 
     _typingTimer?.cancel();
@@ -98,16 +99,19 @@ class ChatController extends ChangeNotifier {
   void _clearTypingStatus() {
     _isTyping = false;
     if (_anonymousIdentity == null) return;
-    unawaited(_firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('typing')
-        .doc(_anonymousIdentity!.anonymousId)
-        .delete());
+    unawaited(
+      _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('typing')
+          .doc(_anonymousIdentity!.anonymousId)
+          .delete(),
+    );
   }
 
   // Getters
   List<Message> get messages => _messages;
+  List<String> get roomNicknames => _roomNicknames;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
   String? get error => _error;
@@ -115,7 +119,10 @@ class ChatController extends ChangeNotifier {
 
   Future<void> _initialize() async {
     try {
-      _anonymousIdentity = await _identityService.getOrCreateIdentity(_userId, groupId);
+      _anonymousIdentity = await _identityService.getOrCreateIdentity(
+        _userId,
+        groupId,
+      );
 
       if (_isDisposed) return;
 
@@ -124,26 +131,66 @@ class ChatController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      _messagesSubscription = _chatService.streamMessages(groupId).listen(
-        (messages) {
-          if (_isDisposed) return;
-          _messages = messages;
-          _isLoading = false;
-          notifyListeners();
-        },
-        onError: (e) {
-          if (_isDisposed) return;
-          _error = "Não foi possível carregar as mensagens.";
-          _isLoading = false;
-          notifyListeners();
-        },
-      );
+      // Fire-and-forget: nicknames are refreshed lazily on each @ trigger,
+      // so there's no need to block the message stream on this read.
+      unawaited(_loadRoomNicknames());
+
+      _messagesSubscription = _chatService
+          .streamMessages(groupId)
+          .listen(
+            (messages) {
+              if (_isDisposed) return;
+              _messages = messages;
+              _isLoading = false;
+              notifyListeners();
+            },
+            onError: (e) {
+              if (_isDisposed) return;
+              _error = "Não foi possível carregar as mensagens.";
+              _isLoading = false;
+              notifyListeners();
+            },
+          );
     } catch (e) {
       if (_isDisposed) return;
       _error = "Não foi possível inicializar o chat.";
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Reloads the nickname list from Firestore so recently joined members
+  /// appear in autocomplete suggestions.
+  Future<void> refreshRoomNicknames() async {
+    await _loadRoomNicknames();
+    if (!_isDisposed) notifyListeners();
+  }
+
+  Future<void> _loadRoomNicknames() async {
+    try {
+      final snap = await _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('takenNicknames')
+          .get();
+
+      _roomNicknames = snap.docs
+          .map((d) => d.id)
+          .where((n) => n != _anonymousIdentity?.nickname)
+          .toList();
+    } catch (e) {
+      debugPrint('Failed to load room nicknames: $e');
+      _roomNicknames = [];
+    }
+  }
+
+  List<String> _extractMentions(String text) {
+    final regex = RegExp(r'@(\w+)');
+    return regex
+        .allMatches(text)
+        .map((m) => m.group(1)!)
+        .where((nickname) => _roomNicknames.contains(nickname))
+        .toList();
   }
 
   Future<void> send(String text, {String? replyToText}) async {
@@ -160,17 +207,20 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final mentions = _extractMentions(trimmed);
+
       final sendError = await _chatService.sendMessage(
         groupId: groupId,
         text: trimmed,
         identity: _anonymousIdentity!,
         replyToText: replyToText,
+        mentions: mentions,
       );
       if (sendError != null) {
         _error = sendError;
       } else {
         _error = null;
-        unawaited(_createNotification());
+        unawaited(_createNotification(mentions: mentions));
       }
     } catch (_) {
       _error = "Não foi possível enviar a mensagem.";
@@ -180,9 +230,10 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  Future<void> _createNotification() async {
+  Future<void> _createNotification({List<String> mentions = const []}) async {
     try {
       final groupName = _groupName ?? 'Community';
+
       await _firestore.collection('notifications').add({
         'groupId': groupId,
         'groupName': groupName,
@@ -192,6 +243,33 @@ class ChatController extends ChangeNotifier {
         'type': 'message',
         'isRead': false,
       });
+
+      for (final nickname in mentions) {
+        final identitySnap = await _firestore
+            .collection('anonymousIdentities')
+            .where('nickname', isEqualTo: nickname)
+            .where('groupId', isEqualTo: groupId)
+            .limit(1)
+            .get();
+
+        if (identitySnap.docs.isEmpty) continue;
+
+        final mentionedUserId =
+            identitySnap.docs.first.data()['userId'] as String?;
+        if (mentionedUserId == null) continue;
+
+        await _firestore.collection('notifications').add({
+          'groupId': groupId,
+          'groupName': groupName,
+          'description':
+              '${_anonymousIdentity!.nickname} mencionou-te em "$groupName".',
+          'senderId': _userId,
+          'recipientId': mentionedUserId,
+          'timestamp': FieldValue.serverTimestamp(),
+          'type': 'mention',
+          'isRead': false,
+        });
+      }
     } catch (e) {
       debugPrint('Failed to create notification for group "$groupId": $e');
     }

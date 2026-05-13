@@ -61,12 +61,12 @@ void main() {
           .collection('messages')
           .doc('m1')
           .set({
-        'text': 'hello',
-        'senderId': 'anon-1',
-        'senderNickname': 'CalmWolf42',
-        'timestamp': ts,
-        'replyToText': 'quoted',
-      });
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': ts,
+            'replyToText': 'quoted',
+          });
 
       final doc = await firestore
           .collection('groups')
@@ -92,10 +92,10 @@ void main() {
           .collection('messages')
           .doc('m1')
           .set({
-        'text': 'hi',
-        'senderId': 'anon-1',
-        'timestamp': Timestamp.now(),
-      });
+            'text': 'hi',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+          });
 
       final doc = await firestore
           .collection('groups')
@@ -115,11 +115,7 @@ void main() {
           .doc('g1')
           .collection('messages')
           .doc('m1')
-          .set({
-        'text': 'hi',
-        'senderId': 'anon-1',
-        'createdAt': ts,
-      });
+          .set({'text': 'hi', 'senderId': 'anon-1', 'createdAt': ts});
 
       final doc = await firestore
           .collection('groups')
@@ -139,10 +135,10 @@ void main() {
           .collection('messages')
           .doc('m1')
           .set({
-        'text': 'hi',
-        'senderId': 'anon-1',
-        'timestamp': Timestamp.now(),
-      });
+            'text': 'hi',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+          });
 
       final doc = await firestore
           .collection('groups')
@@ -152,6 +148,53 @@ void main() {
           .get();
       final message = Message.fromFirestore(doc);
       expect(message.replyToText, isNull);
+    });
+
+    test('parses mentions array from Firestore', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': '@Alice hi',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+            'mentions': ['Alice'],
+          });
+
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      final message = Message.fromFirestore(doc);
+      expect(message.mentions, ['Alice']);
+    });
+
+    test('mentions defaults to empty list on legacy messages', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'no mentions here',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+          });
+
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      final message = Message.fromFirestore(doc);
+      expect(message.mentions, isEmpty);
     });
   });
 }

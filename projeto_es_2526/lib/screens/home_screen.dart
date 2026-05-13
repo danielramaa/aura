@@ -50,7 +50,9 @@ class _HomeScreenState extends State<HomeScreen> {
               // header
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                child: _isSearching ? _buildSearchBar() : _buildTitleRow(groups),
+                child: _isSearching
+                    ? _buildSearchBar()
+                    : _buildTitleRow(groups),
               ),
               // card list
               Expanded(
@@ -63,13 +65,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error_outline,
-                                  size: 64, color: Colors.grey[400]),
+                              Icon(
+                                Icons.error_outline,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
                               const SizedBox(height: 16),
                               Text(
                                 widget.controller.error!,
                                 style: TextStyle(
-                                    fontSize: 16, color: Colors.grey[600]),
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
                                 textAlign: TextAlign.center,
                               ),
                             ],
@@ -141,10 +148,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: groups.length,
-                        separatorBuilder: (context, index) => SizedBox(height: 10),
+                        separatorBuilder: (context, index) =>
+                            SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final group = groups[index];
-                          return InkWell( 
+                          return InkWell(
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -209,11 +217,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.grey[100],
               border: Border.all(color: Colors.grey[300]!),
             ),
-            child: Icon(
-              Icons.search,
-              size: 18,
-              color: Colors.grey[600],
-            ),
+            child: Icon(Icons.search, size: 18, color: Colors.grey[600]),
           ),
         ),
       ],

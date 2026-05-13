@@ -85,7 +85,10 @@ class GroupCard extends StatelessWidget {
                         SizedBox(width: 8),
                         Text(
                           '$memberCount members',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[400],
+                          ),
                         ),
                       ],
                     ],

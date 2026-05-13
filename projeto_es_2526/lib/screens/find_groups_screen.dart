@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/group.dart'; 
+import '../models/group.dart';
+
 class FindGroupsScreen extends StatefulWidget {
   const FindGroupsScreen({super.key});
 
@@ -9,28 +10,31 @@ class FindGroupsScreen extends StatefulWidget {
 
 class _FindGroupsScreenState extends State<FindGroupsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  
+
   final List<Group> _allCommunities = const [
     Group(
       id: 'ansiedade-e-foco',
       name: 'Ansiedade e Foco',
       color: Colors.blue,
       memberCount: 3500,
-      description: 'Estratégias diárias e meditação para lidar com a ansiedade e melhorar o foco no trabalho e estudos.',
+      description:
+          'Estratégias diárias e meditação para lidar com a ansiedade e melhorar o foco no trabalho e estudos.',
     ),
     Group(
       id: 'vida-com-endometriose',
       name: 'Vida com Endometriose',
       color: Colors.pink,
       memberCount: 1200,
-      description: 'Apoio mútuo, troca de experiências sobre médicos, tratamentos e como lidar com a dor no dia a dia.',
+      description:
+          'Apoio mútuo, troca de experiências sobre médicos, tratamentos e como lidar com a dor no dia a dia.',
     ),
     Group(
       id: 'pais-de-criancas-autistas',
       name: 'Pais de Crianças Autistas',
       color: Colors.orange,
       memberCount: 4800,
-      description: 'Comunidade acolhedora para partilhar vitórias, desafios e recursos sobre o espetro autista.',
+      description:
+          'Comunidade acolhedora para partilhar vitórias, desafios e recursos sobre o espetro autista.',
     ),
   ];
 
@@ -57,7 +61,8 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
           final nameLower = group.name.toLowerCase();
           final descLower = group.description.toLowerCase();
           final searchLower = query.toLowerCase();
-          return nameLower.contains(searchLower) || descLower.contains(searchLower);
+          return nameLower.contains(searchLower) ||
+              descLower.contains(searchLower);
         }).toList();
       }
     });
@@ -71,12 +76,15 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24), 
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           child: Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(32.0), 
+            padding: const EdgeInsets.all(32.0),
             child: Column(
-              mainAxisSize: MainAxisSize.min, 
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -85,31 +93,45 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                     Expanded(
                       child: Text(
                         group.name,
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     GestureDetector(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(Icons.close, color: Colors.grey, size: 28),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.grey,
+                        size: 28,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue[50],
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     '${group.memberCount} members',
-                    style: TextStyle(color: Colors.blue[800], fontWeight: FontWeight.w600, fontSize: 14),
+                    style: TextStyle(
+                      color: Colors.blue[800],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 const Text(
                   'Sobre a comunidade',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
@@ -117,18 +139,24 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                 const SizedBox(height: 12),
                 Text(
                   group.description,
-                  style: TextStyle(fontSize: 16, color: Colors.grey[700], height: 1.5),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
                 ),
-                const SizedBox(height: 48), 
-                
+                const SizedBox(height: 48),
+
                 SizedBox(
                   width: double.infinity,
-                  height: 56, 
+                  height: 56,
                   child: FilledButton(
                     onPressed: () {
-                      Navigator.pop(context); 
+                      Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Bem-vinda ao grupo ${group.name}!')),
+                        SnackBar(
+                          content: Text('Bem-vinda ao grupo ${group.name}!'),
+                        ),
                       );
                     },
                     style: FilledButton.styleFrom(
@@ -138,8 +166,11 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                       ),
                     ),
                     child: const Text(
-                      'Join Community', 
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      'Join Community',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -150,6 +181,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
       },
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -181,18 +213,26 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
               ),
             ),
           ),
-          
+
           Expanded(
             child: _filteredCommunities.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off, size: 64, color: Colors.grey[300]),
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'No communities found',
-                          style: TextStyle(fontSize: 18, color: Colors.grey[600], fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
@@ -206,7 +246,8 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _filteredCommunities.length,
-                    separatorBuilder: (context, index) => const Divider(height: 24),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 24),
                     itemBuilder: (context, index) {
                       final group = _filteredCommunities[index];
                       return InkWell(
@@ -218,17 +259,27 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                             children: [
                               Text(
                                 group.name,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '${group.memberCount} members',
-                                style: TextStyle(fontSize: 12, color: Colors.blue[600], fontWeight: FontWeight.w500),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 group.description,
-                                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),

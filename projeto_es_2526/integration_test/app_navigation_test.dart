@@ -21,19 +21,26 @@ void main() {
     final auth = MockFirebaseAuth(signedIn: true);
     final firestore = FakeFirebaseFirestore();
     final mainController = MainController();
-    final homeController = HomeController(service: GroupService(firestore: firestore));
-    final profileController = ProfileController(auth: auth, firestore: firestore);
+    final homeController = HomeController(
+      service: GroupService(firestore: firestore),
+    );
+    final profileController = ProfileController(
+      auth: auth,
+      firestore: firestore,
+    );
     addTearDown(mainController.dispose);
     addTearDown(homeController.dispose);
     addTearDown(profileController.dispose);
 
-    await tester.pumpWidget(MaterialApp(
-      home: MainScreen(
-        mainController: mainController,
-        homeController: homeController,
-        profileController: profileController,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainScreen(
+          mainController: mainController,
+          homeController: homeController,
+          profileController: profileController,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     final bottomNav = find.byType(BottomNavigationBar);

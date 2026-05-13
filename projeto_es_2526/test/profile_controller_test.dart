@@ -8,7 +8,8 @@ ProfileController makeController({
   FakeFirebaseFirestore? firestore,
 }) {
   return ProfileController(
-    auth: auth ??
+    auth:
+        auth ??
         MockFirebaseAuth(
           signedIn: true,
           mockUser: MockUser(uid: 'u1', email: 'user@example.com'),
@@ -162,16 +163,19 @@ void main() {
       expect(error, isNotNull);
     });
 
-    test('succeeds when only display name changes (no re-auth needed)', () async {
-      final error = await controller.updateProfile(
-        displayName: 'New Name',
-        photoURL: '',
-        email: 'user@example.com',
-        newPassword: '',
-        currentPassword: '',
-      );
-      expect(error, isNull);
-    });
+    test(
+      'succeeds when only display name changes (no re-auth needed)',
+      () async {
+        final error = await controller.updateProfile(
+          displayName: 'New Name',
+          photoURL: '',
+          email: 'user@example.com',
+          newPassword: '',
+          currentPassword: '',
+        );
+        expect(error, isNull);
+      },
+    );
 
     test('returns null and notifies listeners on success', () async {
       var notified = false;
