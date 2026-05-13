@@ -92,6 +92,25 @@ void main() {
       );
       expect((await messages()).first['replyToText'], 'original message');
     });
+
+    test('persists mentions list in the stored document', () async {
+      await service.sendMessage(
+        groupId: 'g1',
+        text: '@Alice hello',
+        identity: identity,
+        mentions: ['Alice'],
+      );
+      expect((await messages()).first['mentions'], ['Alice']);
+    });
+
+    test('persists empty mentions list when none provided', () async {
+      await service.sendMessage(
+        groupId: 'g1',
+        text: 'no mentions',
+        identity: identity,
+      );
+      expect((await messages()).first['mentions'], isEmpty);
+    });
   });
 
   group('ChatService — streamMessages', () {
@@ -121,6 +140,22 @@ void main() {
       final service = ChatService(firestore: firestore);
       final messages = await service.streamMessages('g1').first;
       expect(messages, isEmpty);
+    });
+
+    test('mentions round-trip through sendMessage and streamMessages', () async {
+      final firestore = FakeFirebaseFirestore();
+      final service = ChatService(firestore: firestore);
+      final identity = makeIdentity();
+
+      await service.sendMessage(
+        groupId: 'g1',
+        text: '@Alice and @Bob',
+        identity: identity,
+        mentions: ['Alice', 'Bob'],
+      );
+
+      final messages = await service.streamMessages('g1').first;
+      expect(messages.first.mentions, containsAll(['Alice', 'Bob']));
     });
   });
 }
