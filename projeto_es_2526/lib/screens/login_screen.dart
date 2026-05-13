@@ -143,10 +143,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty)
+                        if (v == null || v.isEmpty) {
                           return 'Enter your password';
-                        if (!_isLogin && v.length < 8)
+                        }
+                        if (!_isLogin && v.length < 8) {
                           return 'Password must be at least 8 characters';
+                        }
                         return null;
                       },
                     ),
