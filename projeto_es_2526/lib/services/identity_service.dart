@@ -6,20 +6,57 @@ class IdentityService {
   final FirebaseFirestore _firestore;
 
   IdentityService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   static const _adjectives = [
-    'Calm', 'Brave', 'Curious', 'Gentle', 'Silent', 'Wise', 'Happy',
-    'Swift', 'Bold', 'Keen', 'Daring', 'Bright', 'Serene', 'Nimble',
-    'Quiet', 'Fierce', 'Clever', 'Noble', 'Vivid', 'Tender',
+    'Calm',
+    'Brave',
+    'Curious',
+    'Gentle',
+    'Silent',
+    'Wise',
+    'Happy',
+    'Swift',
+    'Bold',
+    'Keen',
+    'Daring',
+    'Bright',
+    'Serene',
+    'Nimble',
+    'Quiet',
+    'Fierce',
+    'Clever',
+    'Noble',
+    'Vivid',
+    'Tender',
   ];
   static const _nouns = [
-    'Wolf', 'Seal', 'Eagle', 'Lion', 'Fox', 'Bear', 'Owl',
-    'Hawk', 'Deer', 'Otter', 'Raven', 'Tiger', 'Lynx', 'Crane',
-    'Heron', 'Bison', 'Moose', 'Panda', 'Koala', 'Gecko',
+    'Wolf',
+    'Seal',
+    'Eagle',
+    'Lion',
+    'Fox',
+    'Bear',
+    'Owl',
+    'Hawk',
+    'Deer',
+    'Otter',
+    'Raven',
+    'Tiger',
+    'Lynx',
+    'Crane',
+    'Heron',
+    'Bison',
+    'Moose',
+    'Panda',
+    'Koala',
+    'Gecko',
   ];
 
-  Future<AnonymousIdentity> getOrCreateIdentity(String userId, String groupId) async {
+  Future<AnonymousIdentity> getOrCreateIdentity(
+    String userId,
+    String groupId,
+  ) async {
     final identityDocRef = _firestore
         .collection('users')
         .doc(userId)
@@ -36,14 +73,19 @@ class IdentityService {
     }
   }
 
-  Future<AnonymousIdentity> _generateNewIdentity(String userId, String groupId) async {
+  Future<AnonymousIdentity> _generateNewIdentity(
+    String userId,
+    String groupId,
+  ) async {
     final nickname = await _generateUniqueNickname(groupId);
     // TODO: generate avatar locally to avoid leaking user IPs to a third party
     const avatarUrl = '';
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
     // Reverse lookup for moderation: maps anonymousId → real userId
-    final reverseLookupRef = _firestore.collection('anonymousIdentities').doc(anonymousId);
+    final reverseLookupRef = _firestore
+        .collection('anonymousIdentities')
+        .doc(anonymousId);
     await reverseLookupRef.set({
       'userId': userId,
       'groupId': groupId,
@@ -74,7 +116,9 @@ class IdentityService {
         await _firestore.runTransaction((tx) async {
           final doc = await tx.get(takenRef.doc(nickname));
           if (doc.exists) throw Exception('taken');
-          tx.set(takenRef.doc(nickname), {'takenAt': FieldValue.serverTimestamp()});
+          tx.set(takenRef.doc(nickname), {
+            'takenAt': FieldValue.serverTimestamp(),
+          });
         });
         return true;
       } on Exception catch (e) {

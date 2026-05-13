@@ -63,68 +63,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildBody(BuildContext context, user) {
     return ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              Center(
-                child: CircleAvatar(
-                  radius: 50,
-                  backgroundImage: user.photoURL?.isNotEmpty == true
-                      ? NetworkImage(user.photoURL!)
-                      : null,
-                  child: user.photoURL?.isNotEmpty != true
-                      ? const Icon(Icons.person, size: 50)
-                      : null,
-                ),
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        Center(
+          child: CircleAvatar(
+            radius: 50,
+            backgroundImage: user.photoURL?.isNotEmpty == true
+                ? NetworkImage(user.photoURL!)
+                : null,
+            child: user.photoURL?.isNotEmpty != true
+                ? const Icon(Icons.person, size: 50)
+                : null,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: Text(
+            user.displayName ?? 'Anonymous User',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Center(
+          child: Text(
+            user.email ?? 'No email available',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+          ),
+        ),
+        const SizedBox(height: 32),
+        Text('My Communities', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        if (_controller.isLoadingCommunities)
+          const Center(child: CircularProgressIndicator())
+        else if (_controller.communityError != null)
+          Text(
+            _controller.communityError!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          )
+        else if (_controller.joinedCommunities.isEmpty)
+          const Text('You have not joined any communities yet.')
+        else
+          ..._controller.joinedCommunities.map(
+            (community) => Card(
+              child: ListTile(
+                leading: const Icon(Icons.group),
+                title: Text(community.name),
               ),
-              const SizedBox(height: 16),
-              Center(
-                child: Text(
-                  user.displayName ?? 'Anonymous User',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  user.email ?? 'No email available',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey[600],
-                      ),
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'My Communities',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 16),
-              if (_controller.isLoadingCommunities)
-                const Center(child: CircularProgressIndicator())
-              else if (_controller.communityError != null)
-                Text(
-                  _controller.communityError!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                )
-              else if (_controller.joinedCommunities.isEmpty)
-                const Text('You have not joined any communities yet.')
-              else
-                ..._controller.joinedCommunities.map(
-                  (community) => Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.group),
-                      title: Text(community.name),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
-                onPressed: _controller.logout,
-              ),
-            ],
+            ),
+          ),
+        const SizedBox(height: 32),
+        ElevatedButton.icon(
+          icon: const Icon(Icons.logout),
+          label: const Text('Logout'),
+          onPressed: _controller.logout,
+        ),
+      ],
     );
   }
 }
@@ -166,7 +161,8 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
 
   void _onSensitiveFieldChanged() {
     final newEmail = _emailCtrl.text.trim();
-    final emailChanged = newEmail.isNotEmpty &&
+    final emailChanged =
+        newEmail.isNotEmpty &&
         newEmail != (widget.controller.currentUser?.email ?? '');
     final passwordProvided = _newPasswordCtrl.text.isNotEmpty;
     final needs = emailChanged || passwordProvided;
@@ -191,9 +187,9 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     final confirmPassword = _confirmPasswordCtrl.text.trim();
 
     if (newPassword.isNotEmpty && newPassword != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Passwords do not match.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
       return;
     }
 
@@ -213,9 +209,9 @@ class _EditProfileDialogState extends State<_EditProfileDialog> {
     if (error == null) {
       Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
     }
   }
 

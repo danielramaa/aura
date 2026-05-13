@@ -34,7 +34,10 @@ void main() {
 
     setUp(() async {
       firestore = FakeFirebaseFirestore();
-      auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'user-1'));
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'user-1'),
+      );
       controller = makeController(firestore, auth);
       await waitForInit(controller);
     });
@@ -47,25 +50,40 @@ void main() {
 
     test('ignores empty or whitespace-only text', () async {
       await controller.send('   ');
-      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      final snap = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .get();
       expect(snap.docs, isEmpty);
       expect(controller.error, isNull);
     });
 
     test('trims whitespace before sending', () async {
       await controller.send('  hello  ');
-      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      final snap = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .get();
       expect(snap.docs.length, 1);
       expect(snap.docs.first.data()['text'], 'hello');
     });
 
-    test('sets error and does not send when text exceeds maxMessageLength', () async {
-      final longText = 'a' * (ChatController.maxMessageLength + 1);
-      await controller.send(longText);
-      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
-      expect(snap.docs, isEmpty);
-      expect(controller.error, isNotNull);
-    });
+    test(
+      'sets error and does not send when text exceeds maxMessageLength',
+      () async {
+        final longText = 'a' * (ChatController.maxMessageLength + 1);
+        await controller.send(longText);
+        final snap = await firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('messages')
+            .get();
+        expect(snap.docs, isEmpty);
+        expect(controller.error, isNotNull);
+      },
+    );
 
     test('clears error after valid send following an error', () async {
       await controller.send('a' * (ChatController.maxMessageLength + 1));
@@ -88,21 +106,32 @@ void main() {
       await controller.send('second'); // blocked — isSending is true
       await first;
 
-      final snap = await firestore.collection('groups').doc('g1').collection('messages').get();
+      final snap = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .get();
       expect(snap.docs.length, 1);
       expect(snap.docs.first.data()['text'], 'first');
     });
 
     test('messages stream is reflected in controller', () async {
-      await firestore.collection('groups').doc('g1').collection('messages').add({
-        'text': 'stream message',
-        'senderId': 'anon-external',
-        'senderNickname': 'BraveOwl7',
-        'timestamp': Timestamp.now(),
-        'replyToText': null,
-      });
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .add({
+            'text': 'stream message',
+            'senderId': 'anon-external',
+            'senderNickname': 'BraveOwl7',
+            'timestamp': Timestamp.now(),
+            'replyToText': null,
+          });
       await Future.microtask(() {});
-      expect(controller.messages.any((m) => m.text == 'stream message'), isTrue);
+      expect(
+        controller.messages.any((m) => m.text == 'stream message'),
+        isTrue,
+      );
       expect(controller.isLoading, isFalse);
     });
   });
@@ -118,7 +147,10 @@ void main() {
 
     setUp(() async {
       firestore = FakeFirebaseFirestore();
-      auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'user-1'));
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'user-1'),
+      );
       controller = makeController(firestore, auth);
       await waitForInit(controller);
     });
@@ -171,6 +203,84 @@ void main() {
       c.dispose();
       await Future.delayed(Duration.zero);
       expect((await typingRef(firestore).get()).docs, isEmpty);
+    });
+  });
+
+  group('ChatController — @mentions', () {
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
+    late ChatController controller;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('takenNicknames')
+          .doc('Alice')
+          .set({});
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('takenNicknames')
+          .doc('Bob')
+          .set({});
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'user-1'),
+      );
+      controller = makeController(firestore, auth);
+      await waitForInit(controller);
+    });
+
+    tearDown(() => controller.dispose());
+
+    Future<List<String>> mentionsOf(String text) async {
+      await controller.send(text);
+      final snap = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .get();
+      return List<String>.from(snap.docs.last.data()['mentions'] ?? []);
+    }
+
+    test('extracts a valid mention at the start of a message', () async {
+      expect(await mentionsOf('@Alice hello'), ['Alice']);
+    });
+
+    test('extracts a valid mention at the end of a message', () async {
+      expect(await mentionsOf('hey @Bob'), ['Bob']);
+    });
+
+    test('ignores unknown nicknames', () async {
+      expect(await mentionsOf('hello @Nobody'), isEmpty);
+    });
+
+    test('no @-token produces empty mentions', () async {
+      expect(await mentionsOf('plain text'), isEmpty);
+    });
+
+    test('extracts multiple valid mentions', () async {
+      final mentions = await mentionsOf('@Alice and @Bob');
+      expect(mentions, containsAll(['Alice', 'Bob']));
+      expect(mentions.length, 2);
+    });
+
+    test('does not include own nickname in roomNicknames', () {
+      final own = controller.anonymousIdentity?.nickname;
+      expect(controller.roomNicknames, isNot(contains(own)));
+    });
+
+    test('refreshRoomNicknames picks up a newly added member', () async {
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('takenNicknames')
+          .doc('Charlie')
+          .set({});
+      await controller.refreshRoomNicknames();
+      expect(controller.roomNicknames, contains('Charlie'));
     });
   });
 

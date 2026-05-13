@@ -35,33 +35,34 @@ void main() {
     });
 
     test(
-        'user joins, sends message, and it appears under anonymous identity only',
-        () async {
-      final controller = ChatController(
-        groupId: 'g1',
-        firestore: firestore,
-        auth: auth,
-        identityService: IdentityService(firestore: firestore),
-      );
-      await _waitForInit(controller);
+      'user joins, sends message, and it appears under anonymous identity only',
+      () async {
+        final controller = ChatController(
+          groupId: 'g1',
+          firestore: firestore,
+          auth: auth,
+          identityService: IdentityService(firestore: firestore),
+        );
+        await _waitForInit(controller);
 
-      await controller.send('Hello community');
+        await controller.send('Hello community');
 
-      final snap = await firestore
-          .collection('groups')
-          .doc('g1')
-          .collection('messages')
-          .get();
+        final snap = await firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('messages')
+            .get();
 
-      expect(snap.docs.length, 1);
-      final data = snap.docs.first.data();
-      expect(data['text'], 'Hello community');
-      expect(data['senderId'], isNotNull);
-      expect(data['senderId'], isNot('user-1'));
-      expect(data['senderNickname'], isNotEmpty);
+        expect(snap.docs.length, 1);
+        final data = snap.docs.first.data();
+        expect(data['text'], 'Hello community');
+        expect(data['senderId'], isNotNull);
+        expect(data['senderId'], isNot('user-1'));
+        expect(data['senderNickname'], isNotEmpty);
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
     test('second session reuses the same anonymous identity', () async {
       final first = ChatController(
@@ -113,30 +114,31 @@ void main() {
       controller.dispose();
     });
 
-    test('sending a message creates a notification in the notifications collection',
-        () async {
-      final controller = ChatController(
-        groupId: 'g1',
-        firestore: firestore,
-        auth: auth,
-        identityService: IdentityService(firestore: firestore),
-      );
-      await _waitForInit(controller);
+    test(
+      'sending a message creates a notification in the notifications collection',
+      () async {
+        final controller = ChatController(
+          groupId: 'g1',
+          firestore: firestore,
+          auth: auth,
+          identityService: IdentityService(firestore: firestore),
+        );
+        await _waitForInit(controller);
 
-      await controller.send('Hello');
-      // notification is fire-and-forget; give it a microtask
-      await Future.delayed(Duration.zero);
+        await controller.send('Hello');
+        // notification is fire-and-forget; give it a microtask
+        await Future.delayed(Duration.zero);
 
-      final notifs =
-          await firestore.collection('notifications').get();
-      expect(notifs.docs.length, 1);
-      expect(notifs.docs.first.data()['groupId'], 'g1');
-      expect(notifs.docs.first.data()['groupName'], 'Anxiety');
-      expect(notifs.docs.first.data()['type'], 'message');
-      expect(notifs.docs.first.data()['isRead'], isFalse);
+        final notifs = await firestore.collection('notifications').get();
+        expect(notifs.docs.length, 1);
+        expect(notifs.docs.first.data()['groupId'], 'g1');
+        expect(notifs.docs.first.data()['groupName'], 'Anxiety');
+        expect(notifs.docs.first.data()['type'], 'message');
+        expect(notifs.docs.first.data()['isRead'], isFalse);
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
 
     test('typing indicator is written then cleared on send', () async {
       final controller = ChatController(
@@ -195,35 +197,37 @@ void main() {
       controller.dispose();
     });
 
-    test('external writes to Firestore are reflected in controller state',
-        () async {
-      final controller = ChatController(
-        groupId: 'g1',
-        firestore: firestore,
-        auth: auth,
-        identityService: IdentityService(firestore: firestore),
-      );
-      await _waitForInit(controller);
+    test(
+      'external writes to Firestore are reflected in controller state',
+      () async {
+        final controller = ChatController(
+          groupId: 'g1',
+          firestore: firestore,
+          auth: auth,
+          identityService: IdentityService(firestore: firestore),
+        );
+        await _waitForInit(controller);
 
-      await firestore
-          .collection('groups')
-          .doc('g1')
-          .collection('messages')
-          .add({
-        'text': 'From another user',
-        'senderId': 'other-anon',
-        'senderNickname': 'BraveOwl7',
-        'timestamp': Timestamp.now(),
-        'replyToText': null,
-      });
-      await Future.delayed(Duration.zero);
+        await firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('messages')
+            .add({
+              'text': 'From another user',
+              'senderId': 'other-anon',
+              'senderNickname': 'BraveOwl7',
+              'timestamp': Timestamp.now(),
+              'replyToText': null,
+            });
+        await Future.delayed(Duration.zero);
 
-      expect(
-        controller.messages.any((m) => m.text == 'From another user'),
-        isTrue,
-      );
+        expect(
+          controller.messages.any((m) => m.text == 'From another user'),
+          isTrue,
+        );
 
-      controller.dispose();
-    });
+        controller.dispose();
+      },
+    );
   });
 }

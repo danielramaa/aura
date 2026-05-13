@@ -33,9 +33,7 @@ class ChatController extends ChangeNotifier {
   bool _isTyping = false;
   late final Stream<List<String>> typingNamesStream;
 
-  // Tracks which messageIds have a pending reaction error, for B1/B2.
   final Set<String> _reactionErrors = {};
-  // Tracks which messageIds are currently retrying.
   final Set<String> _reactionRetrying = {};
 
   ChatController({
@@ -145,9 +143,9 @@ class ChatController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      await _loadRoomNicknames();
-
-      if (_isDisposed) return;
+      // Fire-and-forget: nicknames are refreshed lazily on each @ trigger,
+      // so there's no need to block the message stream on this read.
+      unawaited(_loadRoomNicknames());
 
       _messagesSubscription = _chatService.streamMessages(groupId).listen(
         (messages) {
@@ -169,6 +167,13 @@ class ChatController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  /// Reloads the nickname list from Firestore so recently joined members
+  /// appear in autocomplete suggestions.
+  Future<void> refreshRoomNicknames() async {
+    await _loadRoomNicknames();
+    if (!_isDisposed) notifyListeners();
   }
 
   Future<void> _loadRoomNicknames() async {
@@ -240,11 +245,9 @@ class ChatController extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------------------
-  // Reactions (A2, A3, B1, B2, B3)
+  // Reactions
   // ---------------------------------------------------------------------------
 
-  /// Toggles a reaction: if the user already reacted with [emoji], removes it.
-  /// If they reacted with a different emoji, replaces it. Otherwise adds it.
   Future<void> toggleReaction(String messageId, String emoji) async {
     final identity = _anonymousIdentity;
     if (identity == null) return;
@@ -257,7 +260,6 @@ class ChatController extends ChangeNotifier {
     final existingEmoji = message.userReaction(identity.anonymousId);
     final isRemoving = existingEmoji == emoji;
 
-    // Clear any previous error for this message before trying
     _reactionErrors.remove(messageId);
     notifyListeners();
 
@@ -281,13 +283,11 @@ class ChatController extends ChangeNotifier {
     if (_isDisposed) return;
 
     if (err != null) {
-      // B1: mark error on this message without changing displayed count
       _reactionErrors.add(messageId);
     }
     notifyListeners();
   }
 
-  /// B3: Retry the last failed reaction attempt.
   Future<void> retryReaction(String messageId, String emoji) async {
     if (!_reactionErrors.contains(messageId)) return;
 
@@ -320,16 +320,6 @@ class ChatController extends ChangeNotifier {
       });
 
       for (final nickname in mentions) {
-        final snap = await _firestore
-            .collection('groups')
-            .doc(groupId)
-            .collection('takenNicknames')
-            .where(FieldPath.documentId, isEqualTo: nickname)
-            .limit(1)
-            .get();
-
-        if (snap.docs.isEmpty) continue;
-
         final identitySnap = await _firestore
             .collection('anonymousIdentities')
             .where('nickname', isEqualTo: nickname)

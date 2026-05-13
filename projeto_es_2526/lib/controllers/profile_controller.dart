@@ -22,8 +22,8 @@ class ProfileController extends ChangeNotifier {
   List<Group> get joinedCommunities => List.unmodifiable(_joinedCommunities);
 
   ProfileController({FirebaseAuth? auth, FirebaseFirestore? firestore})
-      : _auth = auth ?? FirebaseAuth.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance {
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance {
     _fetchUserCommunities();
   }
 

@@ -16,24 +16,24 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   group('Profile screen flow', () {
-    testWidgets('shows "not logged in" message when user is null',
-        (tester) async {
+    testWidgets('shows "not logged in" message when user is null', (
+      tester,
+    ) async {
       final controller = ProfileController(
         auth: MockFirebaseAuth(signedIn: false),
         firestore: FakeFirebaseFirestore(),
       );
       addTearDown(controller.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        home: ProfileScreen(controller: controller),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(home: ProfileScreen(controller: controller)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('User not logged in.'), findsOneWidget);
     });
 
-    testWidgets('renders user email and empty community list',
-        (tester) async {
+    testWidgets('renders user email and empty community list', (tester) async {
       final controller = ProfileController(
         auth: MockFirebaseAuth(
           signedIn: true,
@@ -43,9 +43,9 @@ void main() {
       );
       addTearDown(controller.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        home: ProfileScreen(controller: controller),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(home: ProfileScreen(controller: controller)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('me@example.com'), findsOneWidget);
@@ -80,9 +80,9 @@ void main() {
       addTearDown(controller.dispose);
       await _waitForCommunities(controller);
 
-      await tester.pumpWidget(MaterialApp(
-        home: ProfileScreen(controller: controller),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(home: ProfileScreen(controller: controller)),
+      );
       await tester.pumpAndSettle();
 
       expect(find.text('Mindfulness'), findsOneWidget);
@@ -99,9 +99,9 @@ void main() {
       );
       addTearDown(controller.dispose);
 
-      await tester.pumpWidget(MaterialApp(
-        home: ProfileScreen(controller: controller),
-      ));
+      await tester.pumpWidget(
+        MaterialApp(home: ProfileScreen(controller: controller)),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Logout'));

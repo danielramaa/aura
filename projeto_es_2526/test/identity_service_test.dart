@@ -40,16 +40,18 @@ void main() {
       expect(first.nickname, second.nickname);
     });
 
-    test('different groups produce different identities for same user',
-        () async {
-      final firestore = FakeFirebaseFirestore();
-      final service = IdentityService(firestore: firestore);
+    test(
+      'different groups produce different identities for same user',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final service = IdentityService(firestore: firestore);
 
-      final a = await service.getOrCreateIdentity('user-1', 'group-a');
-      final b = await service.getOrCreateIdentity('user-1', 'group-b');
+        final a = await service.getOrCreateIdentity('user-1', 'group-a');
+        final b = await service.getOrCreateIdentity('user-1', 'group-b');
 
-      expect(a.anonymousId, isNot(b.anonymousId));
-    });
+        expect(a.anonymousId, isNot(b.anonymousId));
+      },
+    );
 
     test('writes a reverse lookup entry for moderation', () async {
       final firestore = FakeFirebaseFirestore();
@@ -81,15 +83,17 @@ void main() {
       expect(reservation.exists, isTrue);
     });
 
-    test('different users in the same group receive different nicknames',
-        () async {
-      final firestore = FakeFirebaseFirestore();
-      final service = IdentityService(firestore: firestore);
+    test(
+      'different users in the same group receive different nicknames',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final service = IdentityService(firestore: firestore);
 
-      final a = await service.getOrCreateIdentity('user-a', 'group-1');
-      final b = await service.getOrCreateIdentity('user-b', 'group-1');
+        final a = await service.getOrCreateIdentity('user-a', 'group-1');
+        final b = await service.getOrCreateIdentity('user-b', 'group-1');
 
-      expect(a.nickname, isNot(b.nickname));
-    });
+        expect(a.nickname, isNot(b.nickname));
+      },
+    );
   });
 }

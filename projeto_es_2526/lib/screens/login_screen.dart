@@ -104,9 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Theme(
       data: Theme.of(context).copyWith(
-        colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: _blue,
-            ),
+        colorScheme: Theme.of(context).colorScheme.copyWith(primary: _blue),
       ),
       child: Scaffold(
         body: SafeArea(
@@ -121,9 +119,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 48),
                     Text(
                       _isLogin ? 'Welcome back' : 'Create account',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 40),
@@ -146,28 +143,34 @@ class _LoginScreenState extends State<LoginScreen> {
                         border: OutlineInputBorder(),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Enter your password';
-                        if (!_isLogin && v.length < 8) return 'Password must be at least 8 characters';
+                        if (v == null || v.isEmpty) {
+                          return 'Enter your password';
+                        }
+                        if (!_isLogin && v.length < 8) {
+                          return 'Password must be at least 8 characters';
+                        }
                         return null;
                       },
                     ),
                     if (!_isLogin && _password.isNotEmpty) ...[
                       const SizedBox(height: 6),
-                      Builder(builder: (context) {
-                        final s = _passwordStrength(_password);
-                        return Row(
-                          children: [
-                            Text(
-                              'Strength: ${s.label}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: s.color,
-                                fontWeight: FontWeight.w500,
+                      Builder(
+                        builder: (context) {
+                          final s = _passwordStrength(_password);
+                          return Row(
+                            children: [
+                              Text(
+                                'Strength: ${s.label}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: s.color,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                          ],
-                        );
-                      }),
+                            ],
+                          );
+                        },
+                      ),
                     ],
                     if (_isLogin) ...[
                       Align(
@@ -176,10 +179,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: _loading
                               ? null
                               : () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => ForgotPasswordScreen(authService: _authService),
+                                  MaterialPageRoute(
+                                    builder: (_) => ForgotPasswordScreen(
+                                      authService: _authService,
                                     ),
                                   ),
+                                ),
                           child: const Text('Forgot password?'),
                         ),
                       ),
@@ -221,9 +226,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: _loading
                           ? null
                           : () => setState(() {
-                                _isLogin = !_isLogin;
-                                _errorMessage = null;
-                              }),
+                              _isLogin = !_isLogin;
+                              _errorMessage = null;
+                            }),
                       child: Text(
                         _isLogin
                             ? "Don't have an account? Register"

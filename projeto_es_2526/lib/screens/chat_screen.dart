@@ -8,6 +8,46 @@ import '../models/message.dart';
 // ---------------------------------------------------------------------------
 const List<String> _kPickerEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
+// ---------------------------------------------------------------------------
+// Mention span builder
+// ---------------------------------------------------------------------------
+
+/// Returns RichText spans for [text], highlighting only @tokens whose word
+/// part appears in [mentions] (the validated list stored on the message).
+List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
+  final spans = <TextSpan>[];
+  final regex = RegExp(r'@(\w+)');
+  int lastEnd = 0;
+
+  for (final match in regex.allMatches(text)) {
+    if (match.start > lastEnd) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd, match.start),
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+      ));
+    }
+    final word = match.group(1)!;
+    final isValid = mentions.contains(word);
+    spans.add(TextSpan(
+      text: match.group(0),
+      style: TextStyle(
+        fontSize: 14,
+        color: isValid ? const Color(0xFF185FA5) : Colors.black87,
+        fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+      ),
+    ));
+    lastEnd = match.end;
+  }
+
+  if (lastEnd < text.length) {
+    spans.add(TextSpan(
+      text: text.substring(lastEnd),
+      style: const TextStyle(fontSize: 14, color: Colors.black87),
+    ));
+  }
+  return spans;
+}
+
 class ChatScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
@@ -70,10 +110,19 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (match != null) {
       final query = match.group(1)!.toLowerCase();
-      final suggestions = _controller.roomNicknames
-          .where((n) => n.toLowerCase().startsWith(query))
-          .toList();
-      setState(() => _mentionSuggestions = suggestions);
+      // Refresh on new @-trigger so recently joined members are included.
+      if (query.isEmpty) {
+        _controller.refreshRoomNicknames().then((_) {
+          if (mounted) {
+            setState(() => _mentionSuggestions = _controller.roomNicknames);
+          }
+        });
+      }
+      setState(
+        () => _mentionSuggestions = _controller.roomNicknames
+            .where((n) => n.toLowerCase().startsWith(query))
+            .toList(),
+      );
     } else {
       setState(() => _mentionSuggestions = []);
     }
@@ -97,7 +146,6 @@ class _ChatScreenState extends State<ChatScreen> {
   // Reactions
   // ---------------------------------------------------------------------------
 
-  /// A1: Opens the emoji picker as a modal bottom sheet on long-press.
   void _showEmojiPicker(BuildContext context, Message message) {
     final identity = _controller.anonymousIdentity;
     if (identity == null) return;
@@ -428,7 +476,7 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Emoji Picker Sheet  (A1)
+// Emoji Picker Sheet
 // ---------------------------------------------------------------------------
 
 class _EmojiPickerSheet extends StatelessWidget {
@@ -481,7 +529,7 @@ class _EmojiPickerSheet extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Message Bubble  (A2, A3, B1, B2)
+// Message Bubble
 // ---------------------------------------------------------------------------
 
 class _MessageBubble extends StatelessWidget {
@@ -505,36 +553,9 @@ class _MessageBubble extends StatelessWidget {
     required this.onRetryReaction,
   });
 
-  Widget _buildMessageText(String text) {
-    final spans = <TextSpan>[];
-    final regex = RegExp(r'@(\w+)');
-    int lastEnd = 0;
-    for (final match in regex.allMatches(text)) {
-      if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
-        ));
-      }
-      spans.add(TextSpan(
-        text: match.group(0),
-        style: const TextStyle(
-            fontSize: 14,
-            color: Color(0xFF185FA5),
-            fontWeight: FontWeight.bold),
-      ));
-      lastEnd = match.end;
-    }
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd),
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
-      ));
-    }
-    return RichText(text: TextSpan(children: spans));
-  }
+  Widget _buildMessageText(String text, List<String> mentions) =>
+      RichText(text: TextSpan(children: buildMentionSpans(text, mentions)));
 
-  /// A2: Reaction bar shown below the message content.
   Widget _buildReactionBar(BuildContext context) {
     final summary = message.reactionSummary;
     if (summary.isEmpty && !hasReactionError) return const SizedBox.shrink();
@@ -545,7 +566,6 @@ class _MessageBubble extends StatelessWidget {
         spacing: 4,
         runSpacing: 4,
         children: [
-          // A2/A3: each emoji chip
           ...summary.map((entry) {
             final emoji = entry.key;
             final count = entry.value;
@@ -553,7 +573,6 @@ class _MessageBubble extends StatelessWidget {
 
             return GestureDetector(
               onTap: () {
-                // A3: tapping own reaction removes it; tapping another replaces
                 final ctrl = context
                     .findAncestorStateOfType<_ChatScreenState>()
                     ?._controller;
@@ -590,8 +609,6 @@ class _MessageBubble extends StatelessWidget {
               ),
             );
           }),
-
-          // B1/B2: discrete error chip with "Tentar novamente"
           if (hasReactionError)
             GestureDetector(
               onTap: isRetryingReaction
@@ -644,7 +661,7 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: onLongPress, // A1: opens emoji picker
+      onLongPress: onLongPress,
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -691,8 +708,7 @@ class _MessageBubble extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              _buildMessageText(message.text),
-              // A2: reaction bar
+              _buildMessageText(message.text, message.mentions),
               _buildReactionBar(context),
             ],
           ),
