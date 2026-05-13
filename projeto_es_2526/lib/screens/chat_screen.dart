@@ -63,8 +63,9 @@ class _ChatScreenState extends State<ChatScreen> {
       // Refresh on new @-trigger so recently joined members are included.
       if (query.isEmpty) {
         _controller.refreshRoomNicknames().then((_) {
-          if (mounted)
+          if (mounted) {
             setState(() => _mentionSuggestions = _controller.roomNicknames);
+          }
         });
       }
       setState(
