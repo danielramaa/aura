@@ -142,20 +142,23 @@ void main() {
       expect(messages, isEmpty);
     });
 
-    test('mentions round-trip through sendMessage and streamMessages', () async {
-      final firestore = FakeFirebaseFirestore();
-      final service = ChatService(firestore: firestore);
-      final identity = makeIdentity();
+    test(
+      'mentions round-trip through sendMessage and streamMessages',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final service = ChatService(firestore: firestore);
+        final identity = makeIdentity();
 
-      await service.sendMessage(
-        groupId: 'g1',
-        text: '@Alice and @Bob',
-        identity: identity,
-        mentions: ['Alice', 'Bob'],
-      );
+        await service.sendMessage(
+          groupId: 'g1',
+          text: '@Alice and @Bob',
+          identity: identity,
+          mentions: ['Alice', 'Bob'],
+        );
 
-      final messages = await service.streamMessages('g1').first;
-      expect(messages.first.mentions, containsAll(['Alice', 'Bob']));
-    });
+        final messages = await service.streamMessages('g1').first;
+        expect(messages.first.mentions, containsAll(['Alice', 'Bob']));
+      },
+    );
   });
 }
