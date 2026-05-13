@@ -131,9 +131,9 @@ class ChatController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      await _loadRoomNicknames();
-
-      if (_isDisposed) return;
+      // Fire-and-forget: nicknames are refreshed lazily on each @ trigger,
+      // so there's no need to block the message stream on this read.
+      unawaited(_loadRoomNicknames());
 
       _messagesSubscription = _chatService
           .streamMessages(groupId)
