@@ -144,9 +144,9 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _clearDeviceToken(String uid) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+    await FirebaseFirestore.instance.collection('users').doc(uid).set({
       'fcmToken': FieldValue.delete(),
-    });
+    }, SetOptions(merge: true));
   }
 
   @override
