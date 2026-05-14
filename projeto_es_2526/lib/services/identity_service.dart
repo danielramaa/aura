@@ -70,9 +70,13 @@ class IdentityService {
     } else {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
-      await _firestore.collection('groups').doc(groupId).update({
-        'memberCount': FieldValue.increment(1),
-      });
+      // Identity is now committed — increment memberCount.
+      // Swallow errors for groups that have no Firestore document (default/seeded groups).
+      try {
+        await _firestore.collection('groups').doc(groupId).update({
+          'memberCount': FieldValue.increment(1),
+        });
+      } catch (_) {}
       return newIdentity;
     }
   }
@@ -92,11 +96,16 @@ class IdentityService {
     final nickname = data['nickname'] as String?;
     final avatarIndex = data['avatarIndex'] as int?;
 
-    final batch = _firestore.batch();
+    // Decrement memberCount BEFORE the batch so the security rule's
+    // exists(identity) check still passes (identity is deleted in the batch).
+    // Swallow errors for groups that have no Firestore document yet.
+    try {
+      await _firestore.collection('groups').doc(groupId).update({
+        'memberCount': FieldValue.increment(-1),
+      });
+    } catch (_) {}
 
-    batch.update(_firestore.collection('groups').doc(groupId), {
-      'memberCount': FieldValue.increment(-1),
-    });
+    final batch = _firestore.batch();
 
     batch.delete(userIdentityRef);
 

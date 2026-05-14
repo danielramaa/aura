@@ -28,7 +28,7 @@ class Group {
       description: data['description'] as String,
       memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
       color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
-      category: data['category'] as String? ?? 'Geral', 
+      category: data['category'] as String? ?? 'General',
     );
   }
 }
