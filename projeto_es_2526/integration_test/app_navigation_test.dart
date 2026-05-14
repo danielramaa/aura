@@ -23,6 +23,7 @@ void main() {
     final mainController = MainController();
     final homeController = HomeController(
       service: GroupService(firestore: firestore),
+      userId: 'test-user',
     );
     final profileController = ProfileController(
       auth: auth,

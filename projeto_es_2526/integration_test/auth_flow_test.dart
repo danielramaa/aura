@@ -13,7 +13,10 @@ import 'package:projeto_es_2526/services/group_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 HomeController _homeController(FakeFirebaseFirestore firestore) =>
-    HomeController(service: GroupService(firestore: firestore));
+    HomeController(
+      service: GroupService(firestore: firestore),
+      userId: 'test-user',
+    );
 
 Widget _buildGate({
   required MockFirebaseAuth auth,

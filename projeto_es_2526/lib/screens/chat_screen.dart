@@ -123,36 +123,66 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _replyingTo = null);
   }
 
-  Future<void> _processLeaveGroup() async {
+  Future<bool> _processLeaveGroup() async {
     final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
+    if (userId == null) return false;
 
     try {
-      final identitiesRef = FirebaseFirestore.instance.collection('anonymousIdentities');
-      final querySnapshot = await identitiesRef
-          .where('userId', isEqualTo: userId)
-          .where('communityId', isEqualTo: widget.groupId) 
-          .get();
+      final userIdentityRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('anonymousIdentities')
+          .doc(widget.groupId);
 
-      for (var doc in querySnapshot.docs) {
-        await doc.reference.delete();
+      final userIdentityDoc = await userIdentityRef.get();
+      if (!userIdentityDoc.exists) return true;
+
+      final data = userIdentityDoc.data()!;
+      final anonymousId = data['anonymousId'] as String?;
+      final nickname = data['nickname'] as String?;
+
+      await userIdentityRef.delete();
+
+      if (anonymousId != null) {
+        await FirebaseFirestore.instance
+            .collection('anonymousIdentities')
+            .doc(anonymousId)
+            .delete();
       }
 
-      await FirebaseFirestore.instance.collection('groups').doc(widget.groupId).update({
-        'memberCount': FieldValue.increment(-1),
-      });
+      if (nickname != null) {
+        await FirebaseFirestore.instance
+            .collection('groups')
+            .doc(widget.groupId)
+            .collection('takenNicknames')
+            .doc(nickname)
+            .delete();
+      }
+
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .update({'memberCount': FieldValue.increment(-1)});
+
+      return true;
     } catch (e) {
       debugPrint('Error leaving group: $e');
+      return false;
     }
   }
 
   void _showLeaveConfirmation(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Leave Group', style: TextStyle(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Leave Group',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: const Text(
             'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
             style: TextStyle(color: Colors.black87),
@@ -160,25 +190,42 @@ class _ChatScreenState extends State<ChatScreen> {
           actions: [
             TextButton(
               child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red[50],
                 elevation: 0,
               ),
-              child: const Text('Leave', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Leave',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               onPressed: () async {
-                Navigator.of(context).pop(); 
-                
+                Navigator.of(dialogContext).pop();
+
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Leaving group...'), duration: Duration(seconds: 1)),
+                  const SnackBar(
+                    content: Text('Leaving group...'),
+                    duration: Duration(seconds: 1),
+                  ),
                 );
 
-                await _processLeaveGroup();
-                
-                if (context.mounted) {
-                  Navigator.of(context).pop(); 
+                final success = await _processLeaveGroup();
+
+                if (!context.mounted) return;
+                if (success) {
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to leave group. Please try again.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
             ),
@@ -259,7 +306,10 @@ class _ChatScreenState extends State<ChatScreen> {
                         Navigator.pop(infoContext);
                         _showLeaveConfirmation(context);
                       },
-                      child: const Text('Leave Group', style: TextStyle(color: Colors.red)),
+                      child: const Text(
+                        'Leave Group',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(infoContext),

@@ -98,7 +98,9 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
         if (snapshot.hasData) {
-          _homeController ??= widget.homeController ?? HomeController();
+          _homeController ??=
+              widget.homeController ??
+              HomeController(userId: snapshot.data!.uid);
           return MainScreen(
             mainController: _mainController,
             homeController: _homeController!,

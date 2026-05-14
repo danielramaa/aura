@@ -23,8 +23,10 @@ Widget buildApp(
   );
 }
 
-HomeController makeHomeController() =>
-    HomeController(service: GroupService(firestore: FakeFirebaseFirestore()));
+HomeController makeHomeController() => HomeController(
+  service: GroupService(firestore: FakeFirebaseFirestore()),
+  userId: 'test-user',
+);
 
 ProfileController makeProfileController() => ProfileController(
   auth: MockFirebaseAuth(),

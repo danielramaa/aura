@@ -9,8 +9,10 @@ import 'package:projeto_es_2526/screens/login_screen.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 
-HomeController makeHomeController() =>
-    HomeController(service: GroupService(firestore: FakeFirebaseFirestore()));
+HomeController makeHomeController() => HomeController(
+  service: GroupService(firestore: FakeFirebaseFirestore()),
+  userId: 'test-user',
+);
 
 void main() {
   group('AuthGate', () {
