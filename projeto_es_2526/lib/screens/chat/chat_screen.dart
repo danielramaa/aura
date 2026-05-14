@@ -245,7 +245,7 @@ class _ChatScreenState extends State<ChatScreen> {
               _buildTypingIndicator(),
               _buildReplyPreview(),
               _buildMentionSuggestions(),
-              _buildInputRow(),
+              SafeArea(top: false, child: _buildInputRow()),
             ],
           );
         },
