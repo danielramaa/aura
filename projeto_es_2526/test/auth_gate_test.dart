@@ -9,9 +9,9 @@ import 'package:projeto_es_2526/screens/login_screen.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 
-HomeController makeHomeController() => HomeController(
+HomeController makeHomeController(String userId) => HomeController(
   service: GroupService(firestore: FakeFirebaseFirestore()),
-  userId: 'test-user',
+  userId: userId,
 );
 
 void main() {
@@ -20,7 +20,8 @@ void main() {
       final auth = MockFirebaseAuth(signedIn: false);
       final mainController = MainController();
       addTearDown(mainController.dispose);
-      final homeController = makeHomeController();
+      // userId is irrelevant here — user is not authenticated
+      final homeController = makeHomeController('test-user');
       addTearDown(homeController.dispose);
 
       await tester.pumpWidget(
@@ -38,8 +39,9 @@ void main() {
     });
 
     testWidgets('shows MainScreen when authenticated', (tester) async {
-      final auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser());
-      final homeController = makeHomeController();
+      final mockUser = MockUser();
+      final auth = MockFirebaseAuth(signedIn: true, mockUser: mockUser);
+      final homeController = makeHomeController(mockUser.uid);
       addTearDown(homeController.dispose);
       final mainController = MainController();
       addTearDown(mainController.dispose);
