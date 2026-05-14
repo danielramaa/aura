@@ -14,6 +14,9 @@ class _FakeGroupService implements GroupService {
   Stream<List<Group>> streamGroups() => controller.stream;
 
   @override
+  Stream<List<Group>> streamJoinedGroups(String userId) => controller.stream;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -26,7 +29,7 @@ void main() {
   group('HomeController', () {
     test('starts loading with an empty group list', () {
       final service = GroupService(firestore: FakeFirebaseFirestore());
-      final controller = HomeController(service: service);
+      final controller = HomeController(service: service, userId: 'test-user');
       addTearDown(controller.dispose);
 
       expect(controller.isLoading, isTrue);
@@ -42,9 +45,20 @@ void main() {
         'memberCount': 0,
         'color': 0xFF000000,
       });
+      await firestore
+          .collection('users')
+          .doc('test-user')
+          .collection('anonymousIdentities')
+          .doc('g1')
+          .set({
+            'anonymousId': 'anon1',
+            'nickname': 'TestUser',
+            'avatarUrl': '',
+          });
 
       final controller = HomeController(
         service: GroupService(firestore: firestore),
+        userId: 'test-user',
       );
       addTearDown(controller.dispose);
       await waitForStream();
@@ -70,8 +84,21 @@ void main() {
             'color': 0xFF000000,
           });
         }
+        for (final id in ['g1', 'g2', 'g3']) {
+          await firestore
+              .collection('users')
+              .doc('test-user')
+              .collection('anonymousIdentities')
+              .doc(id)
+              .set({
+                'anonymousId': 'anon-$id',
+                'nickname': 'User',
+                'avatarUrl': '',
+              });
+        }
         final controller = HomeController(
           service: GroupService(firestore: firestore),
+          userId: 'test-user',
         );
         addTearDown(controller.dispose);
         await waitForStream();
@@ -92,6 +119,7 @@ void main() {
     test('setSearchQuery notifies listeners', () async {
       final controller = HomeController(
         service: GroupService(firestore: FakeFirebaseFirestore()),
+        userId: 'test-user',
       );
       addTearDown(controller.dispose);
 
@@ -104,7 +132,7 @@ void main() {
 
     test('sets error when the stream fails', () async {
       final fake = _FakeGroupService();
-      final controller = HomeController(service: fake);
+      final controller = HomeController(service: fake, userId: 'test-user');
       addTearDown(() {
         controller.dispose();
         fake.controller.close();
@@ -126,8 +154,15 @@ void main() {
         'memberCount': 0,
         'color': 0xFF000000,
       });
+      await firestore
+          .collection('users')
+          .doc('test-user')
+          .collection('anonymousIdentities')
+          .doc('g1')
+          .set({'anonymousId': 'anon1', 'nickname': 'User', 'avatarUrl': ''});
       final controller = HomeController(
         service: GroupService(firestore: firestore),
+        userId: 'test-user',
       );
       addTearDown(controller.dispose);
       await waitForStream();

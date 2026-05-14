@@ -217,6 +217,12 @@ class ChatController extends ChangeNotifier {
         .toList();
   }
 
+  Future<void> leaveGroup() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('Not authenticated');
+    await _identityService.leaveGroup(userId, groupId);
+  }
+
   Future<void> send(String text, {String? replyToText}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending || _anonymousIdentity == null) return;
@@ -295,6 +301,17 @@ class ChatController extends ChangeNotifier {
       _reactionErrors[messageId] = emoji;
     }
     notifyListeners();
+  }
+
+  Future<void> deleteMessage(String messageId) async {
+    final err = await _chatService.deleteMessage(
+      groupId: groupId,
+      messageId: messageId,
+    );
+    if (err != null && !_isDisposed) {
+      _error = err;
+      notifyListeners();
+    }
   }
 
   Future<void> retryReaction(String messageId) async {

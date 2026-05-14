@@ -27,6 +27,11 @@ abstract class ChatServiceInterface {
     required String emoji,
     required String anonymousId,
   });
+
+  Future<String?> deleteMessage({
+    required String groupId,
+    required String messageId,
+  });
 }
 
 class ChatService implements ChatServiceInterface {
@@ -66,6 +71,7 @@ class ChatService implements ChatServiceInterface {
         'timestamp': FieldValue.serverTimestamp(),
         'senderId': identity.anonymousId,
         'senderNickname': identity.nickname,
+        'senderAvatarIndex': identity.avatarIndex,
         'replyToText': replyToText,
         'mentions': mentions,
         'reactions': {},
@@ -117,6 +123,19 @@ class ChatService implements ChatServiceInterface {
       return null;
     } catch (_) {
       return 'Não foi possível adicionar a reação. Tente novamente.';
+    }
+  }
+
+  @override
+  Future<String?> deleteMessage({
+    required String groupId,
+    required String messageId,
+  }) async {
+    try {
+      await _messagesRef(groupId).doc(messageId).delete();
+      return null;
+    } catch (_) {
+      return 'Failed to delete message. Please try again.';
     }
   }
 

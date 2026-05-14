@@ -1,7 +1,13 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
+import '../models/user_role.dart';
+import '../services/user_service.dart';
+import '../utils/avatar_utils.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 
@@ -30,6 +36,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Message? _replyingTo;
   List<String> _mentionSuggestions = [];
+  UserRole _currentUserRole = UserRole.user;
+  StreamSubscription<UserRole>? _roleSub;
 
   @override
   void initState() {
@@ -37,10 +45,18 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller = ChatController(groupId: widget.groupId);
     _controller.addListener(_handleControllerChanges);
     _messageController.addListener(_onTextChanged);
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _roleSub = UserService().streamRole(uid).listen((role) {
+        if (mounted) setState(() => _currentUserRole = role);
+      });
+    }
   }
 
   @override
   void dispose() {
+    _roleSub?.cancel();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
     _messageController.removeListener(_onTextChanged);
@@ -52,10 +68,6 @@ class _ChatScreenState extends State<ChatScreen> {
   void _handleControllerChanges() {
     if (mounted) setState(() {});
   }
-
-  // ---------------------------------------------------------------------------
-  // Mentions
-  // ---------------------------------------------------------------------------
 
   void _onTextChanged() {
     final text = _messageController.text;
@@ -100,9 +112,37 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
-  // ---------------------------------------------------------------------------
-  // Reactions
-  // ---------------------------------------------------------------------------
+  void _showMessageOptions(BuildContext context, Message message) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.emoji_emotions_outlined),
+              title: const Text('React'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEmojiPicker(context, message);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text(
+                'Delete message',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _controller.deleteMessage(message.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showEmojiPicker(BuildContext context, Message message) {
     final identity = _controller.anonymousIdentity;
@@ -121,10 +161,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Reply
-  // ---------------------------------------------------------------------------
-
   void _startReply(Message message) {
     setState(() => _replyingTo = message);
   }
@@ -133,9 +169,89 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _replyingTo = null);
   }
 
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
+  Future<bool> _processLeaveGroup() async {
+    try {
+      await _controller.leaveGroup();
+      return true;
+    } catch (e) {
+      debugPrint('Error leaving group: $e');
+      return false;
+    }
+  }
+
+  void _showLeaveConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Leave Group',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            style: TextStyle(color: Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                elevation: 0,
+              ),
+              child: const Text(
+                'Leave',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Leaving group...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+
+                final success = await _processLeaveGroup();
+
+                if (!context.mounted) return;
+                if (success) {
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Failed to leave group.'),
+                      backgroundColor: Colors.red,
+                      action: SnackBarAction(
+                        label: 'Try Again',
+                        textColor: Colors.white,
+                        onPressed: () async {
+                          final retry = await _processLeaveGroup();
+                          if (retry && context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
@@ -163,10 +279,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ).showSnackBar(SnackBar(content: Text(_controller.error!)));
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -203,12 +315,22 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
+                builder: (infoContext) => AlertDialog(
                   title: Text(widget.groupName),
                   content: Text(widget.groupDescription),
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        Navigator.pop(infoContext);
+                        _showLeaveConfirmation(context);
+                      },
+                      child: const Text(
+                        'Leave Group',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(infoContext),
                       child: const Text('Close'),
                     ),
                   ],
@@ -279,7 +401,9 @@ class _ChatScreenState extends State<ChatScreen> {
           currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),
-          onLongPress: () => _showEmojiPicker(context, message),
+          onLongPress: () => _currentUserRole == UserRole.admin
+              ? _showMessageOptions(context, message)
+              : _showEmojiPicker(context, message),
           onReply: () => _startReply(message),
           onToggleReaction: (emoji) =>
               _controller.toggleReaction(message.id, emoji),
@@ -377,15 +501,7 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFFDCE9F7),
-                    child: Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF185FA5),
-                    ),
-                  ),
+                  AvatarUtils.buildAvatar(nickname, 28),
                   const SizedBox(width: 10),
                   Text(
                     '@$nickname',
