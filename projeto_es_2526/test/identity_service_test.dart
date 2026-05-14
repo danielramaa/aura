@@ -20,7 +20,7 @@ void main() {
       final identity = await service.getOrCreateIdentity('user-1', 'group-1');
       expect(identity.anonymousId, isNotEmpty);
       expect(identity.nickname, isNotEmpty);
-      expect(identity.avatarUrl, startsWith('assets/avatars/avatar_'));
+      expect(identity.avatarIndex, inInclusiveRange(0, 19));
     });
 
     test('persists the identity under the user document', () async {
@@ -38,7 +38,7 @@ void main() {
           .get();
       expect(doc.exists, isTrue);
       expect(doc.data()!['nickname'], isNotEmpty);
-      expect(doc.data()!['avatarUrl'], startsWith('assets/avatars/avatar_'));
+      expect(doc.data()!['avatarIndex'], inInclusiveRange(0, 19));
     });
 
     test('reuses the same identity on repeated calls', () async {
@@ -121,16 +121,17 @@ void main() {
         await seedGroup(firestore, 'group-1');
         final service = IdentityService(firestore: firestore);
 
-        final identities = await Future.wait([
-          service.getOrCreateIdentity('user-a', 'group-1'),
-          service.getOrCreateIdentity('user-b', 'group-1'),
-          service.getOrCreateIdentity('user-c', 'group-1'),
-          service.getOrCreateIdentity('user-d', 'group-1'),
-        ]);
+        // Users join sequentially, as they would in production.
+        final identities = [
+          await service.getOrCreateIdentity('user-a', 'group-1'),
+          await service.getOrCreateIdentity('user-b', 'group-1'),
+          await service.getOrCreateIdentity('user-c', 'group-1'),
+          await service.getOrCreateIdentity('user-d', 'group-1'),
+        ];
 
-        final avatarUrls = identities.map((i) => i.avatarUrl).toSet();
+        final avatarIndices = identities.map((i) => i.avatarIndex).toSet();
         expect(
-          avatarUrls.length,
+          avatarIndices.length,
           identities.length,
           reason: 'each user should have a distinct avatar within the group',
         );
@@ -143,20 +144,17 @@ void main() {
       final service = IdentityService(firestore: firestore);
 
       final identity = await service.getOrCreateIdentity('user-1', 'group-1');
-      final avatarUrl = identity.avatarUrl;
+      final avatarIndex = identity.avatarIndex;
 
       await service.leaveGroup('user-1', 'group-1');
 
-      final match = RegExp(r'avatar_(\d+)\.png\$').firstMatch(avatarUrl);
-      if (match != null) {
-        final indexDoc = await firestore
-            .collection('groups')
-            .doc('group-1')
-            .collection('takenAvatarIndices')
-            .doc(match.group(1)!)
-            .get();
-        expect(indexDoc.exists, isFalse);
-      }
+      final indexDoc = await firestore
+          .collection('groups')
+          .doc('group-1')
+          .collection('takenAvatarIndices')
+          .doc('$avatarIndex')
+          .get();
+      expect(indexDoc.exists, isFalse);
     });
   });
 }

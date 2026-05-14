@@ -66,7 +66,7 @@ class ChatService implements ChatServiceInterface {
         'timestamp': FieldValue.serverTimestamp(),
         'senderId': identity.anonymousId,
         'senderNickname': identity.nickname,
-        'senderAvatarUrl': identity.avatarUrl,
+        'senderAvatarIndex': identity.avatarIndex,
         'replyToText': replyToText,
         'mentions': mentions,
         'reactions': {},

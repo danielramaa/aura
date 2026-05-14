@@ -1,23 +1,27 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/avatar_utils.dart';
+
 class Message {
   final String id;
   final String text;
   final String anonymousId;
   final String senderNickname;
-  final String senderAvatarUrl;
+  final int senderAvatarIndex;
   final Timestamp timestamp;
   final String? replyToText;
   final List<String> mentions;
   // reactions: { emoji: [anonymousId, ...] }
   final Map<String, List<String>> reactions;
 
+  String get senderAvatarAssetPath => AvatarUtils.assetForIndex(senderAvatarIndex);
+
   Message({
     required this.id,
     required this.text,
     required this.anonymousId,
     required this.senderNickname,
-    required this.senderAvatarUrl,
+    required this.senderAvatarIndex,
     required this.timestamp,
     this.replyToText,
     this.mentions = const [],
@@ -35,12 +39,17 @@ class Message {
       });
     }
 
+    // Fall back to hash-based index for messages sent before this field existed.
+    final nickname = data['senderNickname'] as String? ?? '';
+    final fallbackIndex =
+        nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
+
     return Message(
       id: doc.id,
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
-      senderNickname: data['senderNickname'] ?? 'Anonymous',
-      senderAvatarUrl: data['senderAvatarUrl'] as String? ?? '',
+      senderNickname: nickname.isEmpty ? 'Anonymous' : nickname,
+      senderAvatarIndex: data['senderAvatarIndex'] as int? ?? fallbackIndex,
       timestamp:
           data['timestamp'] as Timestamp? ??
           data['createdAt'] as Timestamp? ??

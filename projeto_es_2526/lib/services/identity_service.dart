@@ -90,7 +90,7 @@ class IdentityService {
     final data = userIdentityDoc.data()!;
     final anonymousId = data['anonymousId'] as String?;
     final nickname = data['nickname'] as String?;
-    final avatarUrl = data['avatarUrl'] as String?;
+    final avatarIndex = data['avatarIndex'] as int?;
 
     final batch = _firestore.batch();
 
@@ -118,17 +118,14 @@ class IdentityService {
       );
     }
 
-    if (avatarUrl != null) {
-      final match = RegExp(r'avatar_(\d+)\.png$').firstMatch(avatarUrl);
-      if (match != null) {
-        batch.delete(
-          _firestore
-              .collection('groups')
-              .doc(groupId)
-              .collection('takenAvatarIndices')
-              .doc(match.group(1)!),
-        );
-      }
+    if (avatarIndex != null) {
+      batch.delete(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('takenAvatarIndices')
+            .doc('$avatarIndex'),
+      );
     }
 
     await batch.commit();
@@ -139,7 +136,7 @@ class IdentityService {
     String groupId,
   ) async {
     final nickname = await _generateUniqueNickname(groupId);
-    final avatarUrl = await _reserveAvatarAsset(groupId, nickname);
+    final avatarIndex = await _reserveAvatarIndex(groupId, nickname);
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
     // Reverse lookup for moderation: maps anonymousId → real userId
@@ -155,11 +152,13 @@ class IdentityService {
     return AnonymousIdentity(
       anonymousId: anonymousId,
       nickname: nickname,
-      avatarUrl: avatarUrl,
+      avatarIndex: avatarIndex,
     );
   }
 
-  Future<String> _reserveAvatarAsset(String groupId, String nickname) async {
+  /// Reserves a unique avatar slot in the group and returns its index (0–19).
+  /// Falls back to a hash-derived index when all slots are taken (>20 members).
+  Future<int> _reserveAvatarIndex(String groupId, String nickname) async {
     final preferred =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
     final takenRef = _firestore
@@ -177,14 +176,14 @@ class IdentityService {
             'takenAt': FieldValue.serverTimestamp(),
           });
         });
-        return AvatarUtils.assetForIndex(index);
+        return index;
       } on Exception catch (e) {
         if (e.toString().contains('taken')) continue;
         rethrow;
       }
     }
     // All 20 slots taken (>20 members): collision unavoidable, fall back to hash.
-    return AvatarUtils.assetForNickname(nickname);
+    return preferred;
   }
 
   Future<String> _generateUniqueNickname(String groupId) async {

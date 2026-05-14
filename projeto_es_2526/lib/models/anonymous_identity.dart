@@ -1,19 +1,23 @@
+import '../utils/avatar_utils.dart';
+
 class AnonymousIdentity {
   final String anonymousId;
   final String nickname;
-  final String avatarUrl;
+  final int avatarIndex;
+
+  String get avatarAssetPath => AvatarUtils.assetForIndex(avatarIndex);
 
   AnonymousIdentity({
     required this.anonymousId,
     required this.nickname,
-    required this.avatarUrl,
+    required this.avatarIndex,
   });
 
   factory AnonymousIdentity.fromMap(Map<String, dynamic> map) {
     return AnonymousIdentity(
       anonymousId: map['anonymousId'] as String? ?? '',
       nickname: map['nickname'] as String? ?? 'Anonymous',
-      avatarUrl: map['avatarUrl'] as String? ?? '',
+      avatarIndex: map['avatarIndex'] as int? ?? 0,
     );
   }
 
@@ -21,7 +25,7 @@ class AnonymousIdentity {
     return {
       'anonymousId': anonymousId,
       'nickname': nickname,
-      'avatarUrl': avatarUrl,
+      'avatarIndex': avatarIndex,
     };
   }
 }

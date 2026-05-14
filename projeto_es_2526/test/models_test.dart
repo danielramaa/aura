@@ -255,7 +255,7 @@ void main() {
       text: 'hi',
       anonymousId: 'anon-1',
       senderNickname: 'Wolf',
-      senderAvatarUrl: '',
+      senderAvatarIndex: 0,
       timestamp: Timestamp.now(),
       reactions: reactions,
     );
@@ -288,7 +288,7 @@ void main() {
       text: 'hi',
       anonymousId: 'anon-1',
       senderNickname: 'Wolf',
-      senderAvatarUrl: '',
+      senderAvatarIndex: 0,
       timestamp: Timestamp.now(),
       reactions: reactions,
     );
