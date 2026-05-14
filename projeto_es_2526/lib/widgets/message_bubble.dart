@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../models/message.dart';
+import '../models/message.dart';
 
 /// Returns RichText spans for [text], highlighting only @tokens whose word
 /// part appears in [mentions] (the validated list stored on the message).
@@ -11,29 +11,35 @@ List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
 
   for (final match in regex.allMatches(text)) {
     if (match.start > lastEnd) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd, match.start),
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
-      ));
+      spans.add(
+        TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+      );
     }
     final word = match.group(1)!;
     final isValid = mentions.contains(word);
-    spans.add(TextSpan(
-      text: match.group(0),
-      style: TextStyle(
-        fontSize: 14,
-        color: isValid ? const Color(0xFF185FA5) : Colors.black87,
-        fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+    spans.add(
+      TextSpan(
+        text: match.group(0),
+        style: TextStyle(
+          fontSize: 14,
+          color: isValid ? const Color(0xFF185FA5) : Colors.black87,
+          fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
-    ));
+    );
     lastEnd = match.end;
   }
 
   if (lastEnd < text.length) {
-    spans.add(TextSpan(
-      text: text.substring(lastEnd),
-      style: const TextStyle(fontSize: 14, color: Colors.black87),
-    ));
+    spans.add(
+      TextSpan(
+        text: text.substring(lastEnd),
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+      ),
+    );
   }
   return spans;
 }
@@ -84,8 +90,7 @@ class MessageBubble extends StatelessWidget {
               onTap: () => onToggleReaction(emoji),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isMine ? const Color(0xFFDCE9F7) : Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
@@ -101,8 +106,7 @@ class MessageBubble extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 13,
                     color: isMine ? const Color(0xFF185FA5) : Colors.black87,
-                    fontWeight:
-                        isMine ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isMine ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ),
@@ -112,8 +116,7 @@ class MessageBubble extends StatelessWidget {
             GestureDetector(
               onTap: isRetryingReaction ? null : onRetryReaction,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.red[50],
                   borderRadius: BorderRadius.circular(12),
@@ -195,8 +198,7 @@ class MessageBubble extends StatelessWidget {
                   ),
                   child: Text(
                     message.replyToText!,
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.black87),
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

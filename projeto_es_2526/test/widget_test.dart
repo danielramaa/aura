@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:projeto_es_2526/controllers/home_controller.dart';
 import 'package:projeto_es_2526/controllers/main_controller.dart';
 import 'package:projeto_es_2526/controllers/profile_controller.dart';
-import 'package:projeto_es_2526/screens/chat/message_bubble.dart';
+import 'package:projeto_es_2526/widgets/message_bubble.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 import 'package:projeto_es_2526/widgets/group_card.dart';

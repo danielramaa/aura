@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../controllers/chat_controller.dart';
-import '../../models/message.dart';
-import 'emoji_picker_sheet.dart';
-import 'message_bubble.dart';
+import '../controllers/chat_controller.dart';
+import '../models/message.dart';
+import '../widgets/emoji_picker_sheet.dart';
+import '../widgets/message_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -276,8 +276,7 @@ class _ChatScreenState extends State<ChatScreen> {
         return MessageBubble(
           message: message,
           isOwn: isOwn,
-          currentAnonymousId:
-              _controller.anonymousIdentity?.anonymousId ?? '',
+          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),
           onLongPress: () => _showEmojiPicker(context, message),
@@ -326,8 +325,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F0FB),
                 borderRadius: BorderRadius.circular(8),
@@ -337,8 +335,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               child: Text(
                 _replyingTo!.text,
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.black87),
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -377,8 +374,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return InkWell(
             onTap: () => _applyMention(nickname),
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
                   const CircleAvatar(
@@ -427,8 +423,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
               ),
               onSubmitted: (_) => _sendMessage(),
             ),
