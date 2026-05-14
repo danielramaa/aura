@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
@@ -53,10 +55,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) setState(() {});
   }
 
-  // ---------------------------------------------------------------------------
-  // Mentions
-  // ---------------------------------------------------------------------------
-
   void _onTextChanged() {
     final text = _messageController.text;
     final cursor = _messageController.selection.baseOffset;
@@ -100,10 +98,6 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
-  // ---------------------------------------------------------------------------
-  // Reactions
-  // ---------------------------------------------------------------------------
-
   void _showEmojiPicker(BuildContext context, Message message) {
     final identity = _controller.anonymousIdentity;
     if (identity == null) return;
@@ -121,10 +115,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Reply
-  // ---------------------------------------------------------------------------
-
   void _startReply(Message message) {
     setState(() => _replyingTo = message);
   }
@@ -133,9 +123,70 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _replyingTo = null);
   }
 
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
+  Future<void> _processLeaveGroup() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    try {
+      final identitiesRef = FirebaseFirestore.instance.collection('anonymousIdentities');
+      final querySnapshot = await identitiesRef
+          .where('userId', isEqualTo: userId)
+          .where('communityId', isEqualTo: widget.groupId) 
+          .get();
+
+      for (var doc in querySnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      await FirebaseFirestore.instance.collection('groups').doc(widget.groupId).update({
+        'memberCount': FieldValue.increment(-1),
+      });
+    } catch (e) {
+      debugPrint('Error leaving group: $e');
+    }
+  }
+
+  void _showLeaveConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Leave Group', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            style: TextStyle(color: Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                elevation: 0,
+              ),
+              child: const Text('Leave', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                Navigator.of(context).pop(); 
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Leaving group...'), duration: Duration(seconds: 1)),
+                );
+
+                await _processLeaveGroup();
+                
+                if (context.mounted) {
+                  Navigator.of(context).pop(); 
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
@@ -163,10 +214,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ).showSnackBar(SnackBar(content: Text(_controller.error!)));
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -203,12 +250,19 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
+                builder: (infoContext) => AlertDialog(
                   title: Text(widget.groupName),
                   content: Text(widget.groupDescription),
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        Navigator.pop(infoContext);
+                        _showLeaveConfirmation(context);
+                      },
+                      child: const Text('Leave Group', style: TextStyle(color: Colors.red)),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(infoContext),
                       child: const Text('Close'),
                     ),
                   ],
