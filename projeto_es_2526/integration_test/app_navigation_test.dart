@@ -18,12 +18,13 @@ void main() {
   });
 
   testWidgets('bottom tabs navigate between main sections', (tester) async {
-    final auth = MockFirebaseAuth(signedIn: true);
+    final auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'test-user'));
     final firestore = FakeFirebaseFirestore();
     final mainController = MainController();
+    final userId = auth.currentUser!.uid;
     final homeController = HomeController(
       service: GroupService(firestore: firestore),
-      userId: 'test-user',
+      userId: userId,
     );
     final profileController = ProfileController(
       auth: auth,
