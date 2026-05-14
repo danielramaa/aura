@@ -24,6 +24,33 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
     'General'
   ];
 
+  final List<Group> _mockGroups = const [
+    Group(
+      id: 'ansiedade-e-foco',
+      name: 'Ansiedade e Foco',
+      color: Colors.blue,
+      memberCount: 3500,
+      description: 'Estratégias diárias e meditação para lidar com a ansiedade e melhorar o foco no trabalho e estudos.',
+      category: 'Mental Health',
+    ),
+    Group(
+      id: 'vida-com-endometriose',
+      name: 'Vida com Endometriose',
+      color: Colors.pink,
+      memberCount: 1200,
+      description: 'Apoio mútuo, troca de experiências sobre médicos, tratamentos e como lidar com a dor no dia a dia.',
+      category: 'Autoimmune Diseases',
+    ),
+    Group(
+      id: 'pais-de-criancas-autistas',
+      name: 'Pais de Crianças Autistas',
+      color: Colors.orange,
+      memberCount: 4800,
+      description: 'Comunidade acolhedora para partilhar vitórias, desafios e recursos sobre o espetro autista.',
+      category: 'Neurodivergence',
+    ),
+  ];
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -84,7 +111,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: group.color.withOpacity(0.1),
+                    color: group.color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -183,7 +210,15 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
 
-              final allGroups = snapshot.data!;
+              final firebaseGroups = snapshot.data!;
+              final Map<String, Group> groupsMap = {
+                for (var g in _mockGroups) g.id: g,
+              };
+              for (var g in firebaseGroups) {
+                groupsMap[g.id] = g;
+              }
+              final allGroups = groupsMap.values.toList();
+
               final filteredGroups = _searchQuery.isEmpty
                   ? allGroups
                   : allGroups.where((g) {
@@ -312,7 +347,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.grey[200]!),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 4)),
           ],
         ),
         child: Column(
