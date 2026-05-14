@@ -153,7 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await FirebaseFirestore.instance
             .collection('anonymousIdentities')
             .doc(anonymousId)
-            .delete();
+            .set({'leftAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
       }
 
       if (nickname != null) {
