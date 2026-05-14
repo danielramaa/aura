@@ -110,9 +110,7 @@ class _AuthGateState extends State<AuthGate> {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      _authStateSubscription = _authStream.listen((
-        User? user,
-      ) async {
+      _authStateSubscription = _authStream.listen((User? user) async {
         if (user != null) {
           _notifUserId = user.uid;
           final token = await messaging.getToken();
