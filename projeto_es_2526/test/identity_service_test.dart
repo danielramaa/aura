@@ -20,7 +20,7 @@ void main() {
       final identity = await service.getOrCreateIdentity('user-1', 'group-1');
       expect(identity.anonymousId, isNotEmpty);
       expect(identity.nickname, isNotEmpty);
-      expect(identity.avatarUrl, contains('api.dicebear.com'));
+      expect(identity.avatarUrl, startsWith('assets/avatars/avatar_'));
     });
 
     test('persists the identity under the user document', () async {
@@ -38,7 +38,7 @@ void main() {
           .get();
       expect(doc.exists, isTrue);
       expect(doc.data()!['nickname'], isNotEmpty);
-      expect(doc.data()!['avatarUrl'], contains('api.dicebear.com'));
+      expect(doc.data()!['avatarUrl'], startsWith('assets/avatars/avatar_'));
     });
 
     test('reuses the same identity on repeated calls', () async {

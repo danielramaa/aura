@@ -71,7 +71,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 
     final error = await widget.controller.updateProfile(
       displayName: _nameCtrl.text.trim(),
-      photoURL: '', // Campo desativado, passa vazio
+      photoURL: widget.controller.currentUser?.photoURL ?? '',
       email: _emailCtrl.text.trim(),
       newPassword: newPassword,
       currentPassword: _currentPasswordCtrl.text,

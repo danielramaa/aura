@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/message.dart';
+import '../utils/avatar_utils.dart';
 
 /// Returns RichText spans for [text], highlighting only @tokens whose word
 /// part appears in [mentions] (the validated list stored on the message).
@@ -151,25 +152,11 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    final encodedNickname = Uri.encodeComponent(message.senderNickname);
-    final avatarUrl = 'https://api.dicebear.com/8.x/bottts/png?seed=$encodedNickname';
     return Padding(
       padding: isOwn
           ? const EdgeInsets.only(left: 8.0)
           : const EdgeInsets.only(right: 8.0),
-      child: ClipOval(
-        child: Image.network(
-          avatarUrl,
-          width: 32,
-          height: 32,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => const CircleAvatar(
-            radius: 16,
-            backgroundColor: Color(0xFFDCE9F7),
-            child: Icon(Icons.person, size: 16, color: Color(0xFF185FA5)),
-          ),
-        ),
-      ),
+      child: AvatarUtils.buildAvatar(message.senderNickname, 32),
     );
   }
 
@@ -200,43 +187,49 @@ class MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-              if (!isOwn)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(
-                    message.senderNickname,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Color(0xFF185FA5),
-                    ),
+                      if (!isOwn)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Text(
+                            message.senderNickname,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF185FA5),
+                            ),
+                          ),
+                        ),
+                      if (message.replyToText != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border(
+                              left: BorderSide(
+                                color: Colors.grey[400]!,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            message.replyToText!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      _buildMessageText(message.text, message.mentions),
+                      _buildReactionBar(context),
+                    ],
                   ),
-                ),
-              if (message.replyToText != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border(
-                      left: BorderSide(color: Colors.grey[400]!, width: 3),
-                    ),
-                  ),
-                  child: Text(
-                    message.replyToText!,
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              _buildMessageText(message.text, message.mentions),
-              _buildReactionBar(context),
-            ],
-          ),
                 ),
               ),
               if (isOwn) _buildAvatar(),

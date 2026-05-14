@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/anonymous_identity.dart';
+import '../utils/avatar_utils.dart';
 
 class IdentityService {
   final FirebaseFirestore _firestore;
@@ -124,8 +125,7 @@ class IdentityService {
     String groupId,
   ) async {
     final nickname = await _generateUniqueNickname(groupId);
-    final encodedNickname = Uri.encodeComponent(nickname);
-    final avatarUrl = 'https://api.dicebear.com/8.x/bottts/png?seed=$encodedNickname';
+    final avatarUrl = AvatarUtils.assetForNickname(nickname);
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
     // Reverse lookup for moderation: maps anonymousId → real userId

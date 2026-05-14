@@ -66,11 +66,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(
       padding: const EdgeInsets.all(16.0),
       children: [
-        const Center(
+        Center(
           child: CircleAvatar(
             radius: 50,
-            backgroundColor: Color(0xFFDCE9F7),
-            child: Icon(Icons.person, size: 50, color: Color(0xFF185FA5)),
+            backgroundColor: const Color(0xFFDCE9F7),
+            backgroundImage: user.photoURL?.isNotEmpty == true
+                ? NetworkImage(user.photoURL!)
+                : null,
+            child: user.photoURL?.isNotEmpty != true
+                ? const Icon(Icons.person, size: 50, color: Color(0xFF185FA5))
+                : null,
           ),
         ),
         const SizedBox(height: 16),
