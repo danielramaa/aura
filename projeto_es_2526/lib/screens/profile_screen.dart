@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/edit_profile_dialog.dart';
+import '../widgets/role_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ProfileController? controller;
@@ -94,6 +95,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
           ),
         ),
+        const SizedBox(height: 8),
+        Center(child: RoleBadge(uid: user.uid)),
         const SizedBox(height: 32),
         Text('My Communities', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),

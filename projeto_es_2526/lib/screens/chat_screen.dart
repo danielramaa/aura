@@ -1,7 +1,12 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
+import '../models/user_role.dart';
+import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
@@ -31,6 +36,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Message? _replyingTo;
   List<String> _mentionSuggestions = [];
+  UserRole _currentUserRole = UserRole.user;
+  StreamSubscription<UserRole>? _roleSub;
 
   @override
   void initState() {
@@ -38,10 +45,18 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller = ChatController(groupId: widget.groupId);
     _controller.addListener(_handleControllerChanges);
     _messageController.addListener(_onTextChanged);
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _roleSub = UserService().streamRole(uid).listen((role) {
+        if (mounted) setState(() => _currentUserRole = role);
+      });
+    }
   }
 
   @override
   void dispose() {
+    _roleSub?.cancel();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
     _messageController.removeListener(_onTextChanged);
@@ -95,6 +110,38 @@ class _ChatScreenState extends State<ChatScreen> {
       selection: TextSelection.collapsed(offset: newTextBefore.length),
     );
     setState(() => _mentionSuggestions = []);
+  }
+
+  void _showMessageOptions(BuildContext context, Message message) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.emoji_emotions_outlined),
+              title: const Text('React'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEmojiPicker(context, message);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: const Text(
+                'Delete message',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _controller.deleteMessage(message.id);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showEmojiPicker(BuildContext context, Message message) {
@@ -354,7 +401,9 @@ class _ChatScreenState extends State<ChatScreen> {
           currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),
-          onLongPress: () => _showEmojiPicker(context, message),
+          onLongPress: () => _currentUserRole == UserRole.admin
+              ? _showMessageOptions(context, message)
+              : _showEmojiPicker(context, message),
           onReply: () => _startReply(message),
           onToggleReaction: (emoji) =>
               _controller.toggleReaction(message.id, emoji),

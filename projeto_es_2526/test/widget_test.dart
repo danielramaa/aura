@@ -8,17 +8,23 @@ import 'package:projeto_es_2526/controllers/profile_controller.dart';
 import 'package:projeto_es_2526/widgets/message_bubble.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
+import 'package:projeto_es_2526/services/identity_service.dart';
 import 'package:projeto_es_2526/widgets/group_card.dart';
 
 Widget buildApp(
   HomeController homeController,
   ProfileController profileController,
 ) {
+  final firestore = FakeFirebaseFirestore();
+  final auth = MockFirebaseAuth(signedIn: false);
   return MaterialApp(
     home: MainScreen(
       mainController: MainController(),
       homeController: homeController,
       profileController: profileController,
+      findGroupsService: GroupService(firestore: firestore),
+      findGroupsIdentityService: IdentityService(firestore: firestore),
+      findGroupsAuth: auth,
     ),
   );
 }

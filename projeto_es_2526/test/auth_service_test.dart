@@ -1,18 +1,26 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:projeto_es_2526/models/user_role.dart';
 import 'package:projeto_es_2526/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late FakeFirebaseFirestore firestore;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    firestore = FakeFirebaseFirestore();
   });
 
   group('AuthService — authentication', () {
     test('currentUser is null when not signed in', () {
-      final service = AuthService(auth: MockFirebaseAuth(signedIn: false));
+      final service = AuthService(
+        auth: MockFirebaseAuth(signedIn: false),
+        firestore: firestore,
+      );
       expect(service.currentUser, isNull);
     });
 
@@ -22,6 +30,7 @@ void main() {
           signedIn: true,
           mockUser: MockUser(uid: 'u1', email: 'user@example.com'),
         ),
+        firestore: firestore,
       );
       expect(service.currentUser, isNotNull);
       expect(service.currentUser!.email, 'user@example.com');
@@ -31,7 +40,7 @@ void main() {
       final auth = MockFirebaseAuth(
         mockUser: MockUser(uid: 'u1', email: 'user@example.com'),
       );
-      final service = AuthService(auth: auth);
+      final service = AuthService(auth: auth, firestore: firestore);
 
       final credential = await service.login('user@example.com', 'password123');
       expect(credential.user, isNotNull);
@@ -42,7 +51,7 @@ void main() {
       final auth = MockFirebaseAuth(
         mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
       );
-      final service = AuthService(auth: auth);
+      final service = AuthService(auth: auth, firestore: firestore);
 
       final credential = await service.register(
         'new@example.com',
@@ -52,12 +61,29 @@ void main() {
       expect(auth.currentUser, isNotNull);
     });
 
+    test('register creates users/{uid} document with role user', () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+      );
+
+      final uid = credential.user!.uid;
+      final doc = await firestore.collection('users').doc(uid).get();
+      expect(doc.exists, isTrue);
+      expect(UserRole.fromString(doc.data()!['role'] as String), UserRole.user);
+    });
+
     test('logout clears the current user', () async {
       final auth = MockFirebaseAuth(
         signedIn: true,
         mockUser: MockUser(uid: 'u1', email: 'user@example.com'),
       );
-      final service = AuthService(auth: auth);
+      final service = AuthService(auth: auth, firestore: firestore);
 
       expect(service.currentUser, isNotNull);
       await service.logout();
@@ -65,7 +91,10 @@ void main() {
     });
 
     test('sendPasswordResetEmail completes without error', () async {
-      final service = AuthService(auth: MockFirebaseAuth());
+      final service = AuthService(
+        auth: MockFirebaseAuth(),
+        firestore: firestore,
+      );
       await expectLater(
         service.sendPasswordResetEmail('user@example.com'),
         completes,
@@ -74,7 +103,7 @@ void main() {
 
     test('authStateChanges emits user updates', () async {
       final auth = MockFirebaseAuth();
-      final service = AuthService(auth: auth);
+      final service = AuthService(auth: auth, firestore: firestore);
       final states = <bool>[];
       final sub = service.authStateChanges.listen(
         (user) => states.add(user != null),
@@ -91,18 +120,27 @@ void main() {
 
   group('AuthService — stayLoggedIn preference', () {
     test('defaults to true when not set', () async {
-      final service = AuthService(auth: MockFirebaseAuth());
+      final service = AuthService(
+        auth: MockFirebaseAuth(),
+        firestore: firestore,
+      );
       expect(await service.getStayLoggedIn(), isTrue);
     });
 
     test('persists false after being set', () async {
-      final service = AuthService(auth: MockFirebaseAuth());
+      final service = AuthService(
+        auth: MockFirebaseAuth(),
+        firestore: firestore,
+      );
       await service.setStayLoggedIn(false);
       expect(await service.getStayLoggedIn(), isFalse);
     });
 
     test('persists true after being toggled', () async {
-      final service = AuthService(auth: MockFirebaseAuth());
+      final service = AuthService(
+        auth: MockFirebaseAuth(),
+        firestore: firestore,
+      );
       await service.setStayLoggedIn(false);
       await service.setStayLoggedIn(true);
       expect(await service.getStayLoggedIn(), isTrue);
