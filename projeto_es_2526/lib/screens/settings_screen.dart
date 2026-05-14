@@ -14,7 +14,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  List<String> _mutedGroups = [];
+  Set<String> _mutedGroups = {};
   List<Map<String, dynamic>> _userGroups = [];
   bool _isLoading = true;
 
@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
       if (userDoc.exists) {
-        _mutedGroups = List<String>.from(userDoc.data()?['mutedGroups'] ?? []);
+        _mutedGroups = Set<String>.from(userDoc.data()?['mutedGroups'] ?? []);
       }
 
       final identitiesSnap = await _firestore
@@ -70,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final previous = List<String>.from(_mutedGroups);
+    final previous = Set<String>.from(_mutedGroups);
     setState(() {
       if (isMuted) {
         _mutedGroups.add(groupId);
@@ -81,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       await _firestore.collection('users').doc(user.uid).set({
-        'mutedGroups': _mutedGroups,
+        'mutedGroups': _mutedGroups.toList(),
       }, SetOptions(merge: true));
     } catch (_) {
       if (mounted) {
