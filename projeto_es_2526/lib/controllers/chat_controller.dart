@@ -33,6 +33,10 @@ class ChatController extends ChangeNotifier {
   bool _isTyping = false;
   late final Stream<List<String>> typingNamesStream;
 
+  // Maps messageId → the emoji that failed, so retry knows what to re-send.
+  final Map<String, String> _reactionErrors = {};
+  final Set<String> _reactionRetrying = {};
+
   ChatController({
     required this.groupId,
     FirebaseFirestore? firestore,
@@ -59,6 +63,26 @@ class ChatController extends ChangeNotifier {
       _isLoading = false;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Getters
+  // ---------------------------------------------------------------------------
+
+  List<Message> get messages => _messages;
+  List<String> get roomNicknames => _roomNicknames;
+  bool get isLoading => _isLoading;
+  bool get isSending => _isSending;
+  String? get error => _error;
+  AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
+
+  bool hasReactionError(String messageId) =>
+      _reactionErrors.containsKey(messageId);
+  bool isRetryingReaction(String messageId) =>
+      _reactionRetrying.contains(messageId);
+
+  // ---------------------------------------------------------------------------
+  // Typing
+  // ---------------------------------------------------------------------------
 
   List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
     final cutoff = Timestamp.fromDate(
@@ -109,13 +133,9 @@ class ChatController extends ChangeNotifier {
     );
   }
 
-  // Getters
-  List<Message> get messages => _messages;
-  List<String> get roomNicknames => _roomNicknames;
-  bool get isLoading => _isLoading;
-  bool get isSending => _isSending;
-  String? get error => _error;
-  AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
 
   Future<void> _initialize() async {
     try {
@@ -184,6 +204,10 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Send
+  // ---------------------------------------------------------------------------
+
   List<String> _extractMentions(String text) {
     final regex = RegExp(r'@(\w+)');
     return regex
@@ -229,6 +253,67 @@ class ChatController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Reactions
+  // ---------------------------------------------------------------------------
+
+  Future<void> toggleReaction(String messageId, String emoji) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return;
+
+    final idx = _messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+    final message = _messages[idx];
+
+    final existingEmoji = message.userReaction(identity.anonymousId);
+    final isRemoving = existingEmoji == emoji;
+
+    _reactionErrors.remove(messageId);
+    notifyListeners();
+
+    String? err;
+    if (isRemoving) {
+      err = await _chatService.removeReaction(
+        groupId: groupId,
+        messageId: messageId,
+        emoji: emoji,
+        anonymousId: identity.anonymousId,
+      );
+    } else {
+      err = await _chatService.addReaction(
+        groupId: groupId,
+        messageId: messageId,
+        emoji: emoji,
+        anonymousId: identity.anonymousId,
+      );
+    }
+
+    if (_isDisposed) return;
+
+    if (err != null) {
+      _reactionErrors[messageId] = emoji;
+    }
+    notifyListeners();
+  }
+
+  Future<void> retryReaction(String messageId) async {
+    final emoji = _reactionErrors[messageId];
+    if (emoji == null) return;
+
+    _reactionErrors.remove(messageId);
+    _reactionRetrying.add(messageId);
+    notifyListeners();
+
+    await toggleReaction(messageId, emoji);
+
+    _reactionRetrying.remove(messageId);
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notifications
+  // ---------------------------------------------------------------------------
 
   Future<void> _createNotification({List<String> mentions = const []}) async {
     try {

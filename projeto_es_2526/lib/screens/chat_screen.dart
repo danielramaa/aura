@@ -3,6 +3,57 @@ import 'package:flutter/material.dart';
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
 
+// ---------------------------------------------------------------------------
+// Emojis available in the picker
+// ---------------------------------------------------------------------------
+const List<String> _kPickerEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+// ---------------------------------------------------------------------------
+// Mention span builder
+// ---------------------------------------------------------------------------
+
+/// Returns RichText spans for [text], highlighting only @tokens whose word
+/// part appears in [mentions] (the validated list stored on the message).
+List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
+  final spans = <TextSpan>[];
+  final regex = RegExp(r'@(\w+)');
+  int lastEnd = 0;
+
+  for (final match in regex.allMatches(text)) {
+    if (match.start > lastEnd) {
+      spans.add(
+        TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+      );
+    }
+    final word = match.group(1)!;
+    final isValid = mentions.contains(word);
+    spans.add(
+      TextSpan(
+        text: match.group(0),
+        style: TextStyle(
+          fontSize: 14,
+          color: isValid ? const Color(0xFF185FA5) : Colors.black87,
+          fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+    );
+    lastEnd = match.end;
+  }
+
+  if (lastEnd < text.length) {
+    spans.add(
+      TextSpan(
+        text: text.substring(lastEnd),
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+      ),
+    );
+  }
+  return spans;
+}
+
 class ChatScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
@@ -27,16 +78,13 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   Message? _replyingTo;
-
   List<String> _mentionSuggestions = [];
 
   @override
   void initState() {
     super.initState();
     _controller = ChatController(groupId: widget.groupId);
-    if (_controller.anonymousIdentity == null && _controller.isLoading) {
-      _controller.addListener(_handleControllerChanges);
-    }
+    _controller.addListener(_handleControllerChanges);
     _messageController.addListener(_onTextChanged);
   }
 
@@ -49,6 +97,14 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollController.dispose();
     super.dispose();
   }
+
+  void _handleControllerChanges() {
+    if (mounted) setState(() {});
+  }
+
+  // ---------------------------------------------------------------------------
+  // Mentions
+  // ---------------------------------------------------------------------------
 
   void _onTextChanged() {
     final text = _messageController.text;
@@ -78,56 +134,58 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  /// Quando o utilizador seleciona uma sugestão, substitui o @query pelo @Nickname
   void _applyMention(String nickname) {
     final text = _messageController.text;
     final cursor = _messageController.selection.baseOffset;
     final textBeforeCursor = text.substring(0, cursor);
-
-    // Substitui o @query pelo @Nickname completo
     final newTextBefore = textBeforeCursor.replaceAll(
       RegExp(r'@\w*$'),
       '@$nickname ',
     );
     final newText = newTextBefore + text.substring(cursor);
-
     _messageController.value = TextEditingValue(
       text: newText,
       selection: TextSelection.collapsed(offset: newTextBefore.length),
     );
-
     setState(() => _mentionSuggestions = []);
   }
 
-  Widget _buildTypingIndicator() {
-    return StreamBuilder<List<String>>(
-      stream: _controller.typingNamesStream,
-      builder: (context, snapshot) {
-        final names = snapshot.data ?? [];
-        if (names.isEmpty) return const SizedBox.shrink();
+  // ---------------------------------------------------------------------------
+  // Reactions
+  // ---------------------------------------------------------------------------
 
-        final label = names.length == 1
-            ? '${names.first} is typing...'
-            : '${names.join(', ')} are typing...';
+  void _showEmojiPicker(BuildContext context, Message message) {
+    final identity = _controller.anonymousIdentity;
+    if (identity == null) return;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey[500],
-              fontSize: 12,
-              fontStyle: FontStyle.italic,
-            ),
-          ),
-        );
-      },
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _EmojiPickerSheet(
+        currentEmoji: message.userReaction(identity.anonymousId),
+        onEmojiSelected: (emoji) {
+          Navigator.pop(context);
+          _controller.toggleReaction(message.id, emoji);
+        },
+      ),
     );
   }
 
-  void _handleControllerChanges() {
-    if (mounted) setState(() {});
+  // ---------------------------------------------------------------------------
+  // Reply
+  // ---------------------------------------------------------------------------
+
+  void _startReply(Message message) {
+    setState(() => _replyingTo = message);
   }
+
+  void _cancelReply() {
+    setState(() => _replyingTo = null);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Send
+  // ---------------------------------------------------------------------------
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
@@ -156,119 +214,9 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _startReply(Message message) {
-    setState(() => _replyingTo = message);
-  }
-
-  void _cancelReply() {
-    setState(() => _replyingTo = null);
-  }
-
-  Widget _buildQuotedBox({
-    required String text,
-    VoidCallback? onTap,
-    bool isPreview = false,
-  }) {
-    final color = isPreview ? const Color(0xFF185FA5) : Colors.grey[400]!;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isPreview ? const Color(0xFFE8F0FB) : Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-          border: Border(left: BorderSide(color: color, width: 3)),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(fontSize: 12, color: Colors.black87),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildReplyPreview() {
-    if (_replyingTo == null) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildQuotedBox(text: _replyingTo!.text, isPreview: true),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-            onPressed: _cancelReply,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Lista de sugestões de menção que aparece por cima do input
-  Widget _buildMentionSuggestions() {
-    if (_mentionSuggestions.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      constraints: const BoxConstraints(maxHeight: 160),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: ListView.builder(
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        itemCount: _mentionSuggestions.length,
-        itemBuilder: (context, index) {
-          final nickname = _mentionSuggestions[index];
-          return InkWell(
-            onTap: () => _applyMention(nickname),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFFDCE9F7),
-                    child: Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF185FA5),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '@$nickname',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF185FA5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -373,13 +321,136 @@ class _ChatScreenState extends State<ChatScreen> {
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
+        final isOwn =
+            message.anonymousId == _controller.anonymousIdentity?.anonymousId;
         return _MessageBubble(
           message: message,
-          isOwn:
-              message.anonymousId == _controller.anonymousIdentity?.anonymousId,
+          isOwn: isOwn,
+          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
+          hasReactionError: _controller.hasReactionError(message.id),
+          isRetryingReaction: _controller.isRetryingReaction(message.id),
+          onLongPress: () => _showEmojiPicker(context, message),
           onReply: () => _startReply(message),
+          onToggleReaction: (emoji) =>
+              _controller.toggleReaction(message.id, emoji),
+          onRetryReaction: () => _controller.retryReaction(message.id),
         );
       },
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return StreamBuilder<List<String>>(
+      stream: _controller.typingNamesStream,
+      builder: (context, snapshot) {
+        final names = snapshot.data ?? [];
+        if (names.isEmpty) return const SizedBox.shrink();
+        final label = names.length == 1
+            ? '${names.first} is typing...'
+            : '${names.join(', ')} are typing...';
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReplyPreview() {
+    if (_replyingTo == null) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F0FB),
+                borderRadius: BorderRadius.circular(8),
+                border: const Border(
+                  left: BorderSide(color: Color(0xFF185FA5), width: 3),
+                ),
+              ),
+              child: Text(
+                _replyingTo!.text,
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+            onPressed: _cancelReply,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMentionSuggestions() {
+    if (_mentionSuggestions.isEmpty) return const SizedBox.shrink();
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 160),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: _mentionSuggestions.length,
+        itemBuilder: (context, index) {
+          final nickname = _mentionSuggestions[index];
+          return InkWell(
+            onTap: () => _applyMention(nickname),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0xFFDCE9F7),
+                    child: Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Color(0xFF185FA5),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '@$nickname',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF185FA5),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -422,69 +493,172 @@ class _ChatScreenState extends State<ChatScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Message Bubble com highlight de menções
+// Emoji Picker Sheet
 // ---------------------------------------------------------------------------
 
-/// Returns RichText spans for [text], highlighting only @tokens whose word
-/// part appears in [mentions] (the validated list stored on the message).
-List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
-  final spans = <TextSpan>[];
-  final regex = RegExp(r'@(\w+)');
-  int lastEnd = 0;
+class _EmojiPickerSheet extends StatelessWidget {
+  final String? currentEmoji;
+  final ValueChanged<String> onEmojiSelected;
 
-  for (final match in regex.allMatches(text)) {
-    if (match.start > lastEnd) {
-      spans.add(
-        TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: const TextStyle(fontSize: 14, color: Colors.black87),
-        ),
-      );
-    }
-    final word = match.group(1)!;
-    final isValid = mentions.contains(word);
-    spans.add(
-      TextSpan(
-        text: match.group(0),
-        style: TextStyle(
-          fontSize: 14,
-          color: isValid ? const Color(0xFF185FA5) : Colors.black87,
-          fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
-        ),
+  const _EmojiPickerSheet({
+    required this.currentEmoji,
+    required this.onEmojiSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: _kPickerEmojis.map((emoji) {
+          final isSelected = emoji == currentEmoji;
+          return GestureDetector(
+            onTap: () => onEmojiSelected(emoji),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFFDCE9F7)
+                    : Colors.transparent,
+                shape: BoxShape.circle,
+              ),
+              child: Text(emoji, style: const TextStyle(fontSize: 28)),
+            ),
+          );
+        }).toList(),
       ),
     );
-    lastEnd = match.end;
   }
-
-  if (lastEnd < text.length) {
-    spans.add(
-      TextSpan(
-        text: text.substring(lastEnd),
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
-      ),
-    );
-  }
-  return spans;
 }
+
+// ---------------------------------------------------------------------------
+// Message Bubble
+// ---------------------------------------------------------------------------
 
 class _MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
+  final String currentAnonymousId;
+  final bool hasReactionError;
+  final bool isRetryingReaction;
+  final VoidCallback onLongPress;
   final VoidCallback onReply;
+  final ValueChanged<String> onToggleReaction;
+  final VoidCallback onRetryReaction;
 
   const _MessageBubble({
     required this.message,
     required this.isOwn,
+    required this.currentAnonymousId,
+    required this.hasReactionError,
+    required this.isRetryingReaction,
+    required this.onLongPress,
     required this.onReply,
+    required this.onToggleReaction,
+    required this.onRetryReaction,
   });
 
   Widget _buildMessageText(String text, List<String> mentions) =>
       RichText(text: TextSpan(children: buildMentionSpans(text, mentions)));
 
+  Widget _buildReactionBar(BuildContext context) {
+    final summary = message.reactionSummary;
+    if (summary.isEmpty && !hasReactionError) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: [
+          ...summary.map((entry) {
+            final emoji = entry.key;
+            final count = entry.value;
+            final isMine = message.userReaction(currentAnonymousId) == emoji;
+
+            return GestureDetector(
+              onTap: () => onToggleReaction(emoji),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isMine ? const Color(0xFFDCE9F7) : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isMine
+                        ? const Color(0xFF185FA5)
+                        : Colors.transparent,
+                    width: 1.2,
+                  ),
+                ),
+                child: Text(
+                  '$emoji $count',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isMine ? const Color(0xFF185FA5) : Colors.black87,
+                    fontWeight: isMine ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            );
+          }),
+          if (hasReactionError)
+            GestureDetector(
+              onTap: isRetryingReaction ? null : onRetryReaction,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isRetryingReaction)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: Colors.red,
+                        ),
+                      )
+                    else
+                      Icon(Icons.wifi_off, size: 13, color: Colors.red[400]),
+                    const SizedBox(width: 4),
+                    Text(
+                      isRetryingReaction ? 'A tentar...' : 'Tentar novamente',
+                      style: TextStyle(fontSize: 12, color: Colors.red[600]),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: onReply,
+      onDoubleTap: onLongPress, // double-tap opens emoji picker
+      onLongPress: onReply, // long-press starts reply
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -534,6 +708,7 @@ class _MessageBubble extends StatelessWidget {
                   ),
                 ),
               _buildMessageText(message.text, message.mentions),
+              _buildReactionBar(context),
             ],
           ),
         ),
