@@ -53,10 +53,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (mounted) setState(() {});
   }
 
-  // ---------------------------------------------------------------------------
-  // Mentions
-  // ---------------------------------------------------------------------------
-
   void _onTextChanged() {
     final text = _messageController.text;
     final cursor = _messageController.selection.baseOffset;
@@ -100,10 +96,6 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
-  // ---------------------------------------------------------------------------
-  // Reactions
-  // ---------------------------------------------------------------------------
-
   void _showEmojiPicker(BuildContext context, Message message) {
     final identity = _controller.anonymousIdentity;
     if (identity == null) return;
@@ -121,10 +113,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Reply
-  // ---------------------------------------------------------------------------
-
   void _startReply(Message message) {
     setState(() => _replyingTo = message);
   }
@@ -133,9 +121,89 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _replyingTo = null);
   }
 
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
+  Future<bool> _processLeaveGroup() async {
+    try {
+      await _controller.leaveGroup();
+      return true;
+    } catch (e) {
+      debugPrint('Error leaving group: $e');
+      return false;
+    }
+  }
+
+  void _showLeaveConfirmation(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Leave Group',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: const Text(
+            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            style: TextStyle(color: Colors.black87),
+          ),
+          actions: [
+            TextButton(
+              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[50],
+                elevation: 0,
+              ),
+              child: const Text(
+                'Leave',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(dialogContext).pop();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Leaving group...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+
+                final success = await _processLeaveGroup();
+
+                if (!context.mounted) return;
+                if (success) {
+                  Navigator.of(context).pop();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Failed to leave group.'),
+                      backgroundColor: Colors.red,
+                      action: SnackBarAction(
+                        label: 'Try Again',
+                        textColor: Colors.white,
+                        onPressed: () async {
+                          final retry = await _processLeaveGroup();
+                          if (retry && context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Future<void> _sendMessage() async {
     final text = _messageController.text;
@@ -163,10 +231,6 @@ class _ChatScreenState extends State<ChatScreen> {
       ).showSnackBar(SnackBar(content: Text(_controller.error!)));
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -203,12 +267,22 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
+                builder: (infoContext) => AlertDialog(
                   title: Text(widget.groupName),
                   content: Text(widget.groupDescription),
                   actions: [
                     TextButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        Navigator.pop(infoContext);
+                        _showLeaveConfirmation(context);
+                      },
+                      child: const Text(
+                        'Leave Group',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(infoContext),
                       child: const Text('Close'),
                     ),
                   ],

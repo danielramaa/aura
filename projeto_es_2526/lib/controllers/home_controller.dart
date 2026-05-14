@@ -14,21 +14,23 @@ class HomeController extends ChangeNotifier {
   String _searchQuery = '';
   String? _error;
 
-  HomeController({GroupService? service})
+  HomeController({GroupService? service, required String userId})
     : _service = service ?? GroupService() {
-    _subscription = _service.streamGroups().listen(
-      (groups) {
-        _groups = groups;
-        _isLoading = false;
-        _error = null;
-        notifyListeners();
-      },
-      onError: (Object e) {
-        _isLoading = false;
-        _error = 'Failed to load groups.';
-        notifyListeners();
-      },
-    );
+    _subscription = _service
+        .streamJoinedGroups(userId)
+        .listen(
+          (groups) {
+            _groups = groups;
+            _isLoading = false;
+            _error = null;
+            notifyListeners();
+          },
+          onError: (Object e) {
+            _isLoading = false;
+            _error = 'Failed to load groups.';
+            notifyListeners();
+          },
+        );
   }
 
   bool get isLoading => _isLoading;
