@@ -9,6 +9,7 @@ class Group {
   final String description;
   final int memberCount;
   final Color color;
+  final String category;
 
   const Group({
     required this.id,
@@ -16,6 +17,7 @@ class Group {
     required this.description,
     required this.memberCount,
     required this.color,
+    required this.category,
   });
 
   factory Group.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -26,6 +28,7 @@ class Group {
       description: data['description'] as String,
       memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
       color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
+      category: data['category'] as String? ?? 'Geral', 
     );
   }
 }
