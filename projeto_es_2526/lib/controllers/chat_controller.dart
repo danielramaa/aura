@@ -303,6 +303,17 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteMessage(String messageId) async {
+    final err = await _chatService.deleteMessage(
+      groupId: groupId,
+      messageId: messageId,
+    );
+    if (err != null && !_isDisposed) {
+      _error = err;
+      notifyListeners();
+    }
+  }
+
   Future<void> retryReaction(String messageId) async {
     final emoji = _reactionErrors[messageId];
     if (emoji == null) return;

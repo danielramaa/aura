@@ -415,4 +415,42 @@ void main() {
       expect(msg.replyToText, isNull);
     });
   });
+
+  group('ChatController — deleteMessage', () {
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'u1'),
+      );
+    });
+
+    test('removes the message from Firestore', () async {
+      await seedGroup(firestore, 'g1');
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({'text': 'hello', 'senderId': 'anon-1', 'timestamp': Timestamp.now()});
+
+      final controller = makeController(firestore, auth);
+      await waitForInit(controller);
+
+      await controller.deleteMessage('m1');
+
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      expect(doc.exists, isFalse);
+
+      controller.dispose();
+    });
+  });
 }
