@@ -69,6 +69,9 @@ class IdentityService {
     } else {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
+      await _firestore.collection('groups').doc(groupId).update({
+        'memberCount': FieldValue.increment(1),
+      });
       return newIdentity;
     }
   }
