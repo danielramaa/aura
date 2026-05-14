@@ -156,7 +156,10 @@ class MessageBubble extends StatelessWidget {
       padding: isOwn
           ? const EdgeInsets.only(left: 8.0)
           : const EdgeInsets.only(right: 8.0),
-      child: AvatarUtils.buildAvatarFromAsset(message.senderAvatarAssetPath, 32),
+      child: AvatarUtils.buildAvatarFromAsset(
+        message.senderAvatarAssetPath,
+        32,
+      ),
     );
   }
 

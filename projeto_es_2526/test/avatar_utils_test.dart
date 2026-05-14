@@ -46,9 +46,12 @@ void main() {
     });
 
     test('different nicknames can produce different assets', () {
-      final paths = {'CalmWolf42', 'BraveEagle7', 'QuietFox99', 'WiseOwl0'}
-          .map(AvatarUtils.assetForNickname)
-          .toSet();
+      final paths = {
+        'CalmWolf42',
+        'BraveEagle7',
+        'QuietFox99',
+        'WiseOwl0',
+      }.map(AvatarUtils.assetForNickname).toSet();
       expect(paths.length, greaterThan(1));
     });
   });

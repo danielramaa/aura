@@ -171,8 +171,8 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                       builder: (_) => ChatScreen(
                                         groupId: group.id,
                                         groupName: group.name,
-                                        memberCount:
-                                            group.memberCount.toString(),
+                                        memberCount: group.memberCount
+                                            .toString(),
                                         groupDescription: group.description,
                                       ),
                                     ),
@@ -195,10 +195,12 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                 }
                               },
                         style: FilledButton.styleFrom(
-                          backgroundColor:
-                              isJoined ? Colors.green : const Color(0xFF185FA5),
-                          disabledBackgroundColor:
-                              isJoined ? Colors.green : Colors.grey[300],
+                          backgroundColor: isJoined
+                              ? Colors.green
+                              : const Color(0xFF185FA5),
+                          disabledBackgroundColor: isJoined
+                              ? Colors.green
+                              : Colors.grey[300],
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -270,9 +272,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.hasError) {
-                  return const Center(
-                    child: Text('Failed to load groups.'),
-                  );
+                  return const Center(child: Text('Failed to load groups.'));
                 }
 
                 final query = _searchQuery.toLowerCase();

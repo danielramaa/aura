@@ -422,10 +422,7 @@ void main() {
 
     setUp(() {
       firestore = FakeFirebaseFirestore();
-      auth = MockFirebaseAuth(
-        signedIn: true,
-        mockUser: MockUser(uid: 'u1'),
-      );
+      auth = MockFirebaseAuth(signedIn: true, mockUser: MockUser(uid: 'u1'));
     });
 
     test('removes the message from Firestore', () async {
@@ -435,7 +432,11 @@ void main() {
           .doc('g1')
           .collection('messages')
           .doc('m1')
-          .set({'text': 'hello', 'senderId': 'anon-1', 'timestamp': Timestamp.now()});
+          .set({
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+          });
 
       final controller = makeController(firestore, auth);
       await waitForInit(controller);

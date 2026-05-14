@@ -14,7 +14,8 @@ class Message {
   // reactions: { emoji: [anonymousId, ...] }
   final Map<String, List<String>> reactions;
 
-  String get senderAvatarAssetPath => AvatarUtils.assetForIndex(senderAvatarIndex);
+  String get senderAvatarAssetPath =>
+      AvatarUtils.assetForIndex(senderAvatarIndex);
 
   Message({
     required this.id,

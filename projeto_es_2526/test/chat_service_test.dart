@@ -393,10 +393,7 @@ void main() {
     test('removes the message document', () async {
       await seedMessage('m1');
 
-      final err = await service.deleteMessage(
-        groupId: 'g1',
-        messageId: 'm1',
-      );
+      final err = await service.deleteMessage(groupId: 'g1', messageId: 'm1');
 
       expect(err, isNull);
       final doc = await firestore

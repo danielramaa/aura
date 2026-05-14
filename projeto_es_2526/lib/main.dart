@@ -54,7 +54,10 @@ class MyApp extends StatelessWidget {
         ),
       );
     }
-    return const MaterialApp(debugShowCheckedModeBanner: false, home: AuthGate());
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: AuthGate(),
+    );
   }
 }
 
@@ -82,6 +85,10 @@ class _AuthGateState extends State<AuthGate> {
   late final bool _ownsMainController;
   late final bool _ownsHomeController;
 
+  StreamSubscription<User?>? _authStateSubscription;
+  StreamSubscription<String>? _tokenRefreshSubscription;
+  String? _notifUserId;
+
   @override
   void initState() {
     super.initState();
@@ -89,12 +96,12 @@ class _AuthGateState extends State<AuthGate> {
     _ownsMainController = widget.mainController == null;
     _ownsHomeController = widget.homeController == null;
     _mainController = widget.mainController ?? MainController();
-    _setupPushNotifications();
+    _setupPushNotifications().catchError((_) {});
   }
 
   Future<void> _setupPushNotifications() async {
     if (kIsWeb) return;
-    
+
     final messaging = FirebaseMessaging.instance;
     final settings = await messaging.requestPermission(
       alert: true,
@@ -103,15 +110,28 @@ class _AuthGateState extends State<AuthGate> {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      FirebaseAuth.instance.authStateChanges().listen((User? user) async {
+      _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((
+        User? user,
+      ) async {
         if (user != null) {
+          _notifUserId = user.uid;
           final token = await messaging.getToken();
           if (token != null) {
             await _saveDeviceToken(user.uid, token);
           }
-          messaging.onTokenRefresh.listen((newToken) {
+          _tokenRefreshSubscription?.cancel();
+          _tokenRefreshSubscription = messaging.onTokenRefresh.listen((
+            newToken,
+          ) {
             _saveDeviceToken(user.uid, newToken);
           });
+        } else {
+          if (_notifUserId != null) {
+            await _clearDeviceToken(_notifUserId!);
+            _notifUserId = null;
+          }
+          _tokenRefreshSubscription?.cancel();
+          _tokenRefreshSubscription = null;
         }
       });
     }
@@ -123,8 +143,16 @@ class _AuthGateState extends State<AuthGate> {
     }, SetOptions(merge: true));
   }
 
+  Future<void> _clearDeviceToken(String uid) async {
+    await FirebaseFirestore.instance.collection('users').doc(uid).update({
+      'fcmToken': FieldValue.delete(),
+    });
+  }
+
   @override
   void dispose() {
+    _authStateSubscription?.cancel();
+    _tokenRefreshSubscription?.cancel();
     if (_ownsMainController) _mainController.dispose();
     if (_ownsHomeController) _homeController?.dispose();
     super.dispose();

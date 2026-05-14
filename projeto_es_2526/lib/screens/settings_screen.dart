@@ -28,39 +28,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final userDoc = await _firestore.collection('users').doc(user.uid).get();
-    if (userDoc.exists) {
-      final data = userDoc.data()!;
-      _mutedGroups = List<String>.from(data['mutedGroups'] ?? []);
-    }
+    try {
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
+      if (userDoc.exists) {
+        _mutedGroups = List<String>.from(userDoc.data()?['mutedGroups'] ?? []);
+      }
 
-    final identitiesSnap = await _firestore
-        .collection('anonymousIdentities')
-        .where('userId', isEqualTo: user.uid)
-        .get();
+      final identitiesSnap = await _firestore
+          .collection('anonymousIdentities')
+          .where('userId', isEqualTo: user.uid)
+          .get();
 
-    final groupIds = identitiesSnap.docs
-        .map((doc) => doc.data()['communityId'])
-        .whereType<String>()
-        .toSet() 
-        .toList();
+      final groupIds = identitiesSnap.docs
+          .map((doc) => doc.data()['communityId'])
+          .whereType<String>()
+          .toSet()
+          .toList();
 
-    final List<Map<String, dynamic>> groupsData = [];
-    for (final gid in groupIds) {
-      final gDoc = await _firestore.collection('groups').doc(gid).get();
-      if (gDoc.exists) {
-        groupsData.add({
-          'id': gDoc.id,
-          'name': gDoc.data()?['name'] ?? 'Unknown',
+      final groupDocs = await Future.wait(
+        groupIds.map((gid) => _firestore.collection('groups').doc(gid).get()),
+      );
+      final groupsData = groupDocs
+          .where((doc) => doc.exists)
+          .map(
+            (doc) => {'id': doc.id, 'name': doc.data()?['name'] ?? 'Unknown'},
+          )
+          .toList();
+
+      if (mounted) {
+        setState(() {
+          _userGroups = groupsData;
+          _isLoading = false;
         });
       }
-    }
-
-    if (mounted) {
-      setState(() {
-        _userGroups = groupsData;
-        _isLoading = false;
-      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -68,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
+    final previous = List<String>.from(_mutedGroups);
     setState(() {
       if (isMuted) {
         _mutedGroups.add(groupId);
@@ -76,9 +79,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
     });
 
-    await _firestore.collection('users').doc(user.uid).set({
-      'mutedGroups': _mutedGroups,
-    }, SetOptions(merge: true));
+    try {
+      await _firestore.collection('users').doc(user.uid).set({
+        'mutedGroups': _mutedGroups,
+      }, SetOptions(merge: true));
+    } catch (_) {
+      if (mounted) {
+        setState(() => _mutedGroups = previous);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update notification settings.'),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -114,17 +128,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   final isMuted = _mutedGroups.contains(g['id']);
                   return SwitchListTile(
                     title: Text(g['name']),
-                    subtitle: Text(isMuted ? 'Notifications off' : 'Notifications on'),
+                    subtitle: Text(
+                      isMuted ? 'Notifications off' : 'Notifications on',
+                    ),
                     value: !isMuted,
-                    activeThumbColor: const Color(0xFF185FA5),
-                    activeTrackColor: const Color(0xFF185FA5).withValues(alpha: 0.5),
+                    activeThumbColor: Theme.of(context).colorScheme.primary,
+                    activeTrackColor: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.5),
                     onChanged: (val) => _toggleMute(g['id'], !val),
                   );
                 }),
                 const Divider(height: 32),
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('Logout', style: TextStyle(color: Colors.red)),
+                  title: const Text(
+                    'Logout',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   onTap: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
@@ -138,7 +159,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              'Logout',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                         ],
                       ),
@@ -146,7 +170,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     if (confirm == true) {
                       await AuthService().logout();
                       if (context.mounted) {
-                        Navigator.of(context).popUntil((route) => route.isFirst);
+                        Navigator.of(
+                          context,
+                        ).popUntil((route) => route.isFirst);
                       }
                     }
                   },
