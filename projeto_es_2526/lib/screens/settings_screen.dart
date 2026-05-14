@@ -42,6 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final groupIds = identitiesSnap.docs
         .map((doc) => doc.data()['communityId'])
         .whereType<String>()
+        .toSet() 
         .toList();
 
     final List<Map<String, dynamic>> groupsData = [];
@@ -115,7 +116,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: Text(g['name']),
                     subtitle: Text(isMuted ? 'Notifications off' : 'Notifications on'),
                     value: !isMuted,
-                    activeColor: const Color(0xFF185FA5),
+                    activeThumbColor: const Color(0xFF185FA5),
+                    activeTrackColor: const Color(0xFF185FA5).withValues(alpha: 0.5),
                     onChanged: (val) => _toggleMute(g['id'], !val),
                   );
                 }),
