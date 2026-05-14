@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/group_card.dart';
-import 'chat_screen.dart';
+import 'chat/chat_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final HomeController controller;
