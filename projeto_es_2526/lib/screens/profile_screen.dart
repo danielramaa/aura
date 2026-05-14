@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/edit_profile_dialog.dart';
+import 'settings_screen.dart';
 import '../widgets/role_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -47,12 +48,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           appBar: AppBar(
             title: const Text('Profile'),
             actions: [
-              if (user != null)
+              if (user != null) ...[
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: 'Settings',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit Profile',
                   onPressed: _showEditProfileDialog,
                 ),
+              ],
             ],
           ),
           body: user == null

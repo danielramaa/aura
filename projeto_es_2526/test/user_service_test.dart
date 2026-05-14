@@ -14,7 +14,9 @@ void main() {
 
     test('returns user when role field is absent', () async {
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('users').doc('uid1').set({'displayName': 'Alice'});
+      await firestore.collection('users').doc('uid1').set({
+        'displayName': 'Alice',
+      });
       final service = UserService(firestore: firestore);
 
       expect(await service.getRole('uid1'), UserRole.user);
@@ -38,7 +40,9 @@ void main() {
 
     test('falls back to user for unknown role string', () async {
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('users').doc('uid1').set({'role': 'superpower'});
+      await firestore.collection('users').doc('uid1').set({
+        'role': 'superpower',
+      });
       final service = UserService(firestore: firestore);
 
       expect(await service.getRole('uid1'), UserRole.user);
