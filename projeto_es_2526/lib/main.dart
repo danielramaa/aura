@@ -68,6 +68,7 @@ class _AuthGateState extends State<AuthGate> {
   late final Stream<User?> _authStream;
   late final MainController _mainController;
   HomeController? _homeController;
+  String? _currentUserId;
   late final bool _ownsMainController;
   late final bool _ownsHomeController;
 
@@ -98,7 +99,13 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
         if (snapshot.hasData) {
-          _homeController ??= widget.homeController ?? HomeController();
+          final uid = snapshot.data!.uid;
+          if (_homeController == null || _currentUserId != uid) {
+            if (_ownsHomeController) _homeController?.dispose();
+            _currentUserId = uid;
+            _homeController =
+                widget.homeController ?? HomeController(userId: uid);
+          }
           return MainScreen(
             mainController: _mainController,
             homeController: _homeController!,
@@ -108,6 +115,7 @@ class _AuthGateState extends State<AuthGate> {
           _homeController?.dispose();
           _homeController = null;
         }
+        _currentUserId = null;
         return const LoginScreen();
       },
     );

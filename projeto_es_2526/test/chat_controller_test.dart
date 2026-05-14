@@ -7,6 +7,14 @@ import 'package:projeto_es_2526/models/anonymous_identity.dart';
 import 'package:projeto_es_2526/models/message.dart';
 import 'package:projeto_es_2526/services/identity_service.dart';
 
+Future<void> seedGroup(FakeFirebaseFirestore firestore, String groupId) =>
+    firestore.collection('groups').doc(groupId).set({
+      'name': groupId,
+      'description': '',
+      'memberCount': 0,
+      'color': 0xFF000000,
+    });
+
 ChatController makeController(
   FakeFirebaseFirestore firestore,
   MockFirebaseAuth auth, {
@@ -34,6 +42,7 @@ void main() {
 
     setUp(() async {
       firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'g1');
       auth = MockFirebaseAuth(
         signedIn: true,
         mockUser: MockUser(uid: 'user-1'),
@@ -147,6 +156,7 @@ void main() {
 
     setUp(() async {
       firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'g1');
       auth = MockFirebaseAuth(
         signedIn: true,
         mockUser: MockUser(uid: 'user-1'),
@@ -213,6 +223,7 @@ void main() {
 
     setUp(() async {
       firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'g1');
       await firestore
           .collection('groups')
           .doc('g1')
@@ -291,6 +302,7 @@ void main() {
 
     setUp(() async {
       firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'g1');
       auth = MockFirebaseAuth(
         signedIn: true,
         mockUser: MockUser(uid: 'user-1'),

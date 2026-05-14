@@ -217,6 +217,12 @@ class ChatController extends ChangeNotifier {
         .toList();
   }
 
+  Future<void> leaveGroup() async {
+    final userId = _auth.currentUser?.uid;
+    if (userId == null) throw Exception('Not authenticated');
+    await _identityService.leaveGroup(userId, groupId);
+  }
+
   Future<void> send(String text, {String? replyToText}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending || _anonymousIdentity == null) return;

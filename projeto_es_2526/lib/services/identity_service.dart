@@ -69,8 +69,54 @@ class IdentityService {
     } else {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
+      await _firestore.collection('groups').doc(groupId).update({
+        'memberCount': FieldValue.increment(1),
+      });
       return newIdentity;
     }
+  }
+
+  Future<void> leaveGroup(String userId, String groupId) async {
+    final userIdentityRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('anonymousIdentities')
+        .doc(groupId);
+
+    final userIdentityDoc = await userIdentityRef.get();
+    if (!userIdentityDoc.exists) return;
+
+    final data = userIdentityDoc.data()!;
+    final anonymousId = data['anonymousId'] as String?;
+    final nickname = data['nickname'] as String?;
+
+    final batch = _firestore.batch();
+
+    batch.update(_firestore.collection('groups').doc(groupId), {
+      'memberCount': FieldValue.increment(-1),
+    });
+
+    batch.delete(userIdentityRef);
+
+    if (anonymousId != null) {
+      batch.set(
+        _firestore.collection('anonymousIdentities').doc(anonymousId),
+        {'leftAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+    }
+
+    if (nickname != null) {
+      batch.delete(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('takenNicknames')
+            .doc(nickname),
+      );
+    }
+
+    await batch.commit();
   }
 
   Future<AnonymousIdentity> _generateNewIdentity(

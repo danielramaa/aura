@@ -14,6 +14,11 @@ service cloud.firestore {
     match /groups/{groupId} {
       allow read: if request.auth != null;
       allow write: if false;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])
+        && (request.resource.data.memberCount == resource.data.memberCount + 1
+            || request.resource.data.memberCount == resource.data.memberCount - 1)
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId));
 
       match /takenNicknames/{nickname} {
         allow read, write: if request.auth != null;
@@ -47,9 +52,11 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Reverse lookup for moderation (anonymousId → real userId)
+    // Reverse lookup for moderation (anonymousId → real userId). Never deleted
+    // from the client so historical messages remain traceable after a user leaves.
     match /anonymousIdentities/{anonymousId} {
-      allow write: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if false;
       allow read: if false;
     }
 

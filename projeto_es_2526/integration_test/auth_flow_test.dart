@@ -13,7 +13,10 @@ import 'package:projeto_es_2526/services/group_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 HomeController _homeController(FakeFirebaseFirestore firestore) =>
-    HomeController(service: GroupService(firestore: firestore));
+    HomeController(
+      service: GroupService(firestore: firestore),
+      userId: 'test-user',
+    );
 
 Widget _buildGate({
   required MockFirebaseAuth auth,
@@ -39,7 +42,7 @@ void main() {
   testWidgets('full flow: register → MainScreen → logout → LoginScreen', (
     tester,
   ) async {
-    final auth = MockFirebaseAuth();
+    final auth = MockFirebaseAuth(mockUser: MockUser(uid: 'test-user'));
     final firestore = FakeFirebaseFirestore();
     final authService = AuthService(auth: auth);
     final mainController = MainController();
@@ -69,7 +72,7 @@ void main() {
   testWidgets('login flow: LoginScreen form accepts credentials and signs in', (
     tester,
   ) async {
-    final auth = MockFirebaseAuth();
+    final auth = MockFirebaseAuth(mockUser: MockUser(uid: 'test-user'));
     final firestore = FakeFirebaseFirestore();
     final authService = AuthService(auth: auth);
     final mainController = MainController();
