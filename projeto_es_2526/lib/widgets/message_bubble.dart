@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/message.dart';
+import '../utils/avatar_utils.dart';
 
 /// Returns RichText spans for [text], highlighting only @tokens whose word
 /// part appears in [mentions] (the validated list stored on the message).
@@ -150,6 +151,18 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  Widget _buildAvatar() {
+    return Padding(
+      padding: isOwn
+          ? const EdgeInsets.only(left: 8.0)
+          : const EdgeInsets.only(right: 8.0),
+      child: AvatarUtils.buildAvatarFromAsset(
+        message.senderAvatarAssetPath,
+        32,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -157,54 +170,72 @@ class MessageBubble extends StatelessWidget {
       onLongPress: onReply,
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
-          ),
-          decoration: BoxDecoration(
-            color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              if (!isOwn)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(
-                    message.senderNickname,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: Color(0xFF185FA5),
-                    ),
-                  ),
-                ),
-              if (message.replyToText != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 6),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+              if (!isOwn) _buildAvatar(),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border(
-                      left: BorderSide(color: Colors.grey[400]!, width: 3),
-                    ),
+                    color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    message.replyToText!,
-                    style: const TextStyle(fontSize: 12, color: Colors.black87),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!isOwn)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4.0),
+                          child: Text(
+                            message.senderNickname,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Color(0xFF185FA5),
+                            ),
+                          ),
+                        ),
+                      if (message.replyToText != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border(
+                              left: BorderSide(
+                                color: Colors.grey[400]!,
+                                width: 3,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            message.replyToText!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black87,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      _buildMessageText(message.text, message.mentions),
+                      _buildReactionBar(context),
+                    ],
                   ),
                 ),
-              _buildMessageText(message.text, message.mentions),
-              _buildReactionBar(context),
+              ),
+              if (isOwn) _buildAvatar(),
             ],
           ),
         ),

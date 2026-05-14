@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/anonymous_identity.dart';
+import '../utils/avatar_utils.dart';
 
 class IdentityService {
   final FirebaseFirestore _firestore;
@@ -69,8 +70,65 @@ class IdentityService {
     } else {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
+      await _firestore.collection('groups').doc(groupId).update({
+        'memberCount': FieldValue.increment(1),
+      });
       return newIdentity;
     }
+  }
+
+  Future<void> leaveGroup(String userId, String groupId) async {
+    final userIdentityRef = _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('anonymousIdentities')
+        .doc(groupId);
+
+    final userIdentityDoc = await userIdentityRef.get();
+    if (!userIdentityDoc.exists) return;
+
+    final data = userIdentityDoc.data()!;
+    final anonymousId = data['anonymousId'] as String?;
+    final nickname = data['nickname'] as String?;
+    final avatarIndex = data['avatarIndex'] as int?;
+
+    final batch = _firestore.batch();
+
+    batch.update(_firestore.collection('groups').doc(groupId), {
+      'memberCount': FieldValue.increment(-1),
+    });
+
+    batch.delete(userIdentityRef);
+
+    if (anonymousId != null) {
+      batch.set(
+        _firestore.collection('anonymousIdentities').doc(anonymousId),
+        {'leftAt': FieldValue.serverTimestamp()},
+        SetOptions(merge: true),
+      );
+    }
+
+    if (nickname != null) {
+      batch.delete(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('takenNicknames')
+            .doc(nickname),
+      );
+    }
+
+    if (avatarIndex != null) {
+      batch.delete(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('takenAvatarIndices')
+            .doc('$avatarIndex'),
+      );
+    }
+
+    await batch.commit();
   }
 
   Future<AnonymousIdentity> _generateNewIdentity(
@@ -78,8 +136,7 @@ class IdentityService {
     String groupId,
   ) async {
     final nickname = await _generateUniqueNickname(groupId);
-    // TODO: generate avatar locally to avoid leaking user IPs to a third party
-    const avatarUrl = '';
+    final avatarIndex = await _reserveAvatarIndex(groupId, nickname);
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
     // Reverse lookup for moderation: maps anonymousId → real userId
@@ -95,8 +152,38 @@ class IdentityService {
     return AnonymousIdentity(
       anonymousId: anonymousId,
       nickname: nickname,
-      avatarUrl: avatarUrl,
+      avatarIndex: avatarIndex,
     );
+  }
+
+  /// Reserves a unique avatar slot in the group and returns its index (0–19).
+  /// Falls back to a hash-derived index when all slots are taken (>20 members).
+  Future<int> _reserveAvatarIndex(String groupId, String nickname) async {
+    final preferred =
+        nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
+    final takenRef = _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('takenAvatarIndices');
+
+    for (int attempt = 0; attempt < AvatarUtils.count; attempt++) {
+      final index = (preferred + attempt) % AvatarUtils.count;
+      try {
+        await _firestore.runTransaction((tx) async {
+          final doc = await tx.get(takenRef.doc('$index'));
+          if (doc.exists) throw Exception('taken');
+          tx.set(takenRef.doc('$index'), {
+            'takenAt': FieldValue.serverTimestamp(),
+          });
+        });
+        return index;
+      } on Exception catch (e) {
+        if (e.toString().contains('taken')) continue;
+        rethrow;
+      }
+    }
+    // All 20 slots taken (>20 members): collision unavoidable, fall back to hash.
+    return preferred;
   }
 
   Future<String> _generateUniqueNickname(String groupId) async {

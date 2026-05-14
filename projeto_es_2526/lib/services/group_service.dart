@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/group.dart';
 
 class GroupService {
@@ -16,34 +15,34 @@ class GroupService {
       .snapshots()
       .map((snap) => snap.docs.map(Group.fromFirestore).toList());
 
-  Stream<List<String>> streamJoinedGroupIds() {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return Stream.value([]);
-
+  Stream<List<Group>> streamJoinedGroups(String userId) {
     return _firestore
+        .collection('users')
+        .doc(userId)
         .collection('anonymousIdentities')
-        .where('userId', isEqualTo: userId)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => doc.data()['communityId'] as String)
-            .toList());
-  }
+        .asyncMap((snap) async {
+          final groupIds = snap.docs.map((d) => d.id).toList();
+          if (groupIds.isEmpty) return <Group>[];
 
-  Future<void> joinGroup(String groupId) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception('Utilizador não autenticado');
+          // whereIn limit is 30 — chunk to stay within it
+          final chunks = <List<String>>[];
+          for (var i = 0; i < groupIds.length; i += 30) {
+            chunks.add(groupIds.sublist(i, (i + 30).clamp(0, groupIds.length)));
+          }
 
-    final anonymousId = 'anon_${DateTime.now().millisecondsSinceEpoch}';
+          final querySnaps = await Future.wait(
+            chunks.map(
+              (chunk) =>
+                  _groupsRef.where(FieldPath.documentId, whereIn: chunk).get(),
+            ),
+          );
 
-    await _firestore.collection('anonymousIdentities').add({
-      'userId': user.uid,
-      'communityId': groupId,
-      'anonymousId': anonymousId,
-      'joinedAt': FieldValue.serverTimestamp(),
-    });
-
-    await _groupsRef.doc(groupId).update({
-      'memberCount': FieldValue.increment(1),
-    });
+          return querySnaps
+              .expand((s) => s.docs)
+              .map(Group.fromFirestore)
+              .toList()
+            ..sort((a, b) => a.name.compareTo(b.name));
+        });
   }
 }

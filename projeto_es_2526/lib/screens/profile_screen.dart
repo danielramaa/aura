@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/edit_profile_dialog.dart';
+import 'settings_screen.dart';
+import '../widgets/role_badge.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ProfileController? controller;
@@ -46,12 +48,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           appBar: AppBar(
             title: const Text('Profile'),
             actions: [
-              if (user != null)
+              if (user != null) ...[
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: 'Settings',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit Profile',
                   onPressed: _showEditProfileDialog,
                 ),
+              ],
             ],
           ),
           body: user == null
@@ -69,11 +84,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Center(
           child: CircleAvatar(
             radius: 50,
+            backgroundColor: const Color(0xFFDCE9F7),
             backgroundImage: user.photoURL?.isNotEmpty == true
                 ? NetworkImage(user.photoURL!)
                 : null,
             child: user.photoURL?.isNotEmpty != true
-                ? const Icon(Icons.person, size: 50)
+                ? const Icon(Icons.person, size: 50, color: Color(0xFF185FA5))
                 : null,
           ),
         ),
@@ -93,6 +109,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
           ),
         ),
+        const SizedBox(height: 8),
+        Center(child: RoleBadge(uid: user.uid)),
         const SizedBox(height: 32),
         Text('My Communities', style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: 16),

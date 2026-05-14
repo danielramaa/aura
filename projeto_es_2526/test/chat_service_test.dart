@@ -7,7 +7,7 @@ import 'package:projeto_es_2526/services/chat_service.dart';
 AnonymousIdentity makeIdentity() => AnonymousIdentity(
   anonymousId: 'anon-1',
   nickname: 'CalmWolf42',
-  avatarUrl: '',
+  avatarIndex: 0,
 );
 
 void main() {
@@ -372,5 +372,45 @@ void main() {
         expect(reactions.containsKey('👍'), isFalse);
       },
     );
+  });
+
+  group('ChatService — deleteMessage', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+    });
+
+    Future<void> seedMessage(String messageId) => firestore
+        .collection('groups')
+        .doc('g1')
+        .collection('messages')
+        .doc(messageId)
+        .set({'text': 'hello', 'senderId': 'anon-1'});
+
+    test('removes the message document', () async {
+      await seedMessage('m1');
+
+      final err = await service.deleteMessage(groupId: 'g1', messageId: 'm1');
+
+      expect(err, isNull);
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      expect(doc.exists, isFalse);
+    });
+
+    test('returns null when deleting a non-existent message', () async {
+      final err = await service.deleteMessage(
+        groupId: 'g1',
+        messageId: 'no-such-message',
+      );
+      expect(err, isNull);
+    });
   });
 }

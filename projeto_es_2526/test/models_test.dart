@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projeto_es_2526/models/group.dart';
 import 'package:projeto_es_2526/models/message.dart';
+import 'package:projeto_es_2526/models/user_role.dart';
 
 void main() {
   group('Group.fromFirestore', () {
@@ -255,6 +256,7 @@ void main() {
       text: 'hi',
       anonymousId: 'anon-1',
       senderNickname: 'Wolf',
+      senderAvatarIndex: 0,
       timestamp: Timestamp.now(),
       reactions: reactions,
     );
@@ -287,6 +289,7 @@ void main() {
       text: 'hi',
       anonymousId: 'anon-1',
       senderNickname: 'Wolf',
+      senderAvatarIndex: 0,
       timestamp: Timestamp.now(),
       reactions: reactions,
     );
@@ -315,6 +318,42 @@ void main() {
     test('returns empty list when no reactions', () {
       final msg = makeMessage({});
       expect(msg.reactionSummary, isEmpty);
+    });
+  });
+
+  group('UserRole.fromString', () {
+    test('parses user', () {
+      expect(UserRole.fromString('user'), UserRole.user);
+    });
+
+    test('parses medic', () {
+      expect(UserRole.fromString('medic'), UserRole.medic);
+    });
+
+    test('parses admin', () {
+      expect(UserRole.fromString('admin'), UserRole.admin);
+    });
+
+    test('defaults to user for null', () {
+      expect(UserRole.fromString(null), UserRole.user);
+    });
+
+    test('defaults to user for unknown string', () {
+      expect(UserRole.fromString('superadmin'), UserRole.user);
+    });
+  });
+
+  group('UserRole.firestoreValue', () {
+    test('serializes correctly', () {
+      expect(UserRole.user.firestoreValue, 'user');
+      expect(UserRole.medic.firestoreValue, 'medic');
+      expect(UserRole.admin.firestoreValue, 'admin');
+    });
+
+    test('round-trips through fromString', () {
+      for (final role in UserRole.values) {
+        expect(UserRole.fromString(role.firestoreValue), role);
+      }
     });
   });
 }
