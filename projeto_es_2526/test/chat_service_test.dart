@@ -161,4 +161,216 @@ void main() {
       },
     );
   });
+
+  group('ChatService — addReaction (empty start)', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': Timestamp.now(),
+            'reactions': {},
+          });
+    });
+
+    Future<Map<String, dynamic>> reactionsOf() async {
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      return Map<String, dynamic>.from(doc.data()?['reactions'] ?? {});
+    }
+
+    test('adds a reaction', () async {
+      final err = await service.addReaction(
+        groupId: 'g1',
+        messageId: 'm1',
+        emoji: '👍',
+        anonymousId: 'anon-1',
+      );
+      expect(err, isNull);
+      expect(await reactionsOf(), containsPair('👍', contains('anon-1')));
+    });
+
+    test('returns error when message does not exist', () async {
+      final err = await service.addReaction(
+        groupId: 'g1',
+        messageId: 'nonexistent',
+        emoji: '👍',
+        anonymousId: 'anon-1',
+      );
+      expect(err, isNotNull);
+    });
+  });
+
+  group('ChatService — addReaction (existing 👍 from anon-1)', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': Timestamp.now(),
+            'reactions': {
+              '👍': ['anon-1'],
+            },
+          });
+    });
+
+    Future<Map<String, dynamic>> reactionsOf() async {
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      return Map<String, dynamic>.from(doc.data()?['reactions'] ?? {});
+    }
+
+    test('enforces one reaction per user — replaces existing emoji', () async {
+      await service.addReaction(
+        groupId: 'g1',
+        messageId: 'm1',
+        emoji: '❤️',
+        anonymousId: 'anon-1',
+      );
+
+      final reactions = await reactionsOf();
+      expect(reactions['❤️'], contains('anon-1'));
+      expect(reactions.containsKey('👍'), isFalse);
+    });
+
+    test('multiple users can react independently', () async {
+      await service.addReaction(
+        groupId: 'g1',
+        messageId: 'm1',
+        emoji: '👍',
+        anonymousId: 'anon-2',
+      );
+
+      final reactions = await reactionsOf();
+      expect(
+        List<String>.from(reactions['👍'] as List),
+        containsAll(['anon-1', 'anon-2']),
+      );
+    });
+  });
+
+  group('ChatService — removeReaction (👍 from anon-1 and anon-2)', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': Timestamp.now(),
+            'reactions': {
+              '👍': ['anon-1', 'anon-2'],
+            },
+          });
+    });
+
+    Future<Map<String, dynamic>> reactionsOf() async {
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      return Map<String, dynamic>.from(doc.data()?['reactions'] ?? {});
+    }
+
+    test('removes the reaction for the given user', () async {
+      final err = await service.removeReaction(
+        groupId: 'g1',
+        messageId: 'm1',
+        emoji: '👍',
+        anonymousId: 'anon-1',
+      );
+      expect(err, isNull);
+      final reactions = await reactionsOf();
+      expect(
+        List<String>.from(reactions['👍'] as List),
+        isNot(contains('anon-1')),
+      );
+      expect(List<String>.from(reactions['👍'] as List), contains('anon-2'));
+    });
+  });
+
+  group('ChatService — removeReaction (👍 from anon-2 only)', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hello',
+            'senderId': 'anon-1',
+            'senderNickname': 'CalmWolf42',
+            'timestamp': Timestamp.now(),
+            'reactions': {
+              '👍': ['anon-2'],
+            },
+          });
+    });
+
+    test(
+      'cleans up empty emoji entry after last user removes reaction',
+      () async {
+        await service.removeReaction(
+          groupId: 'g1',
+          messageId: 'm1',
+          emoji: '👍',
+          anonymousId: 'anon-2',
+        );
+
+        final doc = await firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('messages')
+            .doc('m1')
+            .get();
+        final reactions = Map<String, dynamic>.from(
+          doc.data()?['reactions'] ?? {},
+        );
+        expect(reactions.containsKey('👍'), isFalse);
+      },
+    );
+  });
 }

@@ -33,7 +33,8 @@ class ChatController extends ChangeNotifier {
   bool _isTyping = false;
   late final Stream<List<String>> typingNamesStream;
 
-  final Set<String> _reactionErrors = {};
+  // Maps messageId → the emoji that failed, so retry knows what to re-send.
+  final Map<String, String> _reactionErrors = {};
   final Set<String> _reactionRetrying = {};
 
   ChatController({
@@ -42,9 +43,9 @@ class ChatController extends ChangeNotifier {
     IdentityService? identityService,
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _identityService = identityService ?? IdentityService(),
-        _auth = auth ?? FirebaseAuth.instance {
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _identityService = identityService ?? IdentityService(),
+       _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
@@ -74,8 +75,10 @@ class ChatController extends ChangeNotifier {
   String? get error => _error;
   AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
 
-  bool hasReactionError(String messageId) => _reactionErrors.contains(messageId);
-  bool isRetryingReaction(String messageId) => _reactionRetrying.contains(messageId);
+  bool hasReactionError(String messageId) =>
+      _reactionErrors.containsKey(messageId);
+  bool isRetryingReaction(String messageId) =>
+      _reactionRetrying.contains(messageId);
 
   // ---------------------------------------------------------------------------
   // Typing
@@ -100,15 +103,17 @@ class ChatController extends ChangeNotifier {
 
     if (!_isTyping) {
       _isTyping = true;
-      unawaited(_firestore
-          .collection('groups')
-          .doc(groupId)
-          .collection('typing')
-          .doc(_anonymousIdentity!.anonymousId)
-          .set({
-        'nickname': _anonymousIdentity!.nickname,
-        'timestamp': FieldValue.serverTimestamp(),
-      }));
+      unawaited(
+        _firestore
+            .collection('groups')
+            .doc(groupId)
+            .collection('typing')
+            .doc(_anonymousIdentity!.anonymousId)
+            .set({
+              'nickname': _anonymousIdentity!.nickname,
+              'timestamp': FieldValue.serverTimestamp(),
+            }),
+      );
     }
 
     _typingTimer?.cancel();
@@ -118,12 +123,14 @@ class ChatController extends ChangeNotifier {
   void _clearTypingStatus() {
     _isTyping = false;
     if (_anonymousIdentity == null) return;
-    unawaited(_firestore
-        .collection('groups')
-        .doc(groupId)
-        .collection('typing')
-        .doc(_anonymousIdentity!.anonymousId)
-        .delete());
+    unawaited(
+      _firestore
+          .collection('groups')
+          .doc(groupId)
+          .collection('typing')
+          .doc(_anonymousIdentity!.anonymousId)
+          .delete(),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -132,13 +139,14 @@ class ChatController extends ChangeNotifier {
 
   Future<void> _initialize() async {
     try {
-      _anonymousIdentity =
-          await _identityService.getOrCreateIdentity(_userId, groupId);
+      _anonymousIdentity = await _identityService.getOrCreateIdentity(
+        _userId,
+        groupId,
+      );
 
       if (_isDisposed) return;
 
-      final groupDoc =
-          await _firestore.collection('groups').doc(groupId).get();
+      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
       _groupName = groupDoc.data()?['name'] as String? ?? 'Community';
 
       if (_isDisposed) return;
@@ -147,20 +155,22 @@ class ChatController extends ChangeNotifier {
       // so there's no need to block the message stream on this read.
       unawaited(_loadRoomNicknames());
 
-      _messagesSubscription = _chatService.streamMessages(groupId).listen(
-        (messages) {
-          if (_isDisposed) return;
-          _messages = messages;
-          _isLoading = false;
-          notifyListeners();
-        },
-        onError: (e) {
-          if (_isDisposed) return;
-          _error = "Não foi possível carregar as mensagens.";
-          _isLoading = false;
-          notifyListeners();
-        },
-      );
+      _messagesSubscription = _chatService
+          .streamMessages(groupId)
+          .listen(
+            (messages) {
+              if (_isDisposed) return;
+              _messages = messages;
+              _isLoading = false;
+              notifyListeners();
+            },
+            onError: (e) {
+              if (_isDisposed) return;
+              _error = "Não foi possível carregar as mensagens.";
+              _isLoading = false;
+              notifyListeners();
+            },
+          );
     } catch (e) {
       if (_isDisposed) return;
       _error = "Não foi possível inicializar o chat.";
@@ -252,10 +262,9 @@ class ChatController extends ChangeNotifier {
     final identity = _anonymousIdentity;
     if (identity == null) return;
 
-    final message = _messages.firstWhere(
-      (m) => m.id == messageId,
-      orElse: () => throw StateError('Message not found'),
-    );
+    final idx = _messages.indexWhere((m) => m.id == messageId);
+    if (idx == -1) return;
+    final message = _messages[idx];
 
     final existingEmoji = message.userReaction(identity.anonymousId);
     final isRemoving = existingEmoji == emoji;
@@ -283,13 +292,14 @@ class ChatController extends ChangeNotifier {
     if (_isDisposed) return;
 
     if (err != null) {
-      _reactionErrors.add(messageId);
+      _reactionErrors[messageId] = emoji;
     }
     notifyListeners();
   }
 
-  Future<void> retryReaction(String messageId, String emoji) async {
-    if (!_reactionErrors.contains(messageId)) return;
+  Future<void> retryReaction(String messageId) async {
+    final emoji = _reactionErrors[messageId];
+    if (emoji == null) return;
 
     _reactionErrors.remove(messageId);
     _reactionRetrying.add(messageId);

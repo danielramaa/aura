@@ -21,29 +21,35 @@ List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
 
   for (final match in regex.allMatches(text)) {
     if (match.start > lastEnd) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd, match.start),
-        style: const TextStyle(fontSize: 14, color: Colors.black87),
-      ));
+      spans.add(
+        TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: const TextStyle(fontSize: 14, color: Colors.black87),
+        ),
+      );
     }
     final word = match.group(1)!;
     final isValid = mentions.contains(word);
-    spans.add(TextSpan(
-      text: match.group(0),
-      style: TextStyle(
-        fontSize: 14,
-        color: isValid ? const Color(0xFF185FA5) : Colors.black87,
-        fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+    spans.add(
+      TextSpan(
+        text: match.group(0),
+        style: TextStyle(
+          fontSize: 14,
+          color: isValid ? const Color(0xFF185FA5) : Colors.black87,
+          fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+        ),
       ),
-    ));
+    );
     lastEnd = match.end;
   }
 
   if (lastEnd < text.length) {
-    spans.add(TextSpan(
-      text: text.substring(lastEnd),
-      style: const TextStyle(fontSize: 14, color: Colors.black87),
-    ));
+    spans.add(
+      TextSpan(
+        text: text.substring(lastEnd),
+        style: const TextStyle(fontSize: 14, color: Colors.black87),
+      ),
+    );
   }
   return spans;
 }
@@ -132,8 +138,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final text = _messageController.text;
     final cursor = _messageController.selection.baseOffset;
     final textBeforeCursor = text.substring(0, cursor);
-    final newTextBefore =
-        textBeforeCursor.replaceAll(RegExp(r'@\w*$'), '@$nickname ');
+    final newTextBefore = textBeforeCursor.replaceAll(
+      RegExp(r'@\w*$'),
+      '@$nickname ',
+    );
     final newText = newTextBefore + text.substring(cursor);
     _messageController.value = TextEditingValue(
       text: newText,
@@ -193,13 +201,16 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro ao enviar mensagem. Tente novamente.')),
+        const SnackBar(
+          content: Text('Erro ao enviar mensagem. Tente novamente.'),
+        ),
       );
     }
 
     if (_controller.error != null && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(_controller.error!)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_controller.error!)));
     }
   }
 
@@ -221,16 +232,18 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(
               widget.groupName,
               style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold),
+                color: Colors.black,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             Text(
               '${widget.memberCount} members',
               style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 12,
-                  fontWeight: FontWeight.normal),
+                color: Colors.grey[600],
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
             ),
           ],
         ),
@@ -308,19 +321,19 @@ class _ChatScreenState extends State<ChatScreen> {
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
-        final isOwn = message.anonymousId ==
-            _controller.anonymousIdentity?.anonymousId;
+        final isOwn =
+            message.anonymousId == _controller.anonymousIdentity?.anonymousId;
         return _MessageBubble(
           message: message,
           isOwn: isOwn,
-          currentAnonymousId:
-              _controller.anonymousIdentity?.anonymousId ?? '',
+          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),
           onLongPress: () => _showEmojiPicker(context, message),
           onReply: () => _startReply(message),
-          onRetryReaction: (emoji) =>
-              _controller.retryReaction(message.id, emoji),
+          onToggleReaction: (emoji) =>
+              _controller.toggleReaction(message.id, emoji),
+          onRetryReaction: () => _controller.retryReaction(message.id),
         );
       },
     );
@@ -340,9 +353,10 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Text(
             label,
             style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 12,
-                fontStyle: FontStyle.italic),
+              color: Colors.grey[500],
+              fontSize: 12,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         );
       },
@@ -361,18 +375,17 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFFE8F0FB),
                 borderRadius: BorderRadius.circular(8),
                 border: const Border(
-                    left: BorderSide(color: Color(0xFF185FA5), width: 3)),
+                  left: BorderSide(color: Color(0xFF185FA5), width: 3),
+                ),
               ),
               child: Text(
                 _replyingTo!.text,
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.black87),
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -411,22 +424,27 @@ class _ChatScreenState extends State<ChatScreen> {
           return InkWell(
             onTap: () => _applyMention(nickname),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
                   const CircleAvatar(
                     radius: 14,
                     backgroundColor: Color(0xFFDCE9F7),
-                    child: Icon(Icons.person,
-                        size: 16, color: Color(0xFF185FA5)),
+                    child: Icon(
+                      Icons.person,
+                      size: 16,
+                      color: Color(0xFF185FA5),
+                    ),
                   ),
                   const SizedBox(width: 10),
-                  Text('@$nickname',
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: Color(0xFF185FA5))),
+                  Text(
+                    '@$nickname',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF185FA5),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -455,8 +473,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 20),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
               ),
               onSubmitted: (_) => _sendMessage(),
             ),
@@ -491,8 +508,8 @@ class _EmojiPickerSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -540,7 +557,8 @@ class _MessageBubble extends StatelessWidget {
   final bool isRetryingReaction;
   final VoidCallback onLongPress;
   final VoidCallback onReply;
-  final ValueChanged<String> onRetryReaction;
+  final ValueChanged<String> onToggleReaction;
+  final VoidCallback onRetryReaction;
 
   const _MessageBubble({
     required this.message,
@@ -550,6 +568,7 @@ class _MessageBubble extends StatelessWidget {
     required this.isRetryingReaction,
     required this.onLongPress,
     required this.onReply,
+    required this.onToggleReaction,
     required this.onRetryReaction,
   });
 
@@ -572,20 +591,12 @@ class _MessageBubble extends StatelessWidget {
             final isMine = message.userReaction(currentAnonymousId) == emoji;
 
             return GestureDetector(
-              onTap: () {
-                final ctrl = context
-                    .findAncestorStateOfType<_ChatScreenState>()
-                    ?._controller;
-                ctrl?.toggleReaction(message.id, emoji);
-              },
+              onTap: () => onToggleReaction(emoji),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isMine
-                      ? const Color(0xFFDCE9F7)
-                      : Colors.grey[200],
+                  color: isMine ? const Color(0xFFDCE9F7) : Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isMine
@@ -598,12 +609,8 @@ class _MessageBubble extends StatelessWidget {
                   '$emoji $count',
                   style: TextStyle(
                     fontSize: 13,
-                    color: isMine
-                        ? const Color(0xFF185FA5)
-                        : Colors.black87,
-                    fontWeight: isMine
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                    color: isMine ? const Color(0xFF185FA5) : Colors.black87,
+                    fontWeight: isMine ? FontWeight.w600 : FontWeight.normal,
                   ),
                 ),
               ),
@@ -611,17 +618,9 @@ class _MessageBubble extends StatelessWidget {
           }),
           if (hasReactionError)
             GestureDetector(
-              onTap: isRetryingReaction
-                  ? null
-                  : () {
-                      final lastEmoji =
-                          message.userReaction(currentAnonymousId) ??
-                              _kPickerEmojis.first;
-                      onRetryReaction(lastEmoji);
-                    },
+              onTap: isRetryingReaction ? null : onRetryReaction,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.red[50],
                   borderRadius: BorderRadius.circular(12),
@@ -635,19 +634,16 @@ class _MessageBubble extends StatelessWidget {
                         width: 12,
                         height: 12,
                         child: CircularProgressIndicator(
-                            strokeWidth: 1.5,
-                            color: Colors.red),
+                          strokeWidth: 1.5,
+                          color: Colors.red,
+                        ),
                       )
                     else
-                      Icon(Icons.wifi_off,
-                          size: 13, color: Colors.red[400]),
+                      Icon(Icons.wifi_off, size: 13, color: Colors.red[400]),
                     const SizedBox(width: 4),
                     Text(
-                      isRetryingReaction
-                          ? 'A tentar...'
-                          : 'Tentar novamente',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.red[600]),
+                      isRetryingReaction ? 'A tentar...' : 'Tentar novamente',
+                      style: TextStyle(fontSize: 12, color: Colors.red[600]),
                     ),
                   ],
                 ),
@@ -661,7 +657,8 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onLongPress: onLongPress,
+      onDoubleTap: onLongPress, // double-tap opens emoji picker
+      onLongPress: onReply, // long-press starts reply
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
@@ -683,27 +680,29 @@ class _MessageBubble extends StatelessWidget {
                   child: Text(
                     message.senderNickname,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: Color(0xFF185FA5)),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF185FA5),
+                    ),
                   ),
                 ),
               if (message.replyToText != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 6),
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                     border: Border(
-                        left: BorderSide(
-                            color: Colors.grey[400]!, width: 3)),
+                      left: BorderSide(color: Colors.grey[400]!, width: 3),
+                    ),
                   ),
                   child: Text(
                     message.replyToText!,
-                    style: const TextStyle(
-                        fontSize: 12, color: Colors.black87),
+                    style: const TextStyle(fontSize: 12, color: Colors.black87),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

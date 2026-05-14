@@ -99,8 +99,9 @@ class ChatService implements ChatServiceInterface {
             : <String, dynamic>{};
 
         // Remove user from any existing reaction (one reaction per user rule)
-        final updated = raw.map((e, users) =>
-            MapEntry(e, List<String>.from(users as List)));
+        final updated = raw.map(
+          (e, users) => MapEntry(e, List<String>.from(users as List)),
+        );
         updated.forEach((e, users) => users.remove(anonymousId));
 
         // Add to the chosen emoji list
@@ -109,7 +110,9 @@ class ChatService implements ChatServiceInterface {
         // Clean up empty entries
         updated.removeWhere((_, users) => users.isEmpty);
 
-        transaction.update(docRef, {'reactions': updated});
+        // Use set (not update) so the reactions field is fully replaced,
+        // not deep-merged with the existing map.
+        transaction.set(docRef, {...data, 'reactions': updated});
       });
       return null;
     } catch (_) {
@@ -138,12 +141,13 @@ class ChatService implements ChatServiceInterface {
             ? Map<String, dynamic>.from(data['reactions'] as Map)
             : <String, dynamic>{};
 
-        final updated = raw.map((e, users) =>
-            MapEntry(e, List<String>.from(users as List)));
+        final updated = raw.map(
+          (e, users) => MapEntry(e, List<String>.from(users as List)),
+        );
         updated[emoji]?.remove(anonymousId);
         updated.removeWhere((_, users) => users.isEmpty);
 
-        transaction.update(docRef, {'reactions': updated});
+        transaction.set(docRef, {...data, 'reactions': updated});
       });
       return null;
     } catch (_) {

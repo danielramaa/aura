@@ -284,6 +284,61 @@ void main() {
     });
   });
 
+  group('ChatController — reactions', () {
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
+    late ChatController controller;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'user-1'),
+      );
+      controller = makeController(firestore, auth);
+      await waitForInit(controller);
+
+      // Seed a message so toggleReaction can find it via the stream
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hello',
+            'senderId': controller.anonymousIdentity!.anonymousId,
+            'senderNickname': controller.anonymousIdentity!.nickname,
+            'timestamp': Timestamp.now(),
+            'reactions': {},
+          });
+      // Wait for stream to deliver the message
+      await Future.delayed(Duration.zero);
+      await Future.delayed(Duration.zero);
+    });
+
+    tearDown(() => controller.dispose());
+
+    test('toggleReaction returns early when message is not in list', () async {
+      // Should not throw
+      await controller.toggleReaction('nonexistent-id', '👍');
+      expect(controller.hasReactionError('nonexistent-id'), isFalse);
+    });
+
+    test('hasReactionError is false initially', () {
+      expect(controller.hasReactionError('m1'), isFalse);
+    });
+
+    test('retryReaction does nothing when there is no error', () async {
+      // Should not throw or change state
+      await controller.retryReaction('m1');
+      expect(controller.hasReactionError('m1'), isFalse);
+    });
+
+    test('isRetryingReaction is false initially', () {
+      expect(controller.isRetryingReaction('m1'), isFalse);
+    });
+  });
+
   group('AnonymousIdentity.fromMap', () {
     test('parses a complete map', () {
       final identity = AnonymousIdentity.fromMap({

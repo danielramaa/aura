@@ -196,5 +196,125 @@ void main() {
       final message = Message.fromFirestore(doc);
       expect(message.mentions, isEmpty);
     });
+
+    test('parses reactions map from Firestore', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hi',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+            'reactions': {
+              '👍': ['anon-1', 'anon-2'],
+              '❤️': ['anon-3'],
+            },
+          });
+
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      final message = Message.fromFirestore(doc);
+      expect(message.reactions['👍'], containsAll(['anon-1', 'anon-2']));
+      expect(message.reactions['❤️'], contains('anon-3'));
+    });
+
+    test('reactions defaults to empty map on legacy messages', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .set({
+            'text': 'hi',
+            'senderId': 'anon-1',
+            'timestamp': Timestamp.now(),
+          });
+
+      final doc = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('messages')
+          .doc('m1')
+          .get();
+      final message = Message.fromFirestore(doc);
+      expect(message.reactions, isEmpty);
+    });
+  });
+
+  group('Message.userReaction', () {
+    Message makeMessage(Map<String, List<String>> reactions) => Message(
+      id: 'm1',
+      text: 'hi',
+      anonymousId: 'anon-1',
+      senderNickname: 'Wolf',
+      timestamp: Timestamp.now(),
+      reactions: reactions,
+    );
+
+    test('returns the emoji the user reacted with', () {
+      final msg = makeMessage({
+        '👍': ['anon-1'],
+        '❤️': ['anon-2'],
+      });
+      expect(msg.userReaction('anon-1'), '👍');
+      expect(msg.userReaction('anon-2'), '❤️');
+    });
+
+    test('returns null when user has no reaction', () {
+      final msg = makeMessage({
+        '👍': ['anon-2'],
+      });
+      expect(msg.userReaction('anon-1'), isNull);
+    });
+
+    test('returns null when reactions are empty', () {
+      final msg = makeMessage({});
+      expect(msg.userReaction('anon-1'), isNull);
+    });
+  });
+
+  group('Message.reactionSummary', () {
+    Message makeMessage(Map<String, List<String>> reactions) => Message(
+      id: 'm1',
+      text: 'hi',
+      anonymousId: 'anon-1',
+      senderNickname: 'Wolf',
+      timestamp: Timestamp.now(),
+      reactions: reactions,
+    );
+
+    test('returns entries sorted by count descending', () {
+      final msg = makeMessage({
+        '😂': ['anon-1'],
+        '👍': ['anon-1', 'anon-2', 'anon-3'],
+        '❤️': ['anon-1', 'anon-2'],
+      });
+      final summary = msg.reactionSummary;
+      expect(summary.map((e) => e.key).toList(), ['👍', '❤️', '😂']);
+      expect(summary.map((e) => e.value).toList(), [3, 2, 1]);
+    });
+
+    test('excludes emojis with zero users', () {
+      final msg = makeMessage({
+        '👍': [],
+        '❤️': ['anon-1'],
+      });
+      final summary = msg.reactionSummary;
+      expect(summary.length, 1);
+      expect(summary.first.key, '❤️');
+    });
+
+    test('returns empty list when no reactions', () {
+      final msg = makeMessage({});
+      expect(msg.reactionSummary, isEmpty);
+    });
   });
 }
