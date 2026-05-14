@@ -13,8 +13,22 @@ class AvatarUtils {
   }
 
   static Widget buildAvatarFromAsset(String assetPath, double size) {
+    final radius = size / 2;
     return ClipOval(
-      child: Image.asset(assetPath, width: size, height: size, fit: BoxFit.cover),
+      child: Image.asset(
+        assetPath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, _) {
+          debugPrint('AvatarUtils: failed to load asset "$assetPath": $error');
+          return CircleAvatar(
+            radius: radius,
+            backgroundColor: const Color(0xFFDCE9F7),
+            child: Icon(Icons.person, size: radius, color: const Color(0xFF185FA5)),
+          );
+        },
+      ),
     );
   }
 
