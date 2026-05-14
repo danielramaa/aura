@@ -110,7 +110,7 @@ class _AuthGateState extends State<AuthGate> {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((
+      _authStateSubscription = _authStream.listen((
         User? user,
       ) async {
         if (user != null) {
