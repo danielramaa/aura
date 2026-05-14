@@ -36,10 +36,16 @@ class AuthService {
       email: email,
       password: password,
     );
-    await _firestore.collection('users').doc(credential.user!.uid).set({
-      'role': UserRole.user.firestoreValue,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _firestore.collection('users').doc(credential.user!.uid).set({
+        'role': UserRole.user.firestoreValue,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {
+      // Roll back the Auth account so there's no dangling user without a profile.
+      await credential.user!.delete();
+      rethrow;
+    }
     return credential;
   }
 
