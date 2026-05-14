@@ -35,15 +35,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       final identitiesSnap = await _firestore
+          .collection('users')
+          .doc(user.uid)
           .collection('anonymousIdentities')
-          .where('userId', isEqualTo: user.uid)
           .get();
 
-      final groupIds = identitiesSnap.docs
-          .map((doc) => doc.data()['communityId'])
-          .whereType<String>()
-          .toSet()
-          .toList();
+      final groupIds = identitiesSnap.docs.map((d) => d.id).toList();
 
       final groupDocs = await Future.wait(
         groupIds.map((gid) => _firestore.collection('groups').doc(gid).get()),
