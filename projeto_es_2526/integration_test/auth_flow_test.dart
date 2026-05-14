@@ -42,7 +42,7 @@ void main() {
   testWidgets('full flow: register → MainScreen → logout → LoginScreen', (
     tester,
   ) async {
-    final auth = MockFirebaseAuth();
+    final auth = MockFirebaseAuth(mockUser: MockUser(uid: 'test-user'));
     final firestore = FakeFirebaseFirestore();
     final authService = AuthService(auth: auth);
     final mainController = MainController();
@@ -72,7 +72,7 @@ void main() {
   testWidgets('login flow: LoginScreen form accepts credentials and signs in', (
     tester,
   ) async {
-    final auth = MockFirebaseAuth();
+    final auth = MockFirebaseAuth(mockUser: MockUser(uid: 'test-user'));
     final firestore = FakeFirebaseFirestore();
     final authService = AuthService(auth: auth);
     final mainController = MainController();
