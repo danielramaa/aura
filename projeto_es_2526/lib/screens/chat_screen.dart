@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
@@ -124,56 +122,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<bool> _processLeaveGroup() async {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return false;
-
     try {
-      final userIdentityRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('anonymousIdentities')
-          .doc(widget.groupId);
-
-      final userIdentityDoc = await userIdentityRef.get();
-      if (!userIdentityDoc.exists) return true;
-
-      final data = userIdentityDoc.data()!;
-      final anonymousId = data['anonymousId'] as String?;
-      final nickname = data['nickname'] as String?;
-
-      // Batch all writes so the leave is atomic. Firestore evaluates the
-      // exists() rule check against pre-commit state, so the identity doc is
-      // still "seen" as existing when the memberCount update is validated.
-      final batch = FirebaseFirestore.instance.batch();
-
-      batch.update(
-        FirebaseFirestore.instance.collection('groups').doc(widget.groupId),
-        {'memberCount': FieldValue.increment(-1)},
-      );
-
-      batch.delete(userIdentityRef);
-
-      if (anonymousId != null) {
-        batch.set(
-          FirebaseFirestore.instance
-              .collection('anonymousIdentities')
-              .doc(anonymousId),
-          {'leftAt': FieldValue.serverTimestamp()},
-          SetOptions(merge: true),
-        );
-      }
-
-      if (nickname != null) {
-        batch.delete(
-          FirebaseFirestore.instance
-              .collection('groups')
-              .doc(widget.groupId)
-              .collection('takenNicknames')
-              .doc(nickname),
-        );
-      }
-
-      await batch.commit();
+      await _controller.leaveGroup();
       return true;
     } catch (e) {
       debugPrint('Error leaving group: $e');
