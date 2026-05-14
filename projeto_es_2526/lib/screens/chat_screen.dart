@@ -222,9 +222,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   Navigator.of(context).pop();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to leave group. Please try again.'),
+                    SnackBar(
+                      content: const Text('Failed to leave group.'),
                       backgroundColor: Colors.red,
+                      action: SnackBarAction(
+                        label: 'Try Again',
+                        textColor: Colors.white,
+                        onPressed: () async {
+                          final retry = await _processLeaveGroup();
+                          if (retry && context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                      ),
                     ),
                   );
                 }
