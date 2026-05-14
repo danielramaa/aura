@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import '../widgets/create_poll_dialog.dart';
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
 import '../widgets/emoji_picker_sheet.dart';
@@ -274,17 +274,28 @@ class _ChatScreenState extends State<ChatScreen> {
         final isOwn =
             message.anonymousId == _controller.anonymousIdentity?.anonymousId;
         return MessageBubble(
-          message: message,
-          isOwn: isOwn,
-          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
-          hasReactionError: _controller.hasReactionError(message.id),
-          isRetryingReaction: _controller.isRetryingReaction(message.id),
-          onLongPress: () => _showEmojiPicker(context, message),
-          onReply: () => _startReply(message),
-          onToggleReaction: (emoji) =>
-              _controller.toggleReaction(message.id, emoji),
-          onRetryReaction: () => _controller.retryReaction(message.id),
-        );
+  message: message,
+  isOwn: isOwn,
+  currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
+  hasReactionError: _controller.hasReactionError(message.id),
+  isRetryingReaction: _controller.isRetryingReaction(message.id),
+  onLongPress: () => _showEmojiPicker(context, message),
+  onReply: () => _startReply(message),
+  onToggleReaction: (value) {
+    if (message.type == MessageType.poll) {
+      _controller.votePoll(
+        messageId: message.id,
+        optionId: value,
+      );
+    } else {
+      _controller.toggleReaction(
+        message.id,
+        value,
+      );
+    }
+  },
+  onRetryReaction: () => _controller.retryReaction(message.id),
+);
       },
     );
   }

@@ -7,7 +7,8 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
       match /anonymousIdentities/{groupId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if request.auth != null
+          && request.auth.uid == userId;
       }
     }
 
@@ -21,29 +22,97 @@ service cloud.firestore {
 
       match /typing/{anonymousId} {
         allow read: if request.auth != null;
+
         allow write: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId;
+          && get(
+            /databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)
+          ).data.anonymousId == anonymousId;
       }
 
       match /messages/{messageId} {
         allow read: if request.auth != null;
+
+        // CREATE TEXT MESSAGE
         allow create: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == request.resource.data.senderId
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 2000;
+          && get(
+            /databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)
+          ).data.anonymousId == request.resource.data.senderId
+          && (
+            (
+              request.resource.data.type == 'text'
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 2000
+            )
+            ||
+            (
+              request.resource.data.type == 'poll'
+              && request.resource.data.pollData.question is string
+              && request.resource.data.pollData.question.size() > 0
+              && request.resource.data.pollData.options is list
+              && request.resource.data.pollData.options.size() >= 2
+              && request.resource.data.pollData.options.size() <= 6
+              && request.resource.data.pollData.isClosed == false
+              && request.resource.data.pollData.voterIds.size() == 0
+            )
+          );
+
+        // UPDATE
         allow update: if request.auth != null
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
+          && (
+            // REACTIONS ONLY FOR TEXT/POLL
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+
+            ||
+
+            // POLL VOTE / CLOSE
+            (
+              resource.data.type == 'poll'
+              && request.resource.data.type == 'poll'
+
+              && request.resource.data.senderId == resource.data.senderId
+              && request.resource.data.timestamp == resource.data.timestamp
+
+              && request.resource.data.diff(resource.data)
+                  .affectedKeys()
+                  .hasOnly(['pollData'])
+
+              && request.resource.data.pollData.question
+                  == resource.data.pollData.question
+
+              && request.resource.data.pollData.options.size()
+                  == resource.data.pollData.options.size()
+
+              && (
+                // CLOSE POLL
+                request.resource.data.pollData.isClosed == true
+
+                ||
+
+                // SINGLE VOTE ADDITION
+                (
+                  request.resource.data.pollData.voterIds.size()
+                    == resource.data.pollData.voterIds.size() + 1
+                )
+              )
+            )
+          );
+
         allow delete: if false;
       }
     }
 
     match /notifications/{notificationId} {
       allow read: if request.auth != null;
+
       allow create: if request.auth != null
         && request.resource.data.senderId == request.auth.uid;
+
       allow update: if request.auth != null
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        && request.resource.data.diff(resource.data)
+            .affectedKeys()
+            .hasOnly(['isRead']);
+
       allow delete: if false;
     }
 
