@@ -113,5 +113,50 @@ void main() {
         expect(a.nickname, isNot(b.nickname));
       },
     );
+
+    test(
+      'users in the same group receive distinct avatars (collision avoidance)',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        await seedGroup(firestore, 'group-1');
+        final service = IdentityService(firestore: firestore);
+
+        final identities = await Future.wait([
+          service.getOrCreateIdentity('user-a', 'group-1'),
+          service.getOrCreateIdentity('user-b', 'group-1'),
+          service.getOrCreateIdentity('user-c', 'group-1'),
+          service.getOrCreateIdentity('user-d', 'group-1'),
+        ]);
+
+        final avatarUrls = identities.map((i) => i.avatarUrl).toSet();
+        expect(
+          avatarUrls.length,
+          identities.length,
+          reason: 'each user should have a distinct avatar within the group',
+        );
+      },
+    );
+
+    test('avatar index is released when user leaves the group', () async {
+      final firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'group-1');
+      final service = IdentityService(firestore: firestore);
+
+      final identity = await service.getOrCreateIdentity('user-1', 'group-1');
+      final avatarUrl = identity.avatarUrl;
+
+      await service.leaveGroup('user-1', 'group-1');
+
+      final match = RegExp(r'avatar_(\d+)\.png\$').firstMatch(avatarUrl);
+      if (match != null) {
+        final indexDoc = await firestore
+            .collection('groups')
+            .doc('group-1')
+            .collection('takenAvatarIndices')
+            .doc(match.group(1)!)
+            .get();
+        expect(indexDoc.exists, isFalse);
+      }
+    });
   });
 }

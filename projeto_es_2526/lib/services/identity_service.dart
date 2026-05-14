@@ -90,6 +90,7 @@ class IdentityService {
     final data = userIdentityDoc.data()!;
     final anonymousId = data['anonymousId'] as String?;
     final nickname = data['nickname'] as String?;
+    final avatarUrl = data['avatarUrl'] as String?;
 
     final batch = _firestore.batch();
 
@@ -117,6 +118,19 @@ class IdentityService {
       );
     }
 
+    if (avatarUrl != null) {
+      final match = RegExp(r'avatar_(\d+)\.png$').firstMatch(avatarUrl);
+      if (match != null) {
+        batch.delete(
+          _firestore
+              .collection('groups')
+              .doc(groupId)
+              .collection('takenAvatarIndices')
+              .doc(match.group(1)!),
+        );
+      }
+    }
+
     await batch.commit();
   }
 
@@ -125,7 +139,7 @@ class IdentityService {
     String groupId,
   ) async {
     final nickname = await _generateUniqueNickname(groupId);
-    final avatarUrl = AvatarUtils.assetForNickname(nickname);
+    final avatarUrl = await _reserveAvatarAsset(groupId, nickname);
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
     // Reverse lookup for moderation: maps anonymousId → real userId
@@ -143,6 +157,34 @@ class IdentityService {
       nickname: nickname,
       avatarUrl: avatarUrl,
     );
+  }
+
+  Future<String> _reserveAvatarAsset(String groupId, String nickname) async {
+    final preferred =
+        nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
+    final takenRef = _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('takenAvatarIndices');
+
+    for (int attempt = 0; attempt < AvatarUtils.count; attempt++) {
+      final index = (preferred + attempt) % AvatarUtils.count;
+      try {
+        await _firestore.runTransaction((tx) async {
+          final doc = await tx.get(takenRef.doc('$index'));
+          if (doc.exists) throw Exception('taken');
+          tx.set(takenRef.doc('$index'), {
+            'takenAt': FieldValue.serverTimestamp(),
+          });
+        });
+        return AvatarUtils.assetForIndex(index);
+      } on Exception catch (e) {
+        if (e.toString().contains('taken')) continue;
+        rethrow;
+      }
+    }
+    // All 20 slots taken (>20 members): collision unavoidable, fall back to hash.
+    return AvatarUtils.assetForNickname(nickname);
   }
 
   Future<String> _generateUniqueNickname(String groupId) async {

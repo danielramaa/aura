@@ -2,14 +2,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:projeto_es_2526/utils/avatar_utils.dart';
 
 void main() {
-  group('AvatarUtils.assetForNickname', () {
+  group('AvatarUtils.assetForIndex', () {
+    test('returns correctly formatted path for each valid index', () {
+      for (int i = 0; i < AvatarUtils.count; i++) {
+        final path = AvatarUtils.assetForIndex(i);
+        expect(path, startsWith('assets/avatars/avatar_'));
+        expect(path, endsWith('.png'));
+        expect(path, contains(i.toString().padLeft(2, '0')));
+      }
+    });
+  });
+
+  group('AvatarUtils.assetForNickname (hash fallback)', () {
     test('returns a valid asset path', () {
       final path = AvatarUtils.assetForNickname('CalmWolf42');
       expect(path, startsWith('assets/avatars/avatar_'));
       expect(path, endsWith('.png'));
     });
 
-    test('index is always in range 0–19', () {
+    test('index is always in range 0-19', () {
       final nicknames = [
         'CalmWolf42',
         'BraveEagle7',
@@ -24,7 +35,7 @@ void main() {
         final path = AvatarUtils.assetForNickname(n);
         final indexStr = path.replaceAll(RegExp(r'[^0-9]'), '');
         final index = int.parse(indexStr);
-        expect(index, inInclusiveRange(0, 19), reason: 'nickname: $n → $path');
+        expect(index, inInclusiveRange(0, 19), reason: 'nickname: $n -> $path');
       }
     });
 
@@ -35,12 +46,9 @@ void main() {
     });
 
     test('different nicknames can produce different assets', () {
-      final paths = {
-        'CalmWolf42',
-        'BraveEagle7',
-        'QuietFox99',
-        'WiseOwl0',
-      }.map(AvatarUtils.assetForNickname).toSet();
+      final paths = {'CalmWolf42', 'BraveEagle7', 'QuietFox99', 'WiseOwl0'}
+          .map(AvatarUtils.assetForNickname)
+          .toSet();
       expect(paths.length, greaterThan(1));
     });
   });

@@ -391,6 +391,7 @@ void main() {
         text: 'hello',
         anonymousId: 'anon-1',
         senderNickname: 'CalmWolf42',
+        senderAvatarUrl: '',
         timestamp: ts,
         replyToText: 'original',
       );
@@ -408,6 +409,7 @@ void main() {
         text: 'hi',
         anonymousId: 'anon-2',
         senderNickname: 'BraveOwl7',
+        senderAvatarUrl: '',
         timestamp: Timestamp.now(),
       );
       expect(msg.replyToText, isNull);

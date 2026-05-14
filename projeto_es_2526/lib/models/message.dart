@@ -5,6 +5,7 @@ class Message {
   final String text;
   final String anonymousId;
   final String senderNickname;
+  final String senderAvatarUrl;
   final Timestamp timestamp;
   final String? replyToText;
   final List<String> mentions;
@@ -16,6 +17,7 @@ class Message {
     required this.text,
     required this.anonymousId,
     required this.senderNickname,
+    required this.senderAvatarUrl,
     required this.timestamp,
     this.replyToText,
     this.mentions = const [],
@@ -38,6 +40,7 @@ class Message {
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
       senderNickname: data['senderNickname'] ?? 'Anonymous',
+      senderAvatarUrl: data['senderAvatarUrl'] as String? ?? '',
       timestamp:
           data['timestamp'] as Timestamp? ??
           data['createdAt'] as Timestamp? ??
