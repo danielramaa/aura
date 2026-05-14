@@ -2,14 +2,27 @@ import 'package:flutter/material.dart';
 import '../models/user_role.dart';
 import '../services/user_service.dart';
 
-class RoleBadge extends StatelessWidget {
+class RoleBadge extends StatefulWidget {
   final String uid;
   const RoleBadge({super.key, required this.uid});
 
   @override
+  State<RoleBadge> createState() => _RoleBadgeState();
+}
+
+class _RoleBadgeState extends State<RoleBadge> {
+  late final Stream<UserRole> _roleStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _roleStream = UserService().streamRole(widget.uid);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<UserRole>(
-      stream: UserService().streamRole(uid),
+      stream: _roleStream,
       builder: (context, snap) {
         final role = snap.data ?? UserRole.user;
         final (label, color) = switch (role) {
