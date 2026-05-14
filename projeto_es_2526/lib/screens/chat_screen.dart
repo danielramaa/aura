@@ -141,6 +141,12 @@ class _ChatScreenState extends State<ChatScreen> {
       final anonymousId = data['anonymousId'] as String?;
       final nickname = data['nickname'] as String?;
 
+      // Decrement first while identity still exists (required by Firestore rule).
+      await FirebaseFirestore.instance
+          .collection('groups')
+          .doc(widget.groupId)
+          .update({'memberCount': FieldValue.increment(-1)});
+
       await userIdentityRef.delete();
 
       if (anonymousId != null) {
@@ -158,11 +164,6 @@ class _ChatScreenState extends State<ChatScreen> {
             .doc(nickname)
             .delete();
       }
-
-      await FirebaseFirestore.instance
-          .collection('groups')
-          .doc(widget.groupId)
-          .update({'memberCount': FieldValue.increment(-1)});
 
       return true;
     } catch (e) {
