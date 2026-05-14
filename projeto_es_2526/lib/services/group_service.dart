@@ -34,9 +34,8 @@ class GroupService {
 
           final querySnaps = await Future.wait(
             chunks.map(
-              (chunk) => _groupsRef
-                  .where(FieldPath.documentId, whereIn: chunk)
-                  .get(),
+              (chunk) =>
+                  _groupsRef.where(FieldPath.documentId, whereIn: chunk).get(),
             ),
           );
 

@@ -92,10 +92,9 @@ class IdentityService {
 
     final batch = _firestore.batch();
 
-    batch.update(
-      _firestore.collection('groups').doc(groupId),
-      {'memberCount': FieldValue.increment(-1)},
-    );
+    batch.update(_firestore.collection('groups').doc(groupId), {
+      'memberCount': FieldValue.increment(-1),
+    });
 
     batch.delete(userIdentityRef);
 

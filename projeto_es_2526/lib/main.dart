@@ -103,7 +103,8 @@ class _AuthGateState extends State<AuthGate> {
           if (_homeController == null || _currentUserId != uid) {
             if (_ownsHomeController) _homeController?.dispose();
             _currentUserId = uid;
-            _homeController = widget.homeController ?? HomeController(userId: uid);
+            _homeController =
+                widget.homeController ?? HomeController(userId: uid);
           }
           return MainScreen(
             mainController: _mainController,
