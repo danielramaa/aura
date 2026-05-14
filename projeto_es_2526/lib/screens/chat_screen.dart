@@ -141,30 +141,39 @@ class _ChatScreenState extends State<ChatScreen> {
       final anonymousId = data['anonymousId'] as String?;
       final nickname = data['nickname'] as String?;
 
-      // Decrement first while identity still exists (required by Firestore rule).
-      await FirebaseFirestore.instance
-          .collection('groups')
-          .doc(widget.groupId)
-          .update({'memberCount': FieldValue.increment(-1)});
+      // Batch all writes so the leave is atomic. Firestore evaluates the
+      // exists() rule check against pre-commit state, so the identity doc is
+      // still "seen" as existing when the memberCount update is validated.
+      final batch = FirebaseFirestore.instance.batch();
 
-      await userIdentityRef.delete();
+      batch.update(
+        FirebaseFirestore.instance.collection('groups').doc(widget.groupId),
+        {'memberCount': FieldValue.increment(-1)},
+      );
+
+      batch.delete(userIdentityRef);
 
       if (anonymousId != null) {
-        await FirebaseFirestore.instance
-            .collection('anonymousIdentities')
-            .doc(anonymousId)
-            .set({'leftAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
+        batch.set(
+          FirebaseFirestore.instance
+              .collection('anonymousIdentities')
+              .doc(anonymousId),
+          {'leftAt': FieldValue.serverTimestamp()},
+          SetOptions(merge: true),
+        );
       }
 
       if (nickname != null) {
-        await FirebaseFirestore.instance
-            .collection('groups')
-            .doc(widget.groupId)
-            .collection('takenNicknames')
-            .doc(nickname)
-            .delete();
+        batch.delete(
+          FirebaseFirestore.instance
+              .collection('groups')
+              .doc(widget.groupId)
+              .collection('takenNicknames')
+              .doc(nickname),
+        );
       }
 
+      await batch.commit();
       return true;
     } catch (e) {
       debugPrint('Error leaving group: $e');
