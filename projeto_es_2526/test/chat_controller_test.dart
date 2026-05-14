@@ -356,30 +356,30 @@ void main() {
       final identity = AnonymousIdentity.fromMap({
         'anonymousId': 'anon-123',
         'nickname': 'CalmWolf42',
-        'avatarUrl': 'https://example.com/avatar.png',
+        'avatarIndex': 7,
       });
       expect(identity.anonymousId, 'anon-123');
       expect(identity.nickname, 'CalmWolf42');
-      expect(identity.avatarUrl, 'https://example.com/avatar.png');
+      expect(identity.avatarIndex, 7);
     });
 
     test('uses fallbacks for missing fields', () {
       final identity = AnonymousIdentity.fromMap({});
       expect(identity.anonymousId, '');
       expect(identity.nickname, 'Anonymous');
-      expect(identity.avatarUrl, '');
+      expect(identity.avatarIndex, 0);
     });
 
     test('toMap round-trips through fromMap', () {
       final original = AnonymousIdentity(
         anonymousId: 'id1',
         nickname: 'BraveOwl7',
-        avatarUrl: 'https://example.com/owl.png',
+        avatarIndex: 3,
       );
       final copy = AnonymousIdentity.fromMap(original.toMap());
       expect(copy.anonymousId, original.anonymousId);
       expect(copy.nickname, original.nickname);
-      expect(copy.avatarUrl, original.avatarUrl);
+      expect(copy.avatarIndex, original.avatarIndex);
     });
   });
 
@@ -391,6 +391,7 @@ void main() {
         text: 'hello',
         anonymousId: 'anon-1',
         senderNickname: 'CalmWolf42',
+        senderAvatarIndex: 0,
         timestamp: ts,
         replyToText: 'original',
       );
@@ -408,6 +409,7 @@ void main() {
         text: 'hi',
         anonymousId: 'anon-2',
         senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 0,
         timestamp: Timestamp.now(),
       );
       expect(msg.replyToText, isNull);

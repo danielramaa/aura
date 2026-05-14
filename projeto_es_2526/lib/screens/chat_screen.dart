@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
+import '../utils/avatar_utils.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 
@@ -451,15 +452,7 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  const CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Color(0xFFDCE9F7),
-                    child: Icon(
-                      Icons.person,
-                      size: 16,
-                      color: Color(0xFF185FA5),
-                    ),
-                  ),
+                  AvatarUtils.buildAvatar(nickname, 28),
                   const SizedBox(width: 10),
                   Text(
                     '@$nickname',

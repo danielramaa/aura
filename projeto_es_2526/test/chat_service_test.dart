@@ -7,7 +7,7 @@ import 'package:projeto_es_2526/services/chat_service.dart';
 AnonymousIdentity makeIdentity() => AnonymousIdentity(
   anonymousId: 'anon-1',
   nickname: 'CalmWolf42',
-  avatarUrl: '',
+  avatarIndex: 0,
 );
 
 void main() {
