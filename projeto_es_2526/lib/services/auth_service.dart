@@ -1,12 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user_role.dart';
 
 class AuthService {
   static const _stayLoggedInKey = 'stay_logged_in';
 
   final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
 
-  AuthService({FirebaseAuth? auth}) : _auth = auth ?? FirebaseAuth.instance;
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _auth = auth ?? FirebaseAuth.instance,
+      _firestore = firestore ?? FirebaseFirestore.instance;
 
   User? get currentUser => _auth.currentUser;
 
@@ -27,10 +32,15 @@ class AuthService {
   }
 
   Future<UserCredential> register(String email, String password) async {
-    return _auth.createUserWithEmailAndPassword(
+    final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
+    await _firestore.collection('users').doc(credential.user!.uid).set({
+      'role': UserRole.user.firestoreValue,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return credential;
   }
 
   Future<void> logout() async {
