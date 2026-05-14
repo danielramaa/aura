@@ -11,6 +11,7 @@ void main() {
       final identity = await service.getOrCreateIdentity('user-1', 'group-1');
       expect(identity.anonymousId, isNotEmpty);
       expect(identity.nickname, isNotEmpty);
+      expect(identity.avatarUrl, contains('api.dicebear.com'));
     });
 
     test('persists the identity under the user document', () async {
@@ -27,6 +28,7 @@ void main() {
           .get();
       expect(doc.exists, isTrue);
       expect(doc.data()!['nickname'], isNotEmpty);
+      expect(doc.data()!['avatarUrl'], contains('api.dicebear.com'));
     });
 
     test('reuses the same identity on repeated calls', () async {

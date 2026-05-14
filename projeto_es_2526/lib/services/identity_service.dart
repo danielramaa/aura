@@ -78,8 +78,8 @@ class IdentityService {
     String groupId,
   ) async {
     final nickname = await _generateUniqueNickname(groupId);
-    // TODO: generate avatar locally to avoid leaking user IPs to a third party
-    const avatarUrl = '';
+    final encodedNickname = Uri.encodeComponent(nickname);
+    final avatarUrl = 'https://api.dicebear.com/8.x/bottts/png?seed=$encodedNickname';
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
     // Reverse lookup for moderation: maps anonymousId → real userId

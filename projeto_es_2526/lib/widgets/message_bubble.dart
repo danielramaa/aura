@@ -150,6 +150,29 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  Widget _buildAvatar() {
+    final encodedNickname = Uri.encodeComponent(message.senderNickname);
+    final avatarUrl = 'https://api.dicebear.com/8.x/bottts/png?seed=$encodedNickname';
+    return Padding(
+      padding: isOwn
+          ? const EdgeInsets.only(left: 8.0)
+          : const EdgeInsets.only(right: 8.0),
+      child: ClipOval(
+        child: Image.network(
+          avatarUrl,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => const CircleAvatar(
+            radius: 16,
+            backgroundColor: Color(0xFFDCE9F7),
+            child: Icon(Icons.person, size: 16, color: Color(0xFF185FA5)),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -157,19 +180,26 @@ class MessageBubble extends StatelessWidget {
       onLongPress: onReply,
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
-          ),
-          decoration: BoxDecoration(
-            color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              if (!isOwn) _buildAvatar(),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.75,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
               if (!isOwn)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4.0),
@@ -205,6 +235,11 @@ class MessageBubble extends StatelessWidget {
                 ),
               _buildMessageText(message.text, message.mentions),
               _buildReactionBar(context),
+            ],
+          ),
+                ),
+              ),
+              if (isOwn) _buildAvatar(),
             ],
           ),
         ),

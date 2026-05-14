@@ -12,7 +12,6 @@ class EditProfileDialog extends StatefulWidget {
 
 class _EditProfileDialogState extends State<EditProfileDialog> {
   late final TextEditingController _nameCtrl;
-  late final TextEditingController _photoCtrl;
   late final TextEditingController _emailCtrl;
   late final TextEditingController _newPasswordCtrl;
   late final TextEditingController _confirmPasswordCtrl;
@@ -26,7 +25,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     super.initState();
     final user = widget.controller.currentUser;
     _nameCtrl = TextEditingController(text: user?.displayName);
-    _photoCtrl = TextEditingController(text: user?.photoURL);
     _emailCtrl = TextEditingController(text: user?.email);
     _newPasswordCtrl = TextEditingController();
     _confirmPasswordCtrl = TextEditingController();
@@ -51,7 +49,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _photoCtrl.dispose();
     _emailCtrl.dispose();
     _newPasswordCtrl.dispose();
     _confirmPasswordCtrl.dispose();
@@ -74,7 +71,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
 
     final error = await widget.controller.updateProfile(
       displayName: _nameCtrl.text.trim(),
-      photoURL: _photoCtrl.text.trim(),
+      photoURL: '', // Campo desativado, passa vazio
       email: _emailCtrl.text.trim(),
       newPassword: newPassword,
       currentPassword: _currentPasswordCtrl.text,
@@ -103,10 +100,6 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
             TextField(
               controller: _nameCtrl,
               decoration: const InputDecoration(labelText: 'Name'),
-            ),
-            TextField(
-              controller: _photoCtrl,
-              decoration: const InputDecoration(labelText: 'Photo URL'),
             ),
             TextField(
               controller: _emailCtrl,
