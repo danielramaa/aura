@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/edit_profile_dialog.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ProfileController? controller;
@@ -46,12 +47,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           appBar: AppBar(
             title: const Text('Profile'),
             actions: [
-              if (user != null)
+              if (user != null) ...[
+                IconButton(
+                  icon: const Icon(Icons.settings),
+                  tooltip: 'Settings',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit Profile',
                   onPressed: _showEditProfileDialog,
                 ),
+              ],
             ],
           ),
           body: user == null
@@ -88,9 +102,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Center(
           child: Text(
             user.email ?? 'No email available',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
           ),
         ),
         const SizedBox(height: 32),
