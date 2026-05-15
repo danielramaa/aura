@@ -37,7 +37,6 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String? _selectedCategory;
-  int _retryKey = 0;
 
   @override
   void initState() {
@@ -66,10 +65,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
   }
 
   void _triggerRetry() {
-    setState(() {
-      _retryKey++;
-      _groupsStream = _groupService.streamGroups();
-    });
+    setState(() => _groupsStream = _groupService.streamGroups());
   }
 
   void _showCommunityPreview(Group group) {
@@ -256,7 +252,6 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
         ),
       ),
       body: StreamBuilder<List<Group>>(
-        key: ValueKey('groups_stream_$_retryKey'),
         stream: _groupsStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
