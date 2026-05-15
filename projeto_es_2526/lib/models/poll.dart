@@ -39,7 +39,7 @@ class Poll {
     return DateTime.now().isBefore(expiry);
   }
 
-  int get totalVotes => options.fold(0, (sum, o) => sum + o.voteCount);
+  int get totalVotes => options.fold(0, (acc, o) => acc + o.voteCount);
 
   factory Poll.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};

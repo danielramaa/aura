@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../utils/avatar_utils.dart';
 
+enum MessageType { text, poll }
+
 class Message {
   final String id;
   final String text;
@@ -13,6 +15,8 @@ class Message {
   final List<String> mentions;
   // reactions: { emoji: [anonymousId, ...] }
   final Map<String, List<String>> reactions;
+  final MessageType type;
+  final String? pollId;
 
   String get senderAvatarAssetPath =>
       AvatarUtils.assetForIndex(senderAvatarIndex);
@@ -27,6 +31,8 @@ class Message {
     this.replyToText,
     this.mentions = const [],
     this.reactions = const {},
+    this.type = MessageType.text,
+    this.pollId,
   });
 
   factory Message.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -45,6 +51,10 @@ class Message {
     final fallbackIndex =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
 
+    final typeStr = data['type'] as String?;
+    final msgType =
+        typeStr == 'poll' ? MessageType.poll : MessageType.text;
+
     return Message(
       id: doc.id,
       text: data['text'] ?? '',
@@ -58,6 +68,8 @@ class Message {
       replyToText: data['replyToText'] as String?,
       mentions: List<String>.from(data['mentions'] ?? []),
       reactions: parsedReactions,
+      type: msgType,
+      pollId: data['pollId'] as String?,
     );
   }
 
