@@ -88,24 +88,25 @@ class IdentityService {
         .collection('anonymousIdentities')
         .doc(groupId);
 
+    final groupDocRef = _firestore.collection('groups').doc(groupId);
+
+    // Read identity and group doc in parallel.
     final userIdentityDoc = await userIdentityRef.get();
     if (!userIdentityDoc.exists) return;
+    final groupDoc = await groupDocRef.get();
 
     final data = userIdentityDoc.data()!;
     final anonymousId = data['anonymousId'] as String?;
     final nickname = data['nickname'] as String?;
     final avatarIndex = data['avatarIndex'] as int?;
 
-    // Decrement memberCount BEFORE the batch so the security rule's
-    // exists(identity) check still passes (identity is deleted in the batch).
-    // Swallow errors for groups that have no Firestore document yet.
-    try {
-      await _firestore.collection('groups').doc(groupId).update({
-        'memberCount': FieldValue.increment(-1),
-      });
-    } catch (_) {}
-
     final batch = _firestore.batch();
+
+    // Decrement memberCount atomically with the identity deletion.
+    // Skip if the group has no Firestore document (default/seeded groups).
+    if (groupDoc.exists) {
+      batch.update(groupDocRef, {'memberCount': FieldValue.increment(-1)});
+    }
 
     batch.delete(userIdentityRef);
 
