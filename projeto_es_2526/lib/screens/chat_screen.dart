@@ -8,9 +8,11 @@ import '../models/message.dart';
 import '../models/user_role.dart';
 import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
+import '../widgets/create_poll_sheet.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/medications_dialog.dart';
+import '../widgets/poll_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -168,6 +170,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _cancelReply() {
     setState(() => _replyingTo = null);
+  }
+
+  void _showCreatePollSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => CreatePollSheet(
+        onPublish: (question, options) =>
+            _controller.createPoll(question, options),
+      ),
+    );
   }
 
   Future<bool> _processLeaveGroup() async {
@@ -413,6 +430,18 @@ class _ChatScreenState extends State<ChatScreen> {
         final message = messages[index];
         final isOwn =
             message.anonymousId == _controller.anonymousIdentity?.anonymousId;
+
+        if (message.type == MessageType.poll && message.pollId != null) {
+          return PollBubble(
+            message: message,
+            isOwn: isOwn,
+            currentAnonymousId:
+                _controller.anonymousIdentity?.anonymousId ?? '',
+            pollService: _controller.pollService,
+            groupId: widget.groupId,
+          );
+        }
+
         return MessageBubble(
           message: message,
           isOwn: isOwn,
@@ -544,6 +573,12 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.all(12.0),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.poll_outlined),
+            color: const Color(0xFF185FA5),
+            tooltip: 'Create poll',
+            onPressed: isSending ? null : _showCreatePollSheet,
+          ),
           Expanded(
             child: TextField(
               controller: _messageController,

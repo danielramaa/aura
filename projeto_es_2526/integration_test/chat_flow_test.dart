@@ -4,6 +4,7 @@ import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:projeto_es_2526/controllers/chat_controller.dart';
+import 'package:projeto_es_2526/models/user_role.dart';
 import 'package:projeto_es_2526/services/chat_service.dart';
 import 'package:projeto_es_2526/services/identity_service.dart';
 
@@ -45,7 +46,7 @@ void main() {
         );
         await _waitForInit(controller);
 
-        await controller.send('Hello community');
+        await controller.send('Hello community', senderRole: UserRole.user);
 
         final snap = await firestore
             .collection('groups')
@@ -98,8 +99,8 @@ void main() {
       );
       await _waitForInit(controller);
 
-      await controller.send('Original message');
-      await controller.send('Replying', replyToText: 'Original message');
+      await controller.send('Original message', senderRole: UserRole.user);
+      await controller.send('Replying', replyToText: 'Original message', senderRole: UserRole.user);
 
       final snap = await firestore
           .collection('groups')
@@ -125,7 +126,7 @@ void main() {
         );
         await _waitForInit(controller);
 
-        await controller.send('Hello');
+        await controller.send('Hello', senderRole: UserRole.user);
         // notification is fire-and-forget; give it a microtask
         await Future.delayed(Duration.zero);
 
@@ -161,7 +162,7 @@ void main() {
         isNotEmpty,
       );
 
-      await controller.send('Hello');
+      await controller.send('Hello', senderRole: UserRole.user);
       await Future.delayed(Duration.zero);
       expect(
         (await firestore
@@ -187,8 +188,8 @@ void main() {
       );
       await _waitForInit(controller);
 
-      await controller.send('Message A');
-      await controller.send('Message B');
+      await controller.send('Message A', senderRole: UserRole.user);
+      await controller.send('Message B', senderRole: UserRole.user);
 
       final stream = await service.streamMessages('g1').first;
       final texts = stream.map((m) => m.text).toSet();

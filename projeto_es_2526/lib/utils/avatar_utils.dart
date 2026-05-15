@@ -25,7 +25,11 @@ class AvatarUtils {
           return CircleAvatar(
             radius: radius,
             backgroundColor: const Color(0xFFDCE9F7),
-            child: Icon(Icons.person, size: radius, color: const Color(0xFF185FA5)),
+            child: Icon(
+              Icons.person,
+              size: radius,
+              color: const Color(0xFF185FA5),
+            ),
           );
         },
       ),

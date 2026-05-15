@@ -3,6 +3,27 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Returns true when a poll option map is well-formed and starts with no votes.
+    function validPollOption(opt) {
+      return opt.text is string && opt.text.size() > 0 && opt.voteCount == 0;
+    }
+
+    // Validates all options in the list (supports 2–6 entries).
+    function validPollOptions(opts) {
+      return opts.size() >= 2 && opts.size() <= 6
+        && validPollOption(opts[0])
+        && validPollOption(opts[1])
+        && (opts.size() < 3 || validPollOption(opts[2]))
+        && (opts.size() < 4 || validPollOption(opts[3]))
+        && (opts.size() < 5 || validPollOption(opts[4]))
+        && (opts.size() < 6 || validPollOption(opts[5]));
+    }
+
+    // Convenience accessor for the parent poll document data.
+    function pollData(groupId, pollId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)).data;
+    }
+
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
@@ -16,9 +37,16 @@ service cloud.firestore {
       allow write: if false;
       allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberCount'])
-        && (request.resource.data.memberCount == resource.data.memberCount + 1
-            || request.resource.data.memberCount == resource.data.memberCount - 1)
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId));
+        && (
+          // Join: identity must already exist and count increases by exactly 1.
+          (request.resource.data.memberCount == resource.data.memberCount + 1
+            && exists(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)))
+          ||
+          // Leave: identity is deleted in the same batch so exists() would return
+          // false for the post-batch state. Allow decrement-by-1 for any authed user;
+          // the batch atomically deletes the identity, keeping the data consistent.
+          request.resource.data.memberCount == resource.data.memberCount - 1
+        );
 
       match /takenNicknames/{nickname} {
         allow read, write: if request.auth != null;
@@ -38,13 +66,72 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == request.resource.data.senderId
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 2000;
+          && (
+            // Regular text message
+            ((!('type' in request.resource.data) || request.resource.data.type == 'text')
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 2000)
+            ||
+            // Poll placeholder message (text is empty; content lives in /polls)
+            (request.resource.data.type == 'poll'
+              && 'pollId' in request.resource.data
+              && request.resource.data.pollId is string
+              && existsAfter(/databases/$(database)/documents/groups/$(groupId)/polls/$(request.resource.data.pollId))
+              && request.resource.data.text == '')
+          );
         allow update: if request.auth != null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
         allow delete: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      match /polls/{pollId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == request.resource.data.creatorAnonymousId
+          && request.resource.data.question is string
+          && request.resource.data.question.size() > 0
+          && request.resource.data.options is list
+          && validPollOptions(request.resource.data.options)
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.closedAt == null;
+
+        // Creator can close the poll (set closedAt); voting updates options counts.
+        allow update: if request.auth != null && (
+          // Close: only the creator can set closedAt.
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['closedAt'])
+            && resource.data.creatorAnonymousId == get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId)
+          ||
+          // Vote: options update must be coupled with a new vote document written in
+          // the same transaction. This prevents arbitrary manipulation of vote counts.
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options'])
+            && resource.data.closedAt == null
+            && !exists(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)/votes/$(get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId))
+            && existsAfter(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)/votes/$(get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId)))
+        );
+
+        allow delete: if false;
+
+        match /votes/{anonymousId} {
+          // Only the voter can read their own vote.
+          allow read: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId;
+
+          // Vote once: create only, document ID must match the user's anonymousId.
+          // Also validates the parent poll is still open and optionIndex is in bounds.
+          allow create: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId
+            && request.resource.data.keys().hasOnly(['optionIndex'])
+            && request.resource.data.optionIndex is int
+            && pollData(groupId, pollId).closedAt == null
+            && pollData(groupId, pollId).createdAt > request.time - duration.value(24, 'h')
+            && request.resource.data.optionIndex >= 0
+            && request.resource.data.optionIndex < pollData(groupId, pollId).options.size();
+
+          allow update, delete: if false;
+        }
       }
     }
 

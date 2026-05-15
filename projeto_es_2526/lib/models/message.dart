@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/avatar_utils.dart';
 import 'user_role.dart';
 
+enum MessageType { text, poll }
+
 class Message {
   final String id;
   final String text;
@@ -15,8 +17,11 @@ class Message {
   final List<String> mentions;
   // reactions: { emoji: [anonymousId, ...] }
   final Map<String, List<String>> reactions;
+  final MessageType type;
+  final String? pollId;
 
-  String get senderAvatarAssetPath => AvatarUtils.assetForIndex(senderAvatarIndex);
+  String get senderAvatarAssetPath =>
+      AvatarUtils.assetForIndex(senderAvatarIndex);
 
   Message({
     required this.id,
@@ -29,6 +34,8 @@ class Message {
     this.replyToText,
     this.mentions = const [],
     this.reactions = const {},
+    this.type = MessageType.text,
+    this.pollId,
   });
 
   factory Message.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -49,8 +56,14 @@ class Message {
 
     UserRole parsedRole = UserRole.user;
     final roleStr = data['senderRole'] as String?;
-    if (roleStr == 'medic' || roleStr == 'UserRole.medic') parsedRole = UserRole.medic;
-    else if (roleStr == 'admin' || roleStr == 'UserRole.admin') parsedRole = UserRole.admin;
+    if (roleStr == 'medic' || roleStr == 'UserRole.medic') {
+      parsedRole = UserRole.medic;
+    } else if (roleStr == 'admin' || roleStr == 'UserRole.admin') {
+      parsedRole = UserRole.admin;
+    }
+
+    final typeStr = data['type'] as String?;
+    final msgType = typeStr == 'poll' ? MessageType.poll : MessageType.text;
 
     return Message(
       id: doc.id,
@@ -66,6 +79,8 @@ class Message {
       replyToText: data['replyToText'] as String?,
       mentions: List<String>.from(data['mentions'] ?? []),
       reactions: parsedReactions,
+      type: msgType,
+      pollId: data['pollId'] as String?,
     );
   }
 
