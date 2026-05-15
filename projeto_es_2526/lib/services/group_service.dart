@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/group.dart';
 
 class GroupService {
+  // Stable database keys — do NOT rename; Firestore documents reference these.
   static const List<String> categories = [
     'Mental Health',
     'Autoimmune Diseases',
@@ -10,6 +11,15 @@ class GroupService {
     'Physical Wellness',
     'General',
   ];
+
+  // Portuguese display labels for each category key.
+  static const Map<String, String> categoryLabels = {
+    'Mental Health': 'Saúde Mental',
+    'Autoimmune Diseases': 'Doenças Autoimunes',
+    'Neurodivergence': 'Neurodivergência',
+    'Physical Wellness': 'Bem-estar Físico',
+    'General': 'Geral',
+  };
 
   static const List<Group> defaultGroups = [
     Group(

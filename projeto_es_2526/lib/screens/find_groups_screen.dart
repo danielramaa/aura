@@ -344,7 +344,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                         padding: const EdgeInsets.only(left: 8),
                         child: Center(
                           child: CategoryChip(
-                            label: cat,
+                            label: GroupService.categoryLabels[cat] ?? cat,
                             selected: _selectedCategory == cat,
                             onTap: () => setState(
                               () => _selectedCategory =
