@@ -1,25 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../models/group.dart';
+import '../models/group_category.dart';
 
 class GroupService {
-  // Stable database keys — do NOT rename; Firestore documents reference these.
-  static const List<String> categories = [
-    'Mental Health',
-    'Autoimmune Diseases',
-    'Neurodivergence',
-    'Physical Wellness',
-    'General',
-  ];
-
-  // Portuguese display labels for each category key.
-  static const Map<String, String> categoryLabels = {
-    'Mental Health': 'Saúde Mental',
-    'Autoimmune Diseases': 'Doenças Autoimunes',
-    'Neurodivergence': 'Neurodivergência',
-    'Physical Wellness': 'Bem-estar Físico',
-    'General': 'Geral',
-  };
+  static const List<String> categories = groupCategories;
+  static const Map<String, String> categoryLabels = groupCategoryLabels;
 
   static const List<Group> defaultGroups = [
     Group(
@@ -30,6 +16,7 @@ class GroupService {
       description:
           'Estratégias diárias e meditação para lidar com a ansiedade e melhorar o foco no trabalho e estudos.',
       category: 'Mental Health',
+      isEstimate: true,
     ),
     Group(
       id: 'vida-com-endometriose',
@@ -39,6 +26,7 @@ class GroupService {
       description:
           'Apoio mútuo, troca de experiências sobre médicos, tratamentos e como lidar com a dor no dia a dia.',
       category: 'Autoimmune Diseases',
+      isEstimate: true,
     ),
     Group(
       id: 'pais-de-criancas-autistas',
@@ -48,6 +36,7 @@ class GroupService {
       description:
           'Comunidade acolhedora para partilhar vitórias, desafios e recursos sobre o espetro autista.',
       category: 'Neurodivergence',
+      isEstimate: true,
     ),
   ];
 

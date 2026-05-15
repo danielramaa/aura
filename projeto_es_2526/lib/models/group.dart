@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../services/group_service.dart';
+import 'group_category.dart';
 
 class Group {
   static const int _defaultColorValue = 0xFF378ADD;
@@ -12,6 +12,9 @@ class Group {
   final Color color;
   final String category;
 
+  /// True when [memberCount] is a seed estimate, not a live Firestore value.
+  final bool isEstimate;
+
   const Group({
     required this.id,
     required this.name,
@@ -19,6 +22,7 @@ class Group {
     required this.memberCount,
     required this.color,
     required this.category,
+    this.isEstimate = false,
   });
 
   factory Group.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -29,7 +33,7 @@ class Group {
       description: data['description'] as String? ?? '',
       memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
       color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
-      category: GroupService.categories.contains(data['category'])
+      category: groupCategories.contains(data['category'])
           ? data['category'] as String
           : 'General',
     );

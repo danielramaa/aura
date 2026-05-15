@@ -131,7 +131,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '${group.memberCount} membros',
+                        '${group.isEstimate ? "~" : ""}${group.memberCount} membros',
                         style: TextStyle(
                           color: Colors.blue[800],
                           fontWeight: FontWeight.w600,
@@ -407,7 +407,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          '${group.memberCount} membros',
+                                          '${group.isEstimate ? "~" : ""}${group.memberCount} membros',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.blue[600],
