@@ -179,9 +179,14 @@ service cloud.firestore {
     }
 
     match /moderator_applications/{appId} {
-      // Users can only submit their own application.
+      // Users can only submit their own application, forced into pending status
+      // with only the expected fields — prevents self-approving or injecting
+      // arbitrary data.
       allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(
+             ['userId', 'userEmail', 'licenseNumber', 'status', 'timestamp']);
       // Users can read their own; admins can read all.
       allow read: if request.auth != null
         && (resource.data.userId == request.auth.uid
