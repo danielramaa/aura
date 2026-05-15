@@ -1,231 +1,189 @@
-import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import '../models/group.dart';
 import '../services/group_service.dart';
 import '../services/identity_service.dart';
-import 'chat_screen.dart';
 
 class FindGroupsScreen extends StatefulWidget {
   final GroupService? groupService;
   final IdentityService? identityService;
   final FirebaseAuth? auth;
 
-  const FindGroupsScreen({
-    super.key,
-    this.groupService,
-    this.identityService,
-    this.auth,
-  });
+  const FindGroupsScreen({super.key, this.groupService, this.identityService, this.auth});
 
   @override
   State<FindGroupsScreen> createState() => _FindGroupsScreenState();
 }
 
 class _FindGroupsScreenState extends State<FindGroupsScreen> {
-  late final GroupService _groupService;
-  late final IdentityService _identityService;
-  late final FirebaseAuth _auth;
-  late final Stream<List<Group>> _groupsStream;
-
-  Set<String> _joinedIds = {};
-  StreamSubscription<Set<String>>? _joinedIdsSub;
-
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+
+  final List<Group> _allCommunities = const [
+    Group(
+      id: 'ansiedade-e-foco',
+      name: 'Ansiedade e Foco',
+      color: Colors.blue,
+      memberCount: 3500,
+      description:
+          'Estratégias diárias e meditação para lidar com a ansiedade e melhorar o foco no trabalho e estudos.',
+    ),
+    Group(
+      id: 'vida-com-endometriose',
+      name: 'Vida com Endometriose',
+      color: Colors.pink,
+      memberCount: 1200,
+      description:
+          'Apoio mútuo, troca de experiências sobre médicos, tratamentos e como lidar com a dor no dia a dia.',
+    ),
+    Group(
+      id: 'pais-de-criancas-autistas',
+      name: 'Pais de Crianças Autistas',
+      color: Colors.orange,
+      memberCount: 4800,
+      description:
+          'Comunidade acolhedora para partilhar vitórias, desafios e recursos sobre o espetro autista.',
+    ),
+  ];
+
+  List<Group> _filteredCommunities = [];
 
   @override
   void initState() {
     super.initState();
-    _groupService = widget.groupService ?? GroupService();
-    _identityService = widget.identityService ?? IdentityService();
-    _auth = widget.auth ?? FirebaseAuth.instance;
-    _groupsStream = _groupService.streamGroups();
-
-    final uid = _auth.currentUser?.uid;
-    if (uid != null) {
-      _joinedIdsSub = _groupService
-          .streamJoinedGroups(uid)
-          .map((gs) => gs.map((g) => g.id).toSet())
-          .listen((ids) {
-            if (mounted) setState(() => _joinedIds = ids);
-          });
-    }
+    _filteredCommunities = _allCommunities;
   }
 
   @override
   void dispose() {
-    _joinedIdsSub?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  void _showCommunityPreview(Group group) {
-    final scaffoldContext = context;
-    final isJoined = _joinedIds.contains(group.id);
+  void _filterCommunities(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredCommunities = _allCommunities;
+      } else {
+        _filteredCommunities = _allCommunities.where((group) {
+          final nameLower = group.name.toLowerCase();
+          final descLower = group.description.toLowerCase();
+          final searchLower = query.toLowerCase();
+          return nameLower.contains(searchLower) ||
+              descLower.contains(searchLower);
+        }).toList();
+      }
+    });
+  }
 
-    showDialog<void>(
-      context: scaffoldContext,
-      builder: (dialogContext) {
-        bool isJoining = false;
-        return StatefulBuilder(
-          builder: (_, setDialogState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              insetPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 24,
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+  void _showCommunityPreview(Group group) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            group.name,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(dialogContext),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.grey,
-                            size: 28,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                    Expanded(
                       child: Text(
-                        '${group.memberCount} members',
-                        style: TextStyle(
-                          color: Colors.blue[800],
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
+                        group.name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    const Text(
-                      'Sobre a comunidade',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      group.description,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton(
-                        onPressed: isJoined || isJoining
-                            ? null
-                            : () async {
-                                final uid = _auth.currentUser?.uid;
-                                if (uid == null) return;
-
-                                setDialogState(() => isJoining = true);
-                                try {
-                                  await _identityService.getOrCreateIdentity(
-                                    uid,
-                                    group.id,
-                                  );
-                                  if (!scaffoldContext.mounted) return;
-                                  Navigator.pop(scaffoldContext);
-                                  Navigator.push(
-                                    scaffoldContext,
-                                    MaterialPageRoute(
-                                      builder: (_) => ChatScreen(
-                                        groupId: group.id,
-                                        groupName: group.name,
-                                        memberCount:
-                                            group.memberCount.toString(),
-                                        groupDescription: group.description,
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  debugPrint('Join group error: $e');
-                                  if (dialogContext.mounted) {
-                                    setDialogState(() => isJoining = false);
-                                  }
-                                  if (scaffoldContext.mounted) {
-                                    ScaffoldMessenger.of(
-                                      scaffoldContext,
-                                    ).showSnackBar(
-                                      SnackBar(
-                                        content: Text('$e'),
-                                        duration: const Duration(seconds: 6),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                              isJoined ? Colors.green : const Color(0xFF185FA5),
-                          disabledBackgroundColor:
-                              isJoined ? Colors.green : Colors.grey[300],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: isJoining
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                isJoined ? 'Already Joined' : 'Join Community',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                    const SizedBox(width: 16),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: const Icon(
+                        Icons.close,
+                        color: Colors.grey,
+                        size: 28,
                       ),
                     ),
                   ],
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 16),
+
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${group.memberCount} members',
+                    style: TextStyle(
+                      color: Colors.blue[800],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                const Text(
+                  'Sobre a comunidade',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  group.description,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 48),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Bem-vinda ao grupo ${group.name}!'),
+                        ),
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF185FA5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      'Join Community',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -249,7 +207,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
-              onChanged: (q) => setState(() => _searchQuery = q),
+              onChanged: _filterCommunities,
               decoration: InputDecoration(
                 hintText: 'Search by name or condition...',
                 prefixIcon: const Icon(Icons.search),
@@ -262,43 +220,21 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
               ),
             ),
           ),
+
           Expanded(
-            child: StreamBuilder<List<Group>>(
-              stream: _groupsStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Center(
-                    child: Text('Failed to load groups.'),
-                  );
-                }
-
-                final query = _searchQuery.toLowerCase();
-                final groups = (snapshot.data ?? []).where((g) {
-                  if (query.isEmpty) return true;
-                  return g.name.toLowerCase().contains(query) ||
-                      g.description.toLowerCase().contains(query);
-                }).toList();
-
-                if (groups.isEmpty) {
-                  return Center(
+            child: _filteredCommunities.isEmpty
+                ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _searchQuery.isEmpty
-                              ? Icons.group_outlined
-                              : Icons.search_off,
+                          Icons.search_off,
                           size: 64,
                           color: Colors.grey[300],
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isEmpty
-                              ? 'No communities yet'
-                              : 'No communities found',
+                          'No communities found',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.grey[600],
@@ -307,79 +243,59 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          _searchQuery.isEmpty
-                              ? 'Communities will appear here once created.'
-                              : 'Try a different search term.',
+                          'Try a different search term.',
                           style: TextStyle(color: Colors.grey[400]),
                         ),
                       ],
                     ),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: groups.length,
-                  separatorBuilder: (_, _) => const Divider(height: 24),
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-                    final isJoined = _joinedIds.contains(group.id);
-                    return InkWell(
-                      onTap: () => _showCommunityPreview(group),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    group.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${group.memberCount} members',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.blue[600],
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    group.description,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isJoined)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 8),
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                  size: 20,
+                  )
+                // 2. Lista de Comunidades (temos que adicionar mais)
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _filteredCommunities.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 24),
+                    itemBuilder: (context, index) {
+                      final group = _filteredCommunities[index];
+                      return InkWell(
+                        onTap: () => _showCommunityPreview(group),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                group.name,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                '${group.memberCount} members',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue[600],
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                group.description,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey[600],
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),

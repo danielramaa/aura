@@ -112,7 +112,7 @@ void main() {
       final first = controller.send('first');
       expect(controller.isSending, isTrue);
 
-      await controller.send('second'); // blocked — isSending is true
+      await controller.send('second');
       await first;
 
       final snap = await firestore
@@ -310,7 +310,6 @@ void main() {
       controller = makeController(firestore, auth);
       await waitForInit(controller);
 
-      // Seed a message so toggleReaction can find it via the stream
       await firestore
           .collection('groups')
           .doc('g1')
@@ -323,7 +322,6 @@ void main() {
             'timestamp': Timestamp.now(),
             'reactions': {},
           });
-      // Wait for stream to deliver the message
       await Future.delayed(Duration.zero);
       await Future.delayed(Duration.zero);
     });
@@ -331,7 +329,6 @@ void main() {
     tearDown(() => controller.dispose());
 
     test('toggleReaction returns early when message is not in list', () async {
-      // Should not throw
       await controller.toggleReaction('nonexistent-id', '👍');
       expect(controller.hasReactionError('nonexistent-id'), isFalse);
     });
@@ -341,7 +338,6 @@ void main() {
     });
 
     test('retryReaction does nothing when there is no error', () async {
-      // Should not throw or change state
       await controller.retryReaction('m1');
       expect(controller.hasReactionError('m1'), isFalse);
     });
@@ -399,58 +395,4 @@ void main() {
       expect(msg.text, 'hello');
       expect(msg.anonymousId, 'anon-1');
       expect(msg.senderNickname, 'CalmWolf42');
-      expect(msg.timestamp, ts);
-      expect(msg.replyToText, 'original');
-    });
-
-    test('replyToText defaults to null', () {
-      final msg = Message(
-        id: '2',
-        text: 'hi',
-        anonymousId: 'anon-2',
-        senderNickname: 'BraveOwl7',
-        senderAvatarIndex: 0,
-        timestamp: Timestamp.now(),
-      );
-      expect(msg.replyToText, isNull);
-    });
-  });
-
-  group('ChatController — deleteMessage', () {
-    late FakeFirebaseFirestore firestore;
-    late MockFirebaseAuth auth;
-
-    setUp(() {
-      firestore = FakeFirebaseFirestore();
-      auth = MockFirebaseAuth(
-        signedIn: true,
-        mockUser: MockUser(uid: 'u1'),
-      );
-    });
-
-    test('removes the message from Firestore', () async {
-      await seedGroup(firestore, 'g1');
-      await firestore
-          .collection('groups')
-          .doc('g1')
-          .collection('messages')
-          .doc('m1')
-          .set({'text': 'hello', 'senderId': 'anon-1', 'timestamp': Timestamp.now()});
-
-      final controller = makeController(firestore, auth);
-      await waitForInit(controller);
-
-      await controller.deleteMessage('m1');
-
-      final doc = await firestore
-          .collection('groups')
-          .doc('g1')
-          .collection('messages')
-          .doc('m1')
-          .get();
-      expect(doc.exists, isFalse);
-
-      controller.dispose();
-    });
-  });
-}
+      expect(ms

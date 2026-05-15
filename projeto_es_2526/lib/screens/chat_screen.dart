@@ -10,6 +10,7 @@ import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/medications_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -258,7 +259,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty) return;
 
     try {
-      await _controller.send(text, replyToText: _replyingTo?.text);
+      await _controller.send(
+        text,
+        replyToText: _replyingTo?.text,
+        senderRole: _currentUserRole,
+      );
       _messageController.clear();
       setState(() {
         _replyingTo = null;
@@ -310,6 +315,19 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.medical_services_outlined),
+            tooltip: 'Medications',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => MedicationsDialog(
+                  groupId: widget.groupId,
+                  userRole: _currentUserRole,
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {

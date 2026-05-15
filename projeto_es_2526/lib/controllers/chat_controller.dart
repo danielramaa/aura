@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 
@@ -204,10 +205,6 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
-
   List<String> _extractMentions(String text) {
     final regex = RegExp(r'@(\w+)');
     return regex
@@ -223,7 +220,15 @@ class ChatController extends ChangeNotifier {
     await _identityService.leaveGroup(userId, groupId);
   }
 
-  Future<void> send(String text, {String? replyToText}) async {
+  // ---------------------------------------------------------------------------
+  // Send
+  // ---------------------------------------------------------------------------
+
+  Future<void> send(
+    String text, {
+    String? replyToText,
+    required UserRole senderRole,
+  }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending || _anonymousIdentity == null) return;
     if (trimmed.length > maxMessageLength) {
@@ -245,6 +250,7 @@ class ChatController extends ChangeNotifier {
         identity: _anonymousIdentity!,
         replyToText: replyToText,
         mentions: mentions,
+        senderRole: senderRole.name,
       );
       if (sendError != null) {
         _error = sendError;

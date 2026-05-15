@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../utils/avatar_utils.dart';
+import 'user_role.dart';
 
 class Message {
   final String id;
@@ -8,6 +9,7 @@ class Message {
   final String anonymousId;
   final String senderNickname;
   final int senderAvatarIndex;
+  final UserRole senderRole;
   final Timestamp timestamp;
   final String? replyToText;
   final List<String> mentions;
@@ -22,6 +24,7 @@ class Message {
     required this.anonymousId,
     required this.senderNickname,
     required this.senderAvatarIndex,
+    this.senderRole = UserRole.user,
     required this.timestamp,
     this.replyToText,
     this.mentions = const [],
@@ -44,12 +47,18 @@ class Message {
     final fallbackIndex =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
 
+    UserRole parsedRole = UserRole.user;
+    final roleStr = data['senderRole'] as String?;
+    if (roleStr == 'medic' || roleStr == 'UserRole.medic') parsedRole = UserRole.medic;
+    else if (roleStr == 'admin' || roleStr == 'UserRole.admin') parsedRole = UserRole.admin;
+
     return Message(
       id: doc.id,
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
       senderNickname: nickname.isEmpty ? 'Anonymous' : nickname,
       senderAvatarIndex: data['senderAvatarIndex'] as int? ?? fallbackIndex,
+      senderRole: parsedRole,
       timestamp:
           data['timestamp'] as Timestamp? ??
           data['createdAt'] as Timestamp? ??

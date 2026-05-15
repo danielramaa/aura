@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/message.dart';
+import '../models/user_role.dart';
 import '../utils/avatar_utils.dart';
 
 /// Returns RichText spans for [text], highlighting only @tokens whose word
@@ -187,18 +188,27 @@ class MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!isOwn)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Text(
-                            message.senderNickname,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: Color(0xFF185FA5),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4.0),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                            isOwn ? 'Tu' : message.senderNickname,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: isOwn ? const Color(0xFF003D82) : const Color(0xFF185FA5),
+                              ),
                             ),
-                          ),
+                            if (message.senderRole == UserRole.medic)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4.0),
+                                child: Icon(Icons.verified, size: 14, color: isOwn ? const Color(0xFF003D82) : const Color(0xFF185FA5)),
+                              ),
+                          ],
                         ),
+                      ),
                       if (message.replyToText != null)
                         Container(
                           margin: const EdgeInsets.only(bottom: 6),

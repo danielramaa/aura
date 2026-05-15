@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/edit_profile_dialog.dart';
 import '../widgets/role_badge.dart';
+import '../models/user_role.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ProfileController? controller;
@@ -33,6 +34,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await showDialog<void>(
       context: context,
       builder: (_) => EditProfileDialog(controller: _controller),
+    );
+  }
+
+  Future<void> _showApplyModeratorDialog() async {
+    final formKey = GlobalKey<FormState>();
+    String licenseNumber = '';
+    bool isSubmitting = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Apply for Moderator'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('To become a verified moderator, please provide your medical credentials.', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                const SizedBox(height: 16),
+                TextFormField(
+                  decoration: const InputDecoration(labelText: 'Medical License / Certification', border: OutlineInputBorder()),
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  onSaved: (v) => licenseNumber = v!.trim(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: isSubmitting ? null : () async {
+                if (formKey.currentState!.validate()) {
+                  formKey.currentState!.save();
+                  setDialogState(() => isSubmitting = true);
+                  final err = await _controller.submitModeratorApplication(licenseNumber);
+                  setDialogState(() => isSubmitting = false);
+                  if (context.mounted) {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err ?? 'Application submitted successfully!')));
+                  }
+                }
+              },
+              child: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Submit'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -119,6 +168,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         const SizedBox(height: 32),
+        if (_controller.userRole == UserRole.user) ...[
+          ElevatedButton.icon(
+            icon: const Icon(Icons.verified_user_outlined),
+            label: const Text('Apply for Medical Moderator'),
+            onPressed: _showApplyModeratorDialog,
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF185FA5), foregroundColor: Colors.white),
+          ),
+          const SizedBox(height: 16),
+        ],
         ElevatedButton.icon(
           icon: const Icon(Icons.logout),
           label: const Text('Logout'),
