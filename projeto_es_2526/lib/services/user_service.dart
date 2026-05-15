@@ -54,4 +54,39 @@ class UserService {
       return 'Failed to deny application.';
     }
   }
+
+  /// Revokes medic role and removes all medicAnonymousIds badge entries across
+  /// every group the user belongs to, so the badge disappears immediately.
+  Future<String?> revokeMedicRole(String userId) async {
+    try {
+      final identitiesSnap = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('anonymousIdentities')
+          .get();
+
+      final batch = _firestore.batch();
+      batch.update(_userDoc(userId), {'role': 'user'});
+
+      for (final doc in identitiesSnap.docs) {
+        final groupId = doc.id;
+        final anonymousId = doc.data()['anonymousId'] as String?;
+        if (anonymousId != null) {
+          batch.delete(
+            _firestore
+                .collection('groups')
+                .doc(groupId)
+                .collection('medicAnonymousIds')
+                .doc(anonymousId),
+          );
+        }
+      }
+
+      await batch.commit();
+      return null;
+    } catch (_) {
+      return 'Failed to revoke medic role.';
+    }
+  }
 }
+
