@@ -36,6 +36,7 @@ void main() {
         groupId: 'g1',
         text: '   ',
         identity: identity,
+        senderRole: 'user',
       );
       expect(error, isNotNull);
       expect(await messages(), isEmpty);
@@ -46,6 +47,7 @@ void main() {
         groupId: 'g1',
         text: 'a' * (ChatService.maxMessageLength + 1),
         identity: identity,
+        senderRole: 'user',
       );
       expect(error, isNotNull);
       expect(await messages(), isEmpty);
@@ -56,6 +58,7 @@ void main() {
         groupId: 'g1',
         text: 'Hello world',
         identity: identity,
+        senderRole: 'user',
       );
       expect(error, isNull);
       final msgs = await messages();
@@ -68,6 +71,7 @@ void main() {
         groupId: 'g1',
         text: 'test',
         identity: identity,
+        senderRole: 'user',
       );
       final msg = (await messages()).first;
       expect(msg['senderId'], 'anon-1');
@@ -79,6 +83,7 @@ void main() {
         groupId: 'g1',
         text: '  trimmed  ',
         identity: identity,
+        senderRole: 'user',
       );
       expect((await messages()).first['text'], 'trimmed');
     });
@@ -89,6 +94,7 @@ void main() {
         text: 'reply',
         identity: identity,
         replyToText: 'original message',
+        senderRole: 'user',
       );
       expect((await messages()).first['replyToText'], 'original message');
     });
@@ -99,6 +105,7 @@ void main() {
         text: '@Alice hello',
         identity: identity,
         mentions: ['Alice'],
+        senderRole: 'user',
       );
       expect((await messages()).first['mentions'], ['Alice']);
     });
@@ -108,6 +115,7 @@ void main() {
         groupId: 'g1',
         text: 'no mentions',
         identity: identity,
+        senderRole: 'user',
       );
       expect((await messages()).first['mentions'], isEmpty);
     });
@@ -154,6 +162,7 @@ void main() {
           text: '@Alice and @Bob',
           identity: identity,
           mentions: ['Alice', 'Bob'],
+          senderRole: 'user',
         );
 
         final messages = await service.streamMessages('g1').first;

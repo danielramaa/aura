@@ -48,6 +48,7 @@ List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
+  final bool isSenderMedic;
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
@@ -60,6 +61,7 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.isOwn,
+    required this.isSenderMedic,
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
@@ -190,16 +192,33 @@ class MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!isOwn)
+                      if (!isOwn || isSenderMedic)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Text(
-                            message.senderNickname,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: Color(0xFF185FA5),
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (!isOwn)
+                                Text(
+                                  message.senderNickname,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Color(0xFF185FA5),
+                                  ),
+                                ),
+                              if (isSenderMedic)
+                                Padding(
+                                  padding: EdgeInsets.only(
+                                    left: isOwn ? 0 : 4.0,
+                                  ),
+                                  child: const Icon(
+                                    Icons.verified,
+                                    size: 14,
+                                    color: Color(0xFF185FA5),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       if (message.replyToText != null)

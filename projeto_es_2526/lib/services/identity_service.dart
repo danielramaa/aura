@@ -193,7 +193,9 @@ class IdentityService {
         });
         return index;
       } on Exception catch (e) {
-        if (e.toString().contains('taken')) continue;
+        if (e.toString().contains('taken')) {
+          continue;
+        }
         rethrow;
       }
     }
@@ -224,8 +226,10 @@ class IdentityService {
         });
         return true;
       } on Exception catch (e) {
-        if (e.toString().contains('taken')) return false;
-        rethrow; // surface real errors (permission, network, etc.)
+        if (e.toString().contains('taken')) {
+          return false;
+        }
+        rethrow;
       }
     }
 

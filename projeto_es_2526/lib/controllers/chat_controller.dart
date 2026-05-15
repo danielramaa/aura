@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 import '../services/poll_service.dart';
@@ -24,7 +25,9 @@ class ChatController extends ChangeNotifier {
 
   List<Message> _messages = [];
   List<String> _roomNicknames = [];
+  Set<String> _medicAnonymousIds = {};
   StreamSubscription? _messagesSubscription;
+  StreamSubscription? _medicSub;
 
   bool _isDisposed = false;
   bool _isLoading = true;
@@ -58,6 +61,18 @@ class ChatController extends ChangeNotifier {
         .snapshots()
         .map(_toTypingNames);
 
+    _medicSub = _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('medicAnonymousIds')
+        .snapshots()
+        .listen((snap) {
+          if (!_isDisposed) {
+            _medicAnonymousIds = snap.docs.map((d) => d.id).toSet();
+            notifyListeners();
+          }
+        });
+
     final user = _auth.currentUser;
     if (user != null) {
       _userId = user.uid;
@@ -74,6 +89,7 @@ class ChatController extends ChangeNotifier {
 
   List<Message> get messages => _messages;
   List<String> get roomNicknames => _roomNicknames;
+  Set<String> get medicAnonymousIds => _medicAnonymousIds;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
   String? get error => _error;
@@ -208,10 +224,6 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
-
   List<String> _extractMentions(String text) {
     final regex = RegExp(r'@(\w+)');
     return regex
@@ -227,7 +239,15 @@ class ChatController extends ChangeNotifier {
     await _identityService.leaveGroup(userId, groupId);
   }
 
-  Future<void> send(String text, {String? replyToText}) async {
+  // ---------------------------------------------------------------------------
+  // Send
+  // ---------------------------------------------------------------------------
+
+  Future<void> send(
+    String text, {
+    String? replyToText,
+    required UserRole senderRole,
+  }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isSending || _anonymousIdentity == null) return;
     if (trimmed.length > maxMessageLength) {
@@ -249,12 +269,26 @@ class ChatController extends ChangeNotifier {
         identity: _anonymousIdentity!,
         replyToText: replyToText,
         mentions: mentions,
+        senderRole: senderRole.name,
       );
       if (sendError != null) {
         _error = sendError;
       } else {
         _error = null;
         unawaited(_createNotification(mentions: mentions));
+        if (senderRole == UserRole.medic && _anonymousIdentity != null) {
+          unawaited(
+            _firestore
+                .collection('groups')
+                .doc(groupId)
+                .collection('medicAnonymousIds')
+                .doc(_anonymousIdentity!.anonymousId)
+                .set({'isMedic': true})
+                .catchError(
+                  (Object e) => debugPrint('Failed to mark anonymousId as medic: $e'),
+                ),
+          );
+        }
       }
     } catch (_) {
       _error = "Não foi possível enviar a mensagem.";
@@ -404,6 +438,7 @@ class ChatController extends ChangeNotifier {
     _typingTimer?.cancel();
     _clearTypingStatus();
     _messagesSubscription?.cancel();
+    _medicSub?.cancel();
     super.dispose();
   }
 }

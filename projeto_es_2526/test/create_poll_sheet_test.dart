@@ -23,7 +23,8 @@ Future<void> pumpSheet(
 
 // TextFields appear in build order: [0] question, [1] option 1, [2] option 2, …
 Finder questionField() => find.byType(TextField).at(0);
-Finder optionField(int n) => find.byType(TextField).at(n); // 1-based option → index n
+Finder optionField(int n) =>
+    find.byType(TextField).at(n); // 1-based option → index n
 
 void main() {
   group('CreatePollSheet — validation', () {
@@ -57,10 +58,13 @@ void main() {
       tester,
     ) async {
       var called = false;
-      await pumpSheet(tester, onPublish: (_, opts) async {
-        called = true;
-        return null;
-      });
+      await pumpSheet(
+        tester,
+        onPublish: (_, opts) async {
+          called = true;
+          return null;
+        },
+      );
 
       await tester.ensureVisible(find.text('Publish Poll'));
       await tester.tap(find.text('Publish Poll'));
@@ -165,11 +169,14 @@ void main() {
       String? capturedQuestion;
       List<String>? capturedOptions;
 
-      await pumpSheet(tester, onPublish: (q, opts) async {
-        capturedQuestion = q;
-        capturedOptions = opts;
-        return null;
-      });
+      await pumpSheet(
+        tester,
+        onPublish: (q, opts) async {
+          capturedQuestion = q;
+          capturedOptions = opts;
+          return null;
+        },
+      );
 
       await tester.enterText(questionField(), '  Is Flutter great?  ');
       await tester.enterText(optionField(1), '  Yes  ');
@@ -186,10 +193,7 @@ void main() {
     testWidgets('shows snackbar when onPublish returns an error', (
       tester,
     ) async {
-      await pumpSheet(
-        tester,
-        onPublish: (_, opts) async => 'Network error.',
-      );
+      await pumpSheet(tester, onPublish: (_, opts) async => 'Network error.');
 
       await tester.enterText(questionField(), 'A question');
       await tester.enterText(optionField(1), 'Yes');

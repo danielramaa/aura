@@ -11,6 +11,7 @@ import '../utils/avatar_utils.dart';
 import '../widgets/create_poll_sheet.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/medications_dialog.dart';
 import '../widgets/poll_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -275,7 +276,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (text.trim().isEmpty) return;
 
     try {
-      await _controller.send(text, replyToText: _replyingTo?.text);
+      await _controller.send(
+        text,
+        replyToText: _replyingTo?.text,
+        senderRole: _currentUserRole,
+      );
       _messageController.clear();
       setState(() {
         _replyingTo = null;
@@ -327,6 +332,19 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.medical_services_outlined),
+            tooltip: 'Medications',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) => MedicationsDialog(
+                  groupId: widget.groupId,
+                  userRole: _currentUserRole,
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             onPressed: () {
@@ -427,6 +445,9 @@ class _ChatScreenState extends State<ChatScreen> {
         return MessageBubble(
           message: message,
           isOwn: isOwn,
+          isSenderMedic: _controller.medicAnonymousIds.contains(
+            message.anonymousId,
+          ),
           currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),

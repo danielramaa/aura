@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/group.dart';
+import '../models/user_role.dart';
 
 class ProfileController extends ChangeNotifier {
   final FirebaseAuth _auth;
@@ -12,6 +13,9 @@ class ProfileController extends ChangeNotifier {
 
   bool _isLoadingCommunities = false;
   bool get isLoadingCommunities => _isLoadingCommunities;
+
+  UserRole _userRole = UserRole.user;
+  UserRole get userRole => _userRole;
 
   String? _communityError;
   String? get communityError => _communityError;
@@ -35,6 +39,14 @@ class ProfileController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(currentUser!.uid)
+          .get();
+      if (userDoc.exists) {
+        _userRole = UserRole.fromString(userDoc.data()?['role'] as String?);
+      }
+
       final identitiesSnap = await _firestore
           .collection('users')
           .doc(currentUser!.uid)
@@ -120,6 +132,31 @@ class ProfileController extends ChangeNotifier {
       return _authErrorMessage(e.code);
     } catch (_) {
       return 'Failed to update profile. Please try again.';
+    }
+  }
+
+  Future<String?> submitModeratorApplication(String licenseNumber) async {
+    if (currentUser == null) return 'Not logged in.';
+    try {
+      final existing = await _firestore
+          .collection('moderator_applications')
+          .where('userId', isEqualTo: currentUser!.uid)
+          .where('status', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+      if (existing.docs.isNotEmpty) {
+        return 'You already have a pending application.';
+      }
+      await _firestore.collection('moderator_applications').add({
+        'userId': currentUser!.uid,
+        'userEmail': currentUser!.email ?? '',
+        'licenseNumber': licenseNumber,
+        'status': 'pending',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (e) {
+      return 'Failed to submit application.';
     }
   }
 

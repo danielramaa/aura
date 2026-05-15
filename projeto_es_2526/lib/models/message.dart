@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../utils/avatar_utils.dart';
+import 'user_role.dart';
 
 enum MessageType { text, poll }
 
@@ -10,6 +11,7 @@ class Message {
   final String anonymousId;
   final String senderNickname;
   final int senderAvatarIndex;
+  final UserRole senderRole;
   final Timestamp timestamp;
   final String? replyToText;
   final List<String> mentions;
@@ -27,6 +29,7 @@ class Message {
     required this.anonymousId,
     required this.senderNickname,
     required this.senderAvatarIndex,
+    this.senderRole = UserRole.user,
     required this.timestamp,
     this.replyToText,
     this.mentions = const [],
@@ -51,6 +54,9 @@ class Message {
     final fallbackIndex =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
 
+    final rawSenderRole = data['senderRole'];
+    final parsedRole = UserRole.fromString(rawSenderRole is String ? rawSenderRole : null);
+
     final typeStr = data['type'] as String?;
     final msgType = typeStr == 'poll' ? MessageType.poll : MessageType.text;
 
@@ -60,6 +66,7 @@ class Message {
       anonymousId: data['senderId'] ?? '',
       senderNickname: nickname.isEmpty ? 'Anonymous' : nickname,
       senderAvatarIndex: data['senderAvatarIndex'] as int? ?? fallbackIndex,
+      senderRole: parsedRole,
       timestamp:
           data['timestamp'] as Timestamp? ??
           data['createdAt'] as Timestamp? ??

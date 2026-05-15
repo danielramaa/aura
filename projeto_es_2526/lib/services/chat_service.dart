@@ -12,6 +12,7 @@ abstract class ChatServiceInterface {
     required AnonymousIdentity identity,
     String? replyToText,
     List<String> mentions = const [],
+    required String senderRole,
   });
 
   Future<String?> addReaction({
@@ -58,6 +59,7 @@ class ChatService implements ChatServiceInterface {
     required AnonymousIdentity identity,
     String? replyToText,
     List<String> mentions = const [],
+    required String senderRole,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return 'Message cannot be empty.';
@@ -73,6 +75,7 @@ class ChatService implements ChatServiceInterface {
         'senderNickname': identity.nickname,
         'senderAvatarIndex': identity.avatarIndex,
         'replyToText': replyToText,
+        'senderRole': senderRole,
         'mentions': mentions,
         'reactions': {},
       });

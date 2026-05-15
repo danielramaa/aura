@@ -25,7 +25,18 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Users can update their own doc but cannot touch the 'role' field,
+      // preventing self-promotion.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+      // Admins can update the role field exclusively.
+      allow update: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
+      allow delete: if false;
 
       match /anonymousIdentities/{groupId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -54,6 +65,19 @@ service cloud.firestore {
 
       match /takenAvatarIndices/{index} {
         allow read, write: if request.auth != null;
+      }
+
+      // Tracks which anonymous IDs in this group belong to verified medics.
+      // Readable by all members; writable only by the owner of that anonymousId
+      // when they currently hold the 'medic' role. Admins can delete entries
+      // to revoke the badge when demoting a medic.
+      match /medicAnonymousIds/{anonymousId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic';
+        allow delete: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       }
 
       match /typing/{anonymousId} {
@@ -150,6 +174,40 @@ service cloud.firestore {
       allow create, update: if request.auth != null;
       allow delete: if false;
       allow read: if false;
+    }
+    
+    match /medications/{medicationId} {
+      allow read: if request.auth != null;
+      // Only medics can create medication entries, and only for themselves
+      // with a fixed set of fields to prevent data injection.
+      allow create: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic'
+        && request.resource.data.submittedByUserId == request.auth.uid
+        && request.resource.data.groupId is string
+        && request.resource.data.status == 'approved'
+        && request.resource.data.keys().hasOnly(
+             ['groupId', 'name', 'description', 'status', 'submittedByUserId', 'timestamp']);
+      allow update, delete: if false;
+    }
+
+    match /moderator_applications/{appId} {
+      // Users can only submit their own application, forced into pending status
+      // with only the expected fields — prevents self-approving or injecting
+      // arbitrary data.
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(
+             ['userId', 'userEmail', 'licenseNumber', 'status', 'timestamp']);
+      // Users can read their own; admins can read all.
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      // Only admins can update the status field (approve / deny).
+      allow update: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
     }
 
     match /{document=**} {

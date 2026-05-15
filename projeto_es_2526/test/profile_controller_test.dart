@@ -194,6 +194,78 @@ void main() {
     });
   });
 
+  group('ProfileController — submitModeratorApplication', () {
+    late MockFirebaseAuth auth;
+    late FakeFirebaseFirestore firestore;
+    late ProfileController controller;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'u1', email: 'user@example.com'),
+      );
+      controller = ProfileController(auth: auth, firestore: firestore);
+      await waitForCommunities(controller);
+    });
+
+    tearDown(() => controller.dispose());
+
+    test('returns null and creates application document on success', () async {
+      final err = await controller.submitModeratorApplication('LIC-001');
+
+      expect(err, isNull);
+      final snap = await firestore
+          .collection('moderator_applications')
+          .where('userId', isEqualTo: 'u1')
+          .get();
+      expect(snap.docs.length, 1);
+      expect(snap.docs.first.data()['licenseNumber'], 'LIC-001');
+      expect(snap.docs.first.data()['status'], 'pending');
+      expect(snap.docs.first.data()['userEmail'], 'user@example.com');
+    });
+
+    test('returns error when user already has a pending application', () async {
+      await firestore.collection('moderator_applications').add({
+        'userId': 'u1',
+        'userEmail': 'user@example.com',
+        'licenseNumber': 'LIC-001',
+        'status': 'pending',
+      });
+
+      final err = await controller.submitModeratorApplication('LIC-002');
+
+      expect(err, contains('pending application'));
+      final snap = await firestore
+          .collection('moderator_applications')
+          .where('userId', isEqualTo: 'u1')
+          .get();
+      expect(snap.docs.length, 1);
+    });
+
+    test('allows submission after a previous application was denied', () async {
+      await firestore.collection('moderator_applications').add({
+        'userId': 'u1',
+        'userEmail': 'user@example.com',
+        'licenseNumber': 'LIC-001',
+        'status': 'denied',
+      });
+
+      final err = await controller.submitModeratorApplication('LIC-002');
+
+      expect(err, isNull);
+    });
+
+    test('returns error when not logged in', () async {
+      final c = makeController(auth: MockFirebaseAuth(signedIn: false));
+      addTearDown(c.dispose);
+
+      final err = await c.submitModeratorApplication('LIC-001');
+
+      expect(err, isNotNull);
+    });
+  });
+
   group('ProfileController — logout', () {
     test('notifies listeners after sign out', () async {
       final auth = MockFirebaseAuth(

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:projeto_es_2526/controllers/chat_controller.dart';
 import 'package:projeto_es_2526/models/anonymous_identity.dart';
 import 'package:projeto_es_2526/models/message.dart';
+import 'package:projeto_es_2526/models/user_role.dart';
 import 'package:projeto_es_2526/services/identity_service.dart';
 
 Future<void> seedGroup(FakeFirebaseFirestore firestore, String groupId) =>
@@ -58,7 +59,7 @@ void main() {
     });
 
     test('ignores empty or whitespace-only text', () async {
-      await controller.send('   ');
+      await controller.send('   ', senderRole: UserRole.user);
       final snap = await firestore
           .collection('groups')
           .doc('g1')
@@ -69,7 +70,7 @@ void main() {
     });
 
     test('trims whitespace before sending', () async {
-      await controller.send('  hello  ');
+      await controller.send('  hello  ', senderRole: UserRole.user);
       final snap = await firestore
           .collection('groups')
           .doc('g1')
@@ -83,7 +84,7 @@ void main() {
       'sets error and does not send when text exceeds maxMessageLength',
       () async {
         final longText = 'a' * (ChatController.maxMessageLength + 1);
-        await controller.send(longText);
+        await controller.send(longText, senderRole: UserRole.user);
         final snap = await firestore
             .collection('groups')
             .doc('g1')
@@ -95,24 +96,27 @@ void main() {
     );
 
     test('clears error after valid send following an error', () async {
-      await controller.send('a' * (ChatController.maxMessageLength + 1));
+      await controller.send(
+        'a' * (ChatController.maxMessageLength + 1),
+        senderRole: UserRole.user,
+      );
       expect(controller.error, isNotNull);
-      await controller.send('valid message');
+      await controller.send('valid message', senderRole: UserRole.user);
       expect(controller.error, isNull);
     });
 
     test('isSending is true during send and false after', () async {
       final states = <bool>[];
       controller.addListener(() => states.add(controller.isSending));
-      await controller.send('hello');
+      await controller.send('hello', senderRole: UserRole.user);
       expect(states, containsAllInOrder([true, false]));
     });
 
     test('concurrent send is blocked while isSending', () async {
-      final first = controller.send('first');
+      final first = controller.send('first', senderRole: UserRole.user);
       expect(controller.isSending, isTrue);
 
-      await controller.send('second'); // blocked — isSending is true
+      await controller.send('second', senderRole: UserRole.user);
       await first;
 
       final snap = await firestore
@@ -197,7 +201,7 @@ void main() {
       await Future.delayed(Duration.zero);
       expect((await typingRef(firestore).get()).docs, isNotEmpty);
 
-      await controller.send('hello');
+      await controller.send('hello', senderRole: UserRole.user);
       await Future.delayed(Duration.zero);
       expect((await typingRef(firestore).get()).docs, isEmpty);
     });
@@ -247,7 +251,7 @@ void main() {
     tearDown(() => controller.dispose());
 
     Future<List<String>> mentionsOf(String text) async {
-      await controller.send(text);
+      await controller.send(text, senderRole: UserRole.user);
       final snap = await firestore
           .collection('groups')
           .doc('g1')
@@ -310,7 +314,6 @@ void main() {
       controller = makeController(firestore, auth);
       await waitForInit(controller);
 
-      // Seed a message so toggleReaction can find it via the stream
       await firestore
           .collection('groups')
           .doc('g1')
@@ -323,7 +326,6 @@ void main() {
             'timestamp': Timestamp.now(),
             'reactions': {},
           });
-      // Wait for stream to deliver the message
       await Future.delayed(Duration.zero);
       await Future.delayed(Duration.zero);
     });
@@ -331,7 +333,6 @@ void main() {
     tearDown(() => controller.dispose());
 
     test('toggleReaction returns early when message is not in list', () async {
-      // Should not throw
       await controller.toggleReaction('nonexistent-id', '👍');
       expect(controller.hasReactionError('nonexistent-id'), isFalse);
     });
@@ -341,7 +342,6 @@ void main() {
     });
 
     test('retryReaction does nothing when there is no error', () async {
-      // Should not throw or change state
       await controller.retryReaction('m1');
       expect(controller.hasReactionError('m1'), isFalse);
     });
