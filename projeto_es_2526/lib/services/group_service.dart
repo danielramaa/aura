@@ -57,33 +57,35 @@ class GroupService {
           final groupIds = snap.docs.map((d) => d.id).toList();
           if (groupIds.isEmpty) return <Group>[];
 
-          final defaultMap = {for (final g in defaultGroups) g.id: g};
-          final defaultMatches =
-              groupIds.where(defaultMap.containsKey).map((id) => defaultMap[id]!).toList();
+          // Fetch all joined IDs from Firestore — whereIn limit is 30, chunk to stay within it.
+          final chunks = <List<String>>[];
+          for (var i = 0; i < groupIds.length; i += 30) {
+            chunks.add(groupIds.sublist(i, (i + 30).clamp(0, groupIds.length)));
+          }
+          final querySnaps = await Future.wait(
+            chunks.map(
+              (chunk) =>
+                  _groupsRef.where(FieldPath.documentId, whereIn: chunk).get(),
+            ),
+          );
 
-          final remoteIds = groupIds.where((id) => !defaultMap.containsKey(id)).toList();
-
-          List<Group> remoteGroups = [];
-          if (remoteIds.isNotEmpty) {
-            // whereIn limit is 30 — chunk to stay within it
-            final chunks = <List<String>>[];
-            for (var i = 0; i < remoteIds.length; i += 30) {
-              chunks.add(remoteIds.sublist(i, (i + 30).clamp(0, remoteIds.length)));
-            }
-            final querySnaps = await Future.wait(
-              chunks.map(
-                (chunk) =>
-                    _groupsRef.where(FieldPath.documentId, whereIn: chunk).get(),
-              ),
-            );
-            remoteGroups = querySnaps
-                .expand((s) => s.docs)
-                .map(Group.fromFirestore)
-                .toList();
+          // Firestore wins when the document exists and is complete (has a name).
+          // Fall back to seed for missing or partial documents.
+          final firestoreMap = <String, Group>{};
+          for (final doc in querySnaps.expand((s) => s.docs)) {
+            final g = Group.fromFirestore(doc);
+            if (g.name.isNotEmpty) firestoreMap[g.id] = g;
           }
 
-          return [...defaultMatches, ...remoteGroups]
-            ..sort((a, b) => a.name.compareTo(b.name));
+          final defaultMap = {for (final g in defaultGroups) g.id: g};
+
+          final result = <Group>[];
+          for (final id in groupIds) {
+            final group = firestoreMap[id] ?? defaultMap[id];
+            if (group != null) result.add(group);
+          }
+
+          return result..sort((a, b) => a.name.compareTo(b.name));
         });
   }
 }
