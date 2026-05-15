@@ -77,11 +77,16 @@ service cloud.firestore {
 
         // Creator can close the poll (set closedAt); voting updates options counts.
         allow update: if request.auth != null && (
+          // Close: only the creator can set closedAt.
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['closedAt'])
             && resource.data.creatorAnonymousId == get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId)
           ||
+          // Vote: options update must be coupled with a new vote document written in
+          // the same transaction. This prevents arbitrary manipulation of vote counts.
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options'])
-            && exists(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)))
+            && resource.data.closedAt == null
+            && !exists(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)/votes/$(get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId))
+            && existsAfter(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)/votes/$(get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId)))
         );
 
         allow delete: if false;
