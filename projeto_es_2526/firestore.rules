@@ -76,6 +76,8 @@ service cloud.firestore {
             // Poll placeholder message (text is empty; content lives in /polls)
             (request.resource.data.type == 'poll'
               && 'pollId' in request.resource.data
+              && request.resource.data.pollId is string
+              && existsAfter(/databases/$(database)/documents/groups/$(groupId)/polls/$(request.resource.data.pollId))
               && request.resource.data.text == '')
           );
         allow update: if request.auth != null
