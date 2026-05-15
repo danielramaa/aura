@@ -71,7 +71,10 @@ class AdminApplicationsScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'License: ${app.licenseNumber}',
-                        style: const TextStyle(fontSize: 13, color: Colors.black87),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.black87,
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Row(

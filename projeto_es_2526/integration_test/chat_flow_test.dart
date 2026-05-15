@@ -100,7 +100,11 @@ void main() {
       await _waitForInit(controller);
 
       await controller.send('Original message', senderRole: UserRole.user);
-      await controller.send('Replying', replyToText: 'Original message', senderRole: UserRole.user);
+      await controller.send(
+        'Replying',
+        replyToText: 'Original message',
+        senderRole: UserRole.user,
+      );
 
       final snap = await firestore
           .collection('groups')

@@ -96,7 +96,10 @@ void main() {
     );
 
     test('clears error after valid send following an error', () async {
-      await controller.send('a' * (ChatController.maxMessageLength + 1), senderRole: UserRole.user);
+      await controller.send(
+        'a' * (ChatController.maxMessageLength + 1),
+        senderRole: UserRole.user,
+      );
       expect(controller.error, isNotNull);
       await controller.send('valid message', senderRole: UserRole.user);
       expect(controller.error, isNull);

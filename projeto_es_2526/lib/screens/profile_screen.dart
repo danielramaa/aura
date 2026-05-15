@@ -54,32 +54,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('To become a verified moderator, please provide your medical credentials.', style: TextStyle(fontSize: 13, color: Colors.black87)),
+                const Text(
+                  'To become a verified moderator, please provide your medical credentials.',
+                  style: TextStyle(fontSize: 13, color: Colors.black87),
+                ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  decoration: const InputDecoration(labelText: 'Medical License / Certification', border: OutlineInputBorder()),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Medical License / Certification',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? 'Required' : null,
                   onSaved: (v) => licenseNumber = v!.trim(),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
             ElevatedButton(
-              onPressed: isSubmitting ? null : () async {
-                if (formKey.currentState!.validate()) {
-                  formKey.currentState!.save();
-                  setDialogState(() => isSubmitting = true);
-                  final err = await _controller.submitModeratorApplication(licenseNumber);
-                  setDialogState(() => isSubmitting = false);
-                  if (context.mounted) {
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err ?? 'Application submitted successfully!')));
-                  }
-                }
-              },
-              child: isSubmitting ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Submit'),
+              onPressed: isSubmitting
+                  ? null
+                  : () async {
+                      if (formKey.currentState!.validate()) {
+                        formKey.currentState!.save();
+                        setDialogState(() => isSubmitting = true);
+                        final err = await _controller
+                            .submitModeratorApplication(licenseNumber);
+                        setDialogState(() => isSubmitting = false);
+                        if (context.mounted) {
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                err ?? 'Application submitted successfully!',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isSubmitting
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Submit'),
             ),
           ],
         ),
@@ -191,7 +216,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               context,
               MaterialPageRoute(builder: (_) => AdminApplicationsScreen()),
             ),
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF185FA5), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF185FA5),
+              foregroundColor: Colors.white,
+            ),
           ),
           const SizedBox(height: 16),
         ],
@@ -200,7 +228,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: const Icon(Icons.verified_user_outlined),
             label: const Text('Apply for Medical Moderator'),
             onPressed: _showApplyModeratorDialog,
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF185FA5), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF185FA5),
+              foregroundColor: Colors.white,
+            ),
           ),
           const SizedBox(height: 16),
         ],

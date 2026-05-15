@@ -208,7 +208,11 @@ class MessageBubble extends StatelessWidget {
                               if (message.senderRole == UserRole.medic)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 4.0),
-                                  child: Icon(Icons.verified, size: 14, color: Color(0xFF185FA5)),
+                                  child: Icon(
+                                    Icons.verified,
+                                    size: 14,
+                                    color: Color(0xFF185FA5),
+                                  ),
                                 ),
                             ],
                           ),

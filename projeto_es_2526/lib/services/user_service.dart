@@ -33,10 +33,9 @@ class UserService {
   Future<String?> approveApplication(String appId, String userId) async {
     try {
       final batch = _firestore.batch();
-      batch.update(
-        _firestore.collection('moderator_applications').doc(appId),
-        {'status': 'approved'},
-      );
+      batch.update(_firestore.collection('moderator_applications').doc(appId), {
+        'status': 'approved',
+      });
       batch.update(_userDoc(userId), {'role': 'medic'});
       await batch.commit();
       return null;
@@ -47,14 +46,12 @@ class UserService {
 
   Future<String?> denyApplication(String appId) async {
     try {
-      await _firestore
-          .collection('moderator_applications')
-          .doc(appId)
-          .update({'status': 'denied'});
+      await _firestore.collection('moderator_applications').doc(appId).update({
+        'status': 'denied',
+      });
       return null;
     } catch (_) {
       return 'Failed to deny application.';
     }
   }
 }
-

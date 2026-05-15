@@ -39,7 +39,10 @@ class ProfileController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final userDoc = await _firestore.collection('users').doc(currentUser!.uid).get();
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(currentUser!.uid)
+          .get();
       if (userDoc.exists) {
         _userRole = UserRole.fromString(userDoc.data()?['role'] as String?);
       }
