@@ -192,24 +192,25 @@ class MessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!isOwn)
+                      if (!isOwn || isSenderMedic)
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4.0),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                message.senderNickname,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                  color: Color(0xFF185FA5),
+                              if (!isOwn)
+                                Text(
+                                  message.senderNickname,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Color(0xFF185FA5),
+                                  ),
                                 ),
-                              ),
                               if (isSenderMedic)
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 4.0),
-                                  child: Icon(
+                                Padding(
+                                  padding: EdgeInsets.only(left: isOwn ? 0 : 4.0),
+                                  child: const Icon(
                                     Icons.verified,
                                     size: 14,
                                     color: Color(0xFF185FA5),
