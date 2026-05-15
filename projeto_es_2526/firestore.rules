@@ -45,13 +45,60 @@ service cloud.firestore {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == request.resource.data.senderId
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.text.size() <= 2000;
+          && (
+            // Regular text message
+            ((!('type' in request.resource.data) || request.resource.data.type == 'text')
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 2000)
+            ||
+            // Poll placeholder message (text is empty; content lives in /polls)
+            (request.resource.data.type == 'poll'
+              && 'pollId' in request.resource.data
+              && request.resource.data.text == '')
+          );
         allow update: if request.auth != null
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
         allow delete: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      match /polls/{pollId} {
+        allow read: if request.auth != null;
+
+        allow create: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == request.resource.data.creatorAnonymousId
+          && request.resource.data.question is string
+          && request.resource.data.question.size() > 0
+          && request.resource.data.options is list
+          && request.resource.data.options.size() >= 2
+          && request.resource.data.options.size() <= 6
+          && request.resource.data.closedAt == null;
+
+        // Creator can close the poll (set closedAt); voting updates options counts.
+        allow update: if request.auth != null && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['closedAt'])
+            && resource.data.creatorAnonymousId == get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId)
+          ||
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['options'])
+            && exists(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)))
+        );
+
+        allow delete: if false;
+
+        match /votes/{anonymousId} {
+          // Only the voter can read their own vote.
+          allow read: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId;
+
+          // Vote once: create only, document ID must match the user's anonymousId.
+          allow create: if request.auth != null
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId
+            && request.resource.data.keys().hasOnly(['optionIndex'])
+            && request.resource.data.optionIndex is int;
+
+          allow update, delete: if false;
+        }
       }
     }
 
