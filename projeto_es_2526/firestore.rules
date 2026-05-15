@@ -26,6 +26,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Admins can promote/demote users by updating only the role field.
+      allow update: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
 
       match /anonymousIdentities/{groupId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -157,8 +161,19 @@ service cloud.firestore {
       allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic';
     }
 
-    match /moderator_applications/{document=**} {
-      allow read, write: if request.auth != null;
+    match /moderator_applications/{appId} {
+      // Users can only submit their own application.
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      // Users can read their own; admins can read all.
+      allow read: if request.auth != null
+        && (resource.data.userId == request.auth.uid
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      // Only admins can update the status field (approve / deny).
+      allow update: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
     }
 
     match /{document=**} {

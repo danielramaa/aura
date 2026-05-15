@@ -54,13 +54,7 @@ class Message {
     final fallbackIndex =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
 
-    UserRole parsedRole = UserRole.user;
-    final roleStr = data['senderRole'] as String?;
-    if (roleStr == 'medic' || roleStr == 'UserRole.medic') {
-      parsedRole = UserRole.medic;
-    } else if (roleStr == 'admin' || roleStr == 'UserRole.admin') {
-      parsedRole = UserRole.admin;
-    }
+    final parsedRole = UserRole.fromString(data['senderRole'] as String?);
 
     final typeStr = data['type'] as String?;
     final msgType = typeStr == 'poll' ? MessageType.poll : MessageType.text;

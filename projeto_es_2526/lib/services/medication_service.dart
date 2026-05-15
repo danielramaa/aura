@@ -11,17 +11,16 @@ class MedicationService {
     return _firestore
         .collection('medications')
         .where('groupId', isEqualTo: groupId)
+        .where('status', isEqualTo: 'approved')
         .snapshots()
         .map((snap) {
-      final allMeds = snap.docs.map(Medication.fromFirestore).toList();
-      final approved = allMeds.where((m) => m.status == 'approved').toList();
-      
-      approved.sort((a, b) {
+      final meds = snap.docs.map(Medication.fromFirestore).toList();
+      meds.sort((a, b) {
         final aTime = a.timestamp?.toDate() ?? DateTime.now();
         final bTime = b.timestamp?.toDate() ?? DateTime.now();
         return bTime.compareTo(aTime);
       });
-      return approved;
+      return meds;
     });
   }
 
@@ -36,10 +35,7 @@ class MedicationService {
       });
       return null;
     } catch (e) {
-      if (e.toString().contains('permission-denied')) {
-        return 'Falha: Sem permissão. (Atualize as Regras de Segurança do Firestore)';
-      }
-      return 'Failed to submit medication: $e';
+      return 'Failed to add medication. Please try again.';
     }
   }
 }

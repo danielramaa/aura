@@ -97,6 +97,7 @@ class _SubmitMedicationForm extends StatefulWidget {
 }
 
 class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
   bool _isSubmitting = false;
@@ -113,32 +114,37 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add Medication'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Medication Name', border: OutlineInputBorder()),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _descController,
-            keyboardType: TextInputType.multiline,
-            maxLines: 3,
-            decoration: const InputDecoration(labelText: 'Description / Usage', border: OutlineInputBorder()),
-          ),
-        ],
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Medication Name', border: OutlineInputBorder()),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Name is required' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descController,
+              keyboardType: TextInputType.multiline,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Description / Usage', border: OutlineInputBorder()),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Description is required' : null,
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(
           onPressed: _isSubmitting ? null : () async {
-            final name = _nameController.text.trim();
-            final desc = _descController.text.trim();
-            if (name.isEmpty || desc.isEmpty) return;
+            if (!_formKey.currentState!.validate()) return;
             setState(() => _isSubmitting = true);
             final err = await _medicationService.submitMedication(
-              groupId: widget.groupId, name: name, description: desc,
+              groupId: widget.groupId,
+              name: _nameController.text.trim(),
+              description: _descController.text.trim(),
               userId: FirebaseAuth.instance.currentUser?.uid ?? '',
             );
             setState(() => _isSubmitting = false);

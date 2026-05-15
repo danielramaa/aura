@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../controllers/profile_controller.dart';
-import '../widgets/edit_profile_dialog.dart';
-import 'settings_screen.dart';
-import '../widgets/role_badge.dart';
 import '../models/user_role.dart';
+import '../widgets/edit_profile_dialog.dart';
+import '../widgets/role_badge.dart';
+import 'admin_applications_screen.dart';
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final ProfileController? controller;
@@ -182,6 +183,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         const SizedBox(height: 32),
+        if (_controller.userRole == UserRole.admin) ...[
+          ElevatedButton.icon(
+            icon: const Icon(Icons.admin_panel_settings_outlined),
+            label: const Text('Review Moderator Applications'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AdminApplicationsScreen()),
+            ),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF185FA5), foregroundColor: Colors.white),
+          ),
+          const SizedBox(height: 16),
+        ],
         if (_controller.userRole == UserRole.user) ...[
           ElevatedButton.icon(
             icon: const Icon(Icons.verified_user_outlined),

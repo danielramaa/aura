@@ -41,9 +41,7 @@ class ProfileController extends ChangeNotifier {
     try {
       final userDoc = await _firestore.collection('users').doc(currentUser!.uid).get();
       if (userDoc.exists) {
-        final roleStr = userDoc.data()?['role'] as String?;
-        if (roleStr == 'medic') _userRole = UserRole.medic;
-        else if (roleStr == 'admin') _userRole = UserRole.admin;
+        _userRole = UserRole.fromString(userDoc.data()?['role'] as String?);
       }
 
       final identitiesSnap = await _firestore
@@ -137,8 +135,18 @@ class ProfileController extends ChangeNotifier {
   Future<String?> submitModeratorApplication(String licenseNumber) async {
     if (currentUser == null) return 'Not logged in.';
     try {
+      final existing = await _firestore
+          .collection('moderator_applications')
+          .where('userId', isEqualTo: currentUser!.uid)
+          .where('status', isEqualTo: 'pending')
+          .limit(1)
+          .get();
+      if (existing.docs.isNotEmpty) {
+        return 'You already have a pending application.';
+      }
       await _firestore.collection('moderator_applications').add({
         'userId': currentUser!.uid,
+        'userEmail': currentUser!.email ?? '',
         'licenseNumber': licenseNumber,
         'status': 'pending',
         'timestamp': FieldValue.serverTimestamp(),
