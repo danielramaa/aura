@@ -75,12 +75,15 @@ class PollService implements PollServiceInterface {
     if (trimmedQuestion.isEmpty) return 'Question cannot be empty.';
 
     final trimmedOptions = optionTexts.map((o) => o.trim()).toList();
-    if (trimmedOptions.length < 2)
+    if (trimmedOptions.length < 2) {
       return 'A poll must have at least 2 options.';
-    if (trimmedOptions.length > 6)
+    }
+    if (trimmedOptions.length > 6) {
       return 'A poll cannot have more than 6 options.';
-    if (trimmedOptions.any((o) => o.isEmpty))
+    }
+    if (trimmedOptions.any((o) => o.isEmpty)) {
       return 'All options must have text.';
+    }
 
     try {
       final pollRef = _pollsRef(groupId).doc();
