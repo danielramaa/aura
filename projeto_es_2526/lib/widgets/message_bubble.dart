@@ -209,7 +209,9 @@ class MessageBubble extends StatelessWidget {
                                 ),
                               if (isSenderMedic)
                                 Padding(
-                                  padding: EdgeInsets.only(left: isOwn ? 0 : 4.0),
+                                  padding: EdgeInsets.only(
+                                    left: isOwn ? 0 : 4.0,
+                                  ),
                                   child: const Icon(
                                     Icons.verified,
                                     size: 14,

@@ -445,7 +445,9 @@ class _ChatScreenState extends State<ChatScreen> {
         return MessageBubble(
           message: message,
           isOwn: isOwn,
-          isSenderMedic: _controller.medicAnonymousIds.contains(message.anonymousId),
+          isSenderMedic: _controller.medicAnonymousIds.contains(
+            message.anonymousId,
+          ),
           currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),

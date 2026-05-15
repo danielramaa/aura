@@ -67,11 +67,11 @@ class ChatController extends ChangeNotifier {
         .collection('medicAnonymousIds')
         .snapshots()
         .listen((snap) {
-      if (!_isDisposed) {
-        _medicAnonymousIds = snap.docs.map((d) => d.id).toSet();
-        notifyListeners();
-      }
-    });
+          if (!_isDisposed) {
+            _medicAnonymousIds = snap.docs.map((d) => d.id).toSet();
+            notifyListeners();
+          }
+        });
 
     final user = _auth.currentUser;
     if (user != null) {
