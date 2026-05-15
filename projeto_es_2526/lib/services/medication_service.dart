@@ -15,9 +15,10 @@ class MedicationService {
         .snapshots()
         .map((snap) {
           final meds = snap.docs.map(Medication.fromFirestore).toList();
+          final fallbackTime = DateTime.fromMillisecondsSinceEpoch(0);
           meds.sort((a, b) {
-            final aTime = a.timestamp?.toDate() ?? DateTime.now();
-            final bTime = b.timestamp?.toDate() ?? DateTime.now();
+            final aTime = a.timestamp?.toDate() ?? fallbackTime;
+            final bTime = b.timestamp?.toDate() ?? fallbackTime;
             return bTime.compareTo(aTime);
           });
           return meds;
