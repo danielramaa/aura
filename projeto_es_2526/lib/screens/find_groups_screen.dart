@@ -39,14 +39,6 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
   String? _selectedCategory;
   int _retryKey = 0;
 
-  static const List<String> _categories = [
-    'Mental Health',
-    'Autoimmune Diseases',
-    'Neurodivergence',
-    'Physical Wellness',
-    'General',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -347,7 +339,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                         onTap: () => setState(() => _selectedCategory = null),
                       ),
                     ),
-                    for (final cat in _categories)
+                    for (final cat in GroupService.categories)
                       Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: Center(

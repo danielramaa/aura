@@ -3,6 +3,14 @@ import 'package:flutter/material.dart';
 import '../models/group.dart';
 
 class GroupService {
+  static const List<String> categories = [
+    'Mental Health',
+    'Autoimmune Diseases',
+    'Neurodivergence',
+    'Physical Wellness',
+    'General',
+  ];
+
   static const List<Group> defaultGroups = [
     Group(
       id: 'ansiedade-e-foco',

@@ -110,15 +110,8 @@ void main() {
     });
 
     test('all seed groups have valid categories', () {
-      const validCategories = {
-        'Mental Health',
-        'Autoimmune Diseases',
-        'Neurodivergence',
-        'Physical Wellness',
-        'General',
-      };
       for (final g in GroupService.defaultGroups) {
-        expect(validCategories, contains(g.category));
+        expect(GroupService.categories, contains(g.category));
       }
     });
 

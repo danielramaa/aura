@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import '../services/group_service.dart';
 
 class Group {
   static const int _defaultColorValue = 0xFF378ADD;
@@ -28,7 +29,9 @@ class Group {
       description: data['description'] as String? ?? '',
       memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
       color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
-      category: data['category'] as String? ?? 'General',
+      category: GroupService.categories.contains(data['category'])
+          ? data['category'] as String
+          : 'General',
     );
   }
 }
