@@ -52,7 +52,11 @@ class PollService implements PollServiceInterface {
 
   @override
   Stream<Poll> streamPoll(String groupId, String pollId) =>
-      _pollsRef(groupId).doc(pollId).snapshots().map(Poll.fromFirestore);
+      _pollsRef(groupId)
+          .doc(pollId)
+          .snapshots()
+          .where((snap) => snap.exists)
+          .map(Poll.fromFirestore);
 
   @override
   Stream<int?> streamUserVote(
