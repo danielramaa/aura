@@ -59,8 +59,9 @@ class _MedicationsDialogState extends State<MedicationsDialog> {
                   widget.groupId,
                 ),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
+                  }
                   final meds = snapshot.data ?? [];
                   if (meds.isEmpty) {
                     return const Center(

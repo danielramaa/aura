@@ -25,7 +25,9 @@ class ChatController extends ChangeNotifier {
 
   List<Message> _messages = [];
   List<String> _roomNicknames = [];
+  Set<String> _medicAnonymousIds = {};
   StreamSubscription? _messagesSubscription;
+  StreamSubscription? _medicSub;
 
   bool _isDisposed = false;
   bool _isLoading = true;
@@ -59,6 +61,18 @@ class ChatController extends ChangeNotifier {
         .snapshots()
         .map(_toTypingNames);
 
+    _medicSub = _firestore
+        .collection('groups')
+        .doc(groupId)
+        .collection('medicAnonymousIds')
+        .snapshots()
+        .listen((snap) {
+      if (!_isDisposed) {
+        _medicAnonymousIds = snap.docs.map((d) => d.id).toSet();
+        notifyListeners();
+      }
+    });
+
     final user = _auth.currentUser;
     if (user != null) {
       _userId = user.uid;
@@ -75,6 +89,7 @@ class ChatController extends ChangeNotifier {
 
   List<Message> get messages => _messages;
   List<String> get roomNicknames => _roomNicknames;
+  Set<String> get medicAnonymousIds => _medicAnonymousIds;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
   String? get error => _error;
@@ -261,6 +276,16 @@ class ChatController extends ChangeNotifier {
       } else {
         _error = null;
         unawaited(_createNotification(mentions: mentions));
+        if (senderRole == UserRole.medic && _anonymousIdentity != null) {
+          unawaited(
+            _firestore
+                .collection('groups')
+                .doc(groupId)
+                .collection('medicAnonymousIds')
+                .doc(_anonymousIdentity!.anonymousId)
+                .set({'isMedic': true}),
+          );
+        }
       }
     } catch (_) {
       _error = "Não foi possível enviar a mensagem.";
@@ -410,6 +435,7 @@ class ChatController extends ChangeNotifier {
     _typingTimer?.cancel();
     _clearTypingStatus();
     _messagesSubscription?.cancel();
+    _medicSub?.cancel();
     super.dispose();
   }
 }

@@ -193,9 +193,10 @@ class IdentityService {
         });
         return index;
       } on Exception catch (e) {
-        if (e.toString().contains('taken'))
-          continue; // surface real errors (permission, network, etc.)
-        rethrow; // surface real errors (permission, network, etc.)
+        if (e.toString().contains('taken')) {
+          continue;
+        }
+        rethrow;
       }
     }
     // All 20 slots taken (>20 members): collision unavoidable, fall back to hash.
@@ -225,9 +226,10 @@ class IdentityService {
         });
         return true;
       } on Exception catch (e) {
-        if (e.toString().contains('taken'))
-          return false; // surface real errors (permission, network, etc.)
-        rethrow; // surface real errors (permission, network, etc.)
+        if (e.toString().contains('taken')) {
+          return false;
+        }
+        rethrow;
       }
     }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/message.dart';
-import '../models/user_role.dart';
 import '../utils/avatar_utils.dart';
 
 /// Returns RichText spans for [text], highlighting only @tokens whose word
@@ -49,6 +48,7 @@ List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
 class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
+  final bool isSenderMedic;
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
@@ -61,6 +61,7 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     required this.isOwn,
+    required this.isSenderMedic,
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
@@ -205,7 +206,7 @@ class MessageBubble extends StatelessWidget {
                                   color: Color(0xFF185FA5),
                                 ),
                               ),
-                              if (message.senderRole == UserRole.medic)
+                              if (isSenderMedic)
                                 const Padding(
                                   padding: EdgeInsets.only(left: 4.0),
                                   child: Icon(
