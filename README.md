@@ -815,6 +815,16 @@ Sprint 2 layered moderation, expert content and richer chat interaction on top o
 - Whether to expire polls server-side via Cloud Functions or keep the current client-side `isOpen` check (Sprint 3 candidate).
 - How to model multi-medic verification, a single license number is currently sufficient for the badge.
 
+#### Use of AI
+
+AI tools were used in three main moments of the sprint:
+
+- **Starting a user story** — we used Claude/ChatGPT to scaffold each user story (acceptance criteria, initial structure, first implementation pass) so we always had a clear starting point before writing code.
+- **Writing tests** — we used Claude/ChatGPT to draft unit and widget tests, suggest edge cases, which we then reviewed and adjusted to match the actual behaviour.
+- **Pull request review** — once a PR was open we ran a two-pass review: first we asked Claude to review the PR and applied its suggested changes, then we asked GitHub Copilot to review the same PR and applied its suggestions on top.
+
+Every AI-suggested change was read, tested, and approved by a team member before being merged.
+
 ### Sprint 3
 
 ### Final Release
