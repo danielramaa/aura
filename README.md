@@ -388,43 +388,51 @@ In this section you should start by briefly describing the components of the pro
 
 ### Logical architecture
 
-Aura follows the **MVC (Model–View–Controller)** pattern extended with a **Services** layer that isolates all Firebase calls from business logic. Controllers use Flutter's `ChangeNotifier` for reactive state management; screens rebuild automatically via `ListenableBuilder`.
+Aura follows the **MVC (Model–View–Controller)** pattern extended with a **Services** layer that isolates all Firebase calls from business logic. Controllers use Flutter's `ChangeNotifier` for reactive state management; screens rebuild automatically via `ListenableBuilder`. Services are exposed via interfaces (`ChatServiceInterface`, `PollServiceInterface`) and injected into controllers, allowing the suite to swap them for `fake_cloud_firestore` / `firebase_auth_mocks` doubles in tests.
 
 ```mermaid
 graph TD
     subgraph View["«package» View"]
-        SCREENS["Screens\n(LoginScreen · MainScreen · HomeScreen\nChatScreen · FindGroupsScreen\nNotificationScreen · ProfileScreen\nForgotPasswordScreen · SettingsScreen)"]
-        WIDGETS["Widgets\n(GroupCard)"]
+        SCREENS["Screens\n(LoginScreen · MainScreen · HomeScreen\nChatScreen · FindGroupsScreen\nNotificationScreen · ProfileScreen\nAdminApplicationsScreen\nForgotPasswordScreen · SettingsScreen)"]
+        WIDGETS["Widgets\n(GroupCard · MessageBubble · PollBubble\nCreatePollSheet · EmojiPickerSheet\nMedicationsDialog · EditProfileDialog\nRoleBadge · CategoryChip · NotificationTile)"]
     end
 
     subgraph Controller["«package» Controller"]
         MC["MainController\n(tab navigation)"]
-        HC["HomeController\n(group list, search)"]
-        CC["ChatController\n(messages, typing, identity)"]
-        PC["ProfileController\n(profile edit, re-auth)"]
+        HC["HomeController\n(joined groups, search)"]
+        CC["ChatController\n(messages, polls, typing,\nidentity, reactions, medic badges)"]
+        PC["ProfileController\n(profile edit, re-auth,\nmedic application)"]
     end
 
     subgraph Model["«package» Model"]
         GROUP["Group"]
-        MSG["Message"]
+        MSG["Message (text | poll)"]
+        POLL["Poll · PollOption"]
+        MED["Medication"]
+        APP["ModeratorApplication"]
         ANON["AnonymousIdentity"]
+        ROLE["UserRole\n(user | medic | admin)"]
     end
 
     subgraph Services["«package» Services"]
-        AS["AuthService\n(email/password auth,\nstay-logged-in)"]
-        CS["ChatService\n(read/write messages)"]
-        GS["GroupService\n(stream groups)"]
-        IS["IdentityService\n(nickname generation,\navatar URL)"]
+        AS["AuthService\n(email/password auth,\nstay-logged-in, register+rollback)"]
+        US["UserService\n(role stream, moderator\napprove/deny, medic revoke)"]
+        CS["ChatService\n(messages, reactions —\ntransactional one-per-user)"]
+        PS["PollService\n(create, vote, close —\ncoupled-write transactions)"]
+        GS["GroupService\n(stream all/joined groups,\nseed defaults)"]
+        IS["IdentityService\n(per-group nickname & avatar\nslot reservation, leave)"]
+        MS["MedicationService\n(medic-only submissions,\napproved entries by group)"]
     end
 
     subgraph Firebase["«package» Firebase (integrated)"]
         FAUTH["Firebase Auth"]
         FIRESTORE["Cloud Firestore"]
+        FCM["Firebase Cloud Messaging"]
+        FSTORE["Firebase Storage"]
     end
 
     subgraph FirebasePlanned["«package» Firebase (planned)"]
-        FCM["Cloud Messaging"]
-        CFUNCTIONS["Cloud Functions"]
+        CFUNCTIONS["Cloud Functions\n(server-side moderation,\nscheduled tasks)"]
     end
 
     SCREENS --> MC
@@ -435,45 +443,59 @@ graph TD
 
     HC --> GS
     CC --> CS
+    CC --> PS
     CC --> IS
+    CC --> MS
     PC --> AS
+    PC --> US
 
     GS --> GROUP
     CS --> MSG
+    PS --> POLL
     IS --> ANON
+    MS --> MED
+    US --> APP
+    US --> ROLE
 
     AS --> FAUTH
     CS --> FIRESTORE
+    PS --> FIRESTORE
     GS --> FIRESTORE
     IS --> FIRESTORE
+    MS --> FIRESTORE
+    US --> FIRESTORE
     PC --> FAUTH
     PC --> FIRESTORE
 
-    HC -.->|future| FCM
+    SCREENS -.->|FCM token sync| FCM
+    SCREENS -.->|profile photo| FSTORE
     CC -.->|future| CFUNCTIONS
 ```
 
 **Package descriptions:**
 
-- **View** (`lib/screens/`, `lib/widgets/`) — Flutter screens and reusable widgets. Screens observe controllers via `ListenableBuilder` and forward user actions to the appropriate controller. Widgets are stateless, presentation-only components.
-- **Controller** (`lib/controllers/`) — `ChangeNotifier` classes that own application state and business logic. `MainController` manages bottom-tab navigation; `HomeController` owns the group list and search; `ChatController` manages messages, the typing indicator, and anonymous identity resolution; `ProfileController` handles profile viewing and credential updates.
-- **Model** (`lib/models/`) — Pure Dart data classes (`Group`, `Message`, `AnonymousIdentity`) with no framework dependencies. Define the shape of domain data consumed by controllers and rendered by views.
-- **Services** (`lib/services/`) — Thin adapters over Firebase. Each service has a single responsibility: `AuthService` for email/password auth and session persistence; `ChatService` for Firestore message reads and writes; `GroupService` for streaming the group list; `IdentityService` for nickname generation and avatar URL derivation. Services are injected into controllers, making controllers testable without Firebase.
-- **Firebase (integrated)** — Firebase Authentication (email/password) and Cloud Firestore are live and used by all service classes. Firestore security rules enforce that messages can only be sent under a user's own anonymous identity.
-- **Firebase (planned)** — Cloud Messaging (push notifications) and Cloud Functions (server-side moderation, scheduled tasks) are not yet integrated.
+- **View** (`lib/screens/`, `lib/widgets/`) — Flutter screens and reusable widgets. Screens observe controllers via `ListenableBuilder` and forward user actions to the appropriate controller. Widgets are stateless, presentation-only components — including poll/message bubbles, the create-poll bottom sheet, the emoji picker, role badges and category chips.
+- **Controller** (`lib/controllers/`) — `ChangeNotifier` classes that own application state. `MainController` manages bottom-tab navigation; `HomeController` owns the joined-group list and search; `ChatController` orchestrates messages, polls, typing state, anonymous identity resolution, reactions (with optimistic retry) and the medic-badge subscription; `ProfileController` handles profile viewing, credential updates and submission of moderator applications.
+- **Model** (`lib/models/`) — Pure Dart data classes with `fromFirestore` factories: `Group`, `Message` (text or poll), `Poll` / `PollOption`, `Medication`, `ModeratorApplication`, `AnonymousIdentity`, and the `UserRole` enum.
+- **Services** (`lib/services/`) — Thin adapters over Firebase, each with a single responsibility. `AuthService` for email/password auth (with rollback on profile-doc failure during register); `UserService` for role streaming, moderator application review and medic-role revocation; `ChatService` for Firestore message reads/writes and transactional emoji reactions (one reaction per user); `PollService` for poll lifecycle with coupled-write transactions guarding votes; `GroupService` for streaming all/joined groups (with seeded defaults); `IdentityService` for per-group nickname and avatar slot reservation; `MedicationService` for medic-only medication entries.
+- **Firebase (integrated)** — Firebase Authentication (email/password), Cloud Firestore, Cloud Messaging (FCM token sync on every auth state change) and Storage. Firestore security rules enforce role-based access, prevent self-promotion to medic/admin, and force coupled writes on poll votes so option counts can't be tampered with.
+- **Firebase (planned)** — Cloud Functions for server-side moderation filters, scheduled tasks (e.g. closing expired polls), and welcome-bot messages are not yet integrated.
 
 
 ### Physical architecture
 
-Aura is a Flutter mobile app distributed as an `.apk` and backed by Firebase, which eliminates the need to maintain a dedicated backend server.
+Aura is a Flutter mobile app distributed as an `.apk` (Android) and `.ipa` build (iOS, dev profile), backed by Firebase, which eliminates the need to maintain a dedicated backend server.
 
 ```mermaid
 graph LR
     subgraph Distribution["«artifact» Distribution"]
-        APK["app-debug.apk\n(GitHub Releases)"]
+        APK["app-release.apk\n(GitHub Releases)"]
+        IPA["iOS build\n(dev signing)"]
     end
 
-    subgraph UserDevice["«device» Android Device (≥ 8.0)"]
+    subgraph UserDevice["«device» Mobile Device"]
+        ANDROID["Android ≥ 8.0"]
+        IOS["iOS ≥ 13"]
         APP["«artifact»\nAura Flutter App"]
         SDK["«artifact»\nFirebase SDK"]
         APP --> SDK
@@ -481,29 +503,32 @@ graph LR
 
     subgraph FirebaseLive["«node» Firebase — integrated"]
         AUTH["«component»\nAuthentication\n(email/password)"]
-        DB["«component»\nCloud Firestore\n(groups · messages\nidentities · notifications)"]
+        DB["«component»\nCloud Firestore\n(groups · messages · polls\nidentities · notifications\nmedications · moderator_applications)"]
+        FCM["«component»\nCloud Messaging\n(push: mentions, replies,\nmoderation events)"]
+        STORE["«component»\nStorage\n(profile photos under users/{uid}/)"]
     end
 
     subgraph FirebasePlanned["«node» Firebase — planned"]
-        FCM["«component»\nCloud Messaging\n(push notifications)"]
-        CF["«component»\nCloud Functions\n(moderation · scheduled tasks)"]
+        CF["«component»\nCloud Functions\n(server-side moderation,\nscheduled tasks)"]
     end
 
-    Distribution -->|sideload install| UserDevice
+    Distribution -->|sideload / TestFlight| UserDevice
     SDK -->|email/password auth| AUTH
     SDK -->|real-time read/write| DB
-    SDK -.->|future| FCM
+    SDK -->|token sync + push| FCM
+    SDK -->|uploads| STORE
     SDK -.->|future| CF
 ```
 
 **Node and artifact descriptions:**
 
-- **Android Device** — The user's smartphone (Android 8.0+). Runs the compiled Flutter app and the Firebase SDK, which handles all communication with the cloud platform.
-- **Distribution** — The release `.apk` is published on GitHub Releases. Users sideload it by enabling *Install from unknown sources*. Google Play distribution is planned for a later milestone.
+- **Mobile Device** — Android 8.0+ or iOS 13+. The platform check in `main.dart` blocks the app from running on web/desktop with a user-facing fallback screen. The Firebase SDK on-device handles all communication with the cloud platform.
+- **Distribution** — Android `.apk` published on GitHub Releases; iOS via dev signing for course demos. Google Play / TestFlight distribution is planned for a later milestone.
 - **Firebase Authentication** — Manages user accounts (email/password). Integrates natively with Firestore security rules, removing the need for a custom auth server. Live since Sprint 1.
-- **Cloud Firestore** — NoSQL real-time database storing groups, messages, anonymous identities, typing state, and notifications. Real-time listeners drive live chat and typing indicator updates without polling. Live since Sprint 1.
-- **Firebase Cloud Messaging (FCM)** — Will deliver push notifications to devices for mentions, replies, and moderation events. Package is installed but integration is planned for a future sprint.
-- **Cloud Functions** — Serverless functions triggered by Firestore events, planned for server-side moderation filters (profanity, personal data detection) and scheduled tasks (shadowban expiry, welcome bot). Chosen to keep sensitive logic off the client.
+- **Cloud Firestore** — NoSQL real-time database storing groups, messages, polls and votes, anonymous identities (forward and reverse lookup for moderation), typing state, notifications, medication entries and moderator applications. Real-time listeners drive live chat and typing updates without polling. Live since Sprint 1; collections extended in Sprint 2.
+- **Firebase Cloud Messaging (FCM)** — Wired in Sprint 2. The app requests notification permission on first launch, registers/refreshes the device token, and clears it on logout (`main.dart:102-148`). Push delivers reply, mention and moderation alerts.
+- **Firebase Storage** — Backs profile photo uploads, locked down by `storage.rules` so a user can only read/write under their own `users/{uid}/` prefix.
+- **Cloud Functions** — Serverless functions triggered by Firestore events, planned for server-side moderation filters (profanity, personal data detection) and scheduled tasks (poll auto-close, shadowban expiry, welcome bot). Chosen to keep sensitive logic off the client.
 
 
 ### Functional prototype
@@ -590,7 +615,7 @@ Sprint 1 turned the static prototype into a fully connected app with a real Fire
 - Real-time Firestore-backed chat with a `Message` model
 - Reply-to-message support — tapping a message quotes it in the reply bubble
 - Typing indicator — shows when another member is composing
-- Messages displayed in correct chronological order; 1000-character cap
+- Messages displayed in correct chronological order; 1000-character cap (raised to 2000 in Sprint 2)
 
 **Anonymous identity**
 - Unique nickname generated per user per group (adjective + noun + number format)
@@ -648,6 +673,84 @@ Sprint 1 turned the static prototype into a fully connected app with a real Fire
 - Whether to keep anonymous identity regeneration per-session or per-message
 
 ### Sprint 2
+
+#### What was delivered
+
+Sprint 2 layered moderation, expert content and richer chat interaction on top of the Sprint 1 baseline. The biggest themes were **trust** (verified medics, admin review pipeline) and **community engagement** (polls, reactions, push notifications) — both directly informed by the requirements-validation survey (expert validation scored 81.8 % as the top trust factor).
+
+**Roles and verification**
+- Three-tier `UserRole` model (`user`, `medic`, `admin`) stored on `users/{uid}.role` and streamed reactively to the UI.
+- Moderator-application flow: any user can submit a `licenseNumber`; admins review pending applications in the new `AdminApplicationsScreen` and approve/deny in a single batched Firestore write.
+- Approval atomically flips the role to `medic` and grants the user a verified badge inside every group they participate in (via the per-group `medicAnonymousIds` collection).
+- Admin-driven role revocation: removing a medic deletes every `medicAnonymousIds` entry across all the user's groups in one batch, so the badge disappears immediately for every reader.
+- Firestore rules block self-promotion: users can write to their own doc but cannot touch the `role` field; only admins can mutate roles, and only that field.
+
+**Polls (anonymous, time-boxed)**
+- New `Poll` and `PollOption` models, with a dedicated `PollService` exposed behind `PollServiceInterface` for testability.
+- 2–6 options enforced both client- and server-side (`validPollOptions` helper in `firestore.rules`).
+- Polls expire 24 h after creation; the creator can also close them early.
+- A poll appears in the chat stream as a `Message` of `type: 'poll'` referencing the poll document — voting and result rendering happen in `PollBubble`.
+- Voting uses a coupled-write transaction: the security rules require that updating `options` is matched in the same transaction by a write to `votes/{anonymousId}`, making it impossible to bump option counts without recording a vote document.
+
+**Reactions**
+- Emoji reactions on messages, one reaction per user per message, enforced transactionally inside `ChatService.addReaction` (any existing reaction by the same anonymous ID is removed before the new one is added).
+- Optimistic UI in `ChatController` with retry handling and a `_reactionErrors` map for surfacing failures.
+
+**Medic content — medications**
+- `MedicationService` and `Medication` model: medics can publish medication entries (name + description) scoped to a group, visible to all members through `MedicationsDialog`.
+- Firestore rules whitelist exactly the allowed fields and require `role == 'medic'` and `submittedByUserId == auth.uid` on create; updates and deletes are forbidden to keep the audit trail intact.
+
+**Push notifications (FCM)**
+- Notification permission requested on first launch (`main.dart:102-148`).
+- FCM token persisted to `users/{uid}.fcmToken` on every auth-state change; refreshed via `onTokenRefresh` and cleared on logout.
+- Background handler registered with `@pragma('vm:entry-point')` so messages are delivered when the app is terminated.
+
+**iOS support**
+- iOS configured in `firebase.json` and now runs alongside Android; non-mobile platforms are explicitly blocked at startup with a fallback screen.
+
+**Storage**
+- Profile photos stored under `users/{uid}/` in Firebase Storage with rules limiting read/write to the owner.
+
+**Chat refinements**
+- Message length cap raised from 1 000 to **2 000 characters** (rule and service constant in sync).
+- Sender role surfaced in `Message`; medic messages render with the verified badge inline.
+- Mentions list (`@nickname`) added to the message schema and persisted with each message.
+- `MessageBubble`, `RoleBadge`, `EmojiPickerSheet`, `CreatePollSheet`, `MedicationsDialog`, `EditProfileDialog`, `CategoryChip`, `NotificationTile`, `PollBubble` widgets added.
+
+**Tests**
+- ~4 500 lines of test code across **17 unit/widget files** and **4 integration flows** (`auth_flow`, `chat_flow`, `app_navigation`, `profile_flow`).
+- New suites for `PollService` (~680 lines), `MedicationService`, `UserService`, `CreatePollSheet`, `ProfileController` (moderator application), `Models`, `AuthGate`.
+- All tests run against `fake_cloud_firestore` and `firebase_auth_mocks` — no Firebase emulator required.
+
+**Security rules — additions**
+- Whitelisted writable fields per collection (`moderator_applications`, `medications`, poll `votes`) to prevent data injection.
+- `memberCount` deltas restricted to ±1 and gated on the consistent presence/absence of the corresponding anonymous identity.
+- Reverse-lookup `anonymousIdentities/{anonymousId}` documents made write-only from the client (no read, no delete) to preserve moderation history.
+
+#### Board screenshots
+
+**End of sprint:**
+
+<p align="center">
+  <img src="assets/Sprint2_end.png"/>
+</p>
+
+#### Retrospective
+
+**Did well:**
+- Delivered the three trust-related features ranked top by the requirements survey (expert verification, misinformation reporting via medic content, moderation pipeline).
+- Hardened Firestore rules feature-by-feature, with rule changes accompanying each new collection rather than as a separate audit pass.
+- Polls landed with full server-side validation (option count, coupled-write voting) on day one.
+- Test coverage grew alongside features; new services were behind interfaces so controllers could be unit-tested without Firebase.
+
+**Do differently:**
+- Stage rule deploys earlier, a few late-sprint client changes were blocked on rule updates that hadn't been pushed.
+- Standardise error-return contracts across services (some return `String?`, some `bool`, some throw), pick one and migrate.
+- Pair on Firestore-rule writing: a couple of rule bugs slipped through because the author and reviewer didn't read the same scenarios.
+
+**Puzzles:**
+- Whether to expire polls server-side via Cloud Functions or keep the current client-side `isOpen` check (Sprint 3 candidate).
+- How to model multi-medic verification, a single license number is currently sufficient for the badge.
 
 ### Sprint 3
 
