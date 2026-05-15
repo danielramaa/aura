@@ -75,9 +75,12 @@ class PollService implements PollServiceInterface {
     if (trimmedQuestion.isEmpty) return 'Question cannot be empty.';
 
     final trimmedOptions = optionTexts.map((o) => o.trim()).toList();
-    if (trimmedOptions.length < 2) return 'A poll must have at least 2 options.';
-    if (trimmedOptions.length > 6) return 'A poll cannot have more than 6 options.';
-    if (trimmedOptions.any((o) => o.isEmpty)) return 'All options must have text.';
+    if (trimmedOptions.length < 2)
+      return 'A poll must have at least 2 options.';
+    if (trimmedOptions.length > 6)
+      return 'A poll cannot have more than 6 options.';
+    if (trimmedOptions.any((o) => o.isEmpty))
+      return 'All options must have text.';
 
     try {
       final pollRef = _pollsRef(groupId).doc();
@@ -85,10 +88,9 @@ class PollService implements PollServiceInterface {
 
       batch.set(pollRef, {
         'question': trimmedQuestion,
-        'options':
-            trimmedOptions
-                .map((text) => {'text': text, 'voteCount': 0})
-                .toList(),
+        'options': trimmedOptions
+            .map((text) => {'text': text, 'voteCount': 0})
+            .toList(),
         'creatorAnonymousId': identity.anonymousId,
         'createdAt': FieldValue.serverTimestamp(),
         'closedAt': null,

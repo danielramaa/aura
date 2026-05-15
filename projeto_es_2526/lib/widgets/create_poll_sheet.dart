@@ -172,10 +172,9 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                             child: TextField(
                               controller: _optionCtrls[i],
                               maxLength: 100,
-                              textInputAction:
-                                  i < _optionCtrls.length - 1
-                                      ? TextInputAction.next
-                                      : TextInputAction.done,
+                              textInputAction: i < _optionCtrls.length - 1
+                                  ? TextInputAction.next
+                                  : TextInputAction.done,
                               decoration: InputDecoration(
                                 labelText: 'Option ${i + 1}',
                                 errorText: _optionErrors[i],
@@ -220,8 +219,9 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed:
-                          _isPublishing ? null : () => Navigator.pop(context),
+                      onPressed: _isPublishing
+                          ? null
+                          : () => Navigator.pop(context),
                       child: const Text('Cancel'),
                     ),
                   ),

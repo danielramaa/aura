@@ -52,8 +52,7 @@ class Message {
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
 
     final typeStr = data['type'] as String?;
-    final msgType =
-        typeStr == 'poll' ? MessageType.poll : MessageType.text;
+    final msgType = typeStr == 'poll' ? MessageType.poll : MessageType.text;
 
     return Message(
       id: doc.id,

@@ -5,11 +5,8 @@ import 'package:projeto_es_2526/models/anonymous_identity.dart';
 import 'package:projeto_es_2526/models/poll.dart';
 import 'package:projeto_es_2526/services/poll_service.dart';
 
-AnonymousIdentity makeIdentity({String id = 'anon-1'}) => AnonymousIdentity(
-  anonymousId: id,
-  nickname: 'CalmWolf42',
-  avatarIndex: 0,
-);
+AnonymousIdentity makeIdentity({String id = 'anon-1'}) =>
+    AnonymousIdentity(anonymousId: id, nickname: 'CalmWolf42', avatarIndex: 0);
 
 /// Seeds a poll document and returns its ID.
 Future<String> seedPoll(
@@ -20,8 +17,11 @@ Future<String> seedPoll(
   Timestamp? closedAt,
   List<Map<String, dynamic>>? options,
 }) async {
-  final ref =
-      firestore.collection('groups').doc(groupId).collection('polls').doc();
+  final ref = firestore
+      .collection('groups')
+      .doc(groupId)
+      .collection('polls')
+      .doc();
   await ref.set({
     'question': 'Favourite colour?',
     'options':
@@ -88,7 +88,10 @@ void main() {
       final poll = Poll(
         id: 'p1',
         question: 'Q?',
-        options: const [PollOption(text: 'A'), PollOption(text: 'B')],
+        options: const [
+          PollOption(text: 'A'),
+          PollOption(text: 'B'),
+        ],
         creatorAnonymousId: 'anon-1',
         createdAt: Timestamp.now(),
       );
@@ -99,7 +102,10 @@ void main() {
       final poll = Poll(
         id: 'p1',
         question: 'Q?',
-        options: const [PollOption(text: 'A'), PollOption(text: 'B')],
+        options: const [
+          PollOption(text: 'A'),
+          PollOption(text: 'B'),
+        ],
         creatorAnonymousId: 'anon-1',
         createdAt: Timestamp.now(),
         closedAt: Timestamp.now(),
@@ -111,7 +117,10 @@ void main() {
       final poll = Poll(
         id: 'p1',
         question: 'Q?',
-        options: const [PollOption(text: 'A'), PollOption(text: 'B')],
+        options: const [
+          PollOption(text: 'A'),
+          PollOption(text: 'B'),
+        ],
         creatorAnonymousId: 'anon-1',
         createdAt: Timestamp.fromDate(
           DateTime.now().subtract(const Duration(hours: 25)),
@@ -140,7 +149,10 @@ void main() {
       final poll = Poll(
         id: 'p1',
         question: 'Q?',
-        options: const [PollOption(text: 'A'), PollOption(text: 'B')],
+        options: const [
+          PollOption(text: 'A'),
+          PollOption(text: 'B'),
+        ],
         creatorAnonymousId: 'anon-1',
         createdAt: Timestamp.now(),
       );
@@ -271,7 +283,9 @@ void main() {
       expect(poll['closedAt'], isNull);
 
       final opts = List<Map<String, dynamic>>.from(
-        (poll['options'] as List).map((o) => Map<String, dynamic>.from(o as Map)),
+        (poll['options'] as List).map(
+          (o) => Map<String, dynamic>.from(o as Map),
+        ),
       );
       expect(opts.length, 2);
       expect(opts[0]['text'], 'Linux');
@@ -369,7 +383,9 @@ void main() {
 
       final data = await pollData();
       final opts = List<Map<String, dynamic>>.from(
-        (data['options'] as List).map((o) => Map<String, dynamic>.from(o as Map)),
+        (data['options'] as List).map(
+          (o) => Map<String, dynamic>.from(o as Map),
+        ),
       );
       expect(opts[0]['voteCount'], 0);
       expect(opts[1]['voteCount'], 1);
@@ -412,7 +428,9 @@ void main() {
 
       final data = await pollData();
       final opts = List<Map<String, dynamic>>.from(
-        (data['options'] as List).map((o) => Map<String, dynamic>.from(o as Map)),
+        (data['options'] as List).map(
+          (o) => Map<String, dynamic>.from(o as Map),
+        ),
       );
       expect(opts[0]['voteCount'], 1);
       expect(opts[1]['voteCount'], 1);
@@ -439,10 +457,7 @@ void main() {
     });
 
     test('returns error when poll is manually closed', () async {
-      final pollId = await seedPoll(
-        firestore,
-        closedAt: Timestamp.now(),
-      );
+      final pollId = await seedPoll(firestore, closedAt: Timestamp.now());
 
       final err = await service.vote(
         groupId: 'g1',
@@ -612,10 +627,13 @@ void main() {
     test('emits poll with non-zero vote counts when pre-seeded', () async {
       final firestore = FakeFirebaseFirestore();
       final service = PollService(firestore: firestore);
-      final pollId = await seedPoll(firestore, options: [
-        {'text': 'Red', 'voteCount': 5},
-        {'text': 'Blue', 'voteCount': 3},
-      ]);
+      final pollId = await seedPoll(
+        firestore,
+        options: [
+          {'text': 'Red', 'voteCount': 5},
+          {'text': 'Blue', 'voteCount': 3},
+        ],
+      );
 
       final poll = await service.streamPoll('g1', pollId).first;
       expect(poll.options[0].voteCount, 5);

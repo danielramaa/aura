@@ -47,12 +47,9 @@ class Poll {
     return Poll(
       id: doc.id,
       question: data['question'] as String? ?? '',
-      options:
-          rawOptions
-              .map(
-                (o) => PollOption.fromMap(Map<String, dynamic>.from(o as Map)),
-              )
-              .toList(),
+      options: rawOptions
+          .map((o) => PollOption.fromMap(Map<String, dynamic>.from(o as Map)))
+          .toList(),
       creatorAnonymousId: data['creatorAnonymousId'] as String? ?? '',
       createdAt: data['createdAt'] as Timestamp? ?? Timestamp.now(),
       closedAt: data['closedAt'] as Timestamp?,

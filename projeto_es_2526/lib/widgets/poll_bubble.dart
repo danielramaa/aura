@@ -261,9 +261,7 @@ class _PollCard extends StatelessWidget {
                       final option = poll.options[i];
                       final isVoted = userVote == i;
                       final isPending = pendingVote == i;
-                      final pct = total == 0
-                          ? 0.0
-                          : option.voteCount / total;
+                      final pct = total == 0 ? 0.0 : option.voteCount / total;
 
                       return _OptionTile(
                         option: option,
@@ -368,10 +366,7 @@ class _OptionTile extends StatelessWidget {
                 else if (showResults)
                   Text(
                     pctLabel,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
               ],
             ),
@@ -383,9 +378,7 @@ class _OptionTile extends StatelessWidget {
                   value: percentage,
                   minHeight: 5,
                   backgroundColor: Colors.grey[300],
-                  color: isVoted
-                      ? const Color(0xFF185FA5)
-                      : Colors.grey[500],
+                  color: isVoted ? const Color(0xFF185FA5) : Colors.grey[500],
                 ),
               ),
             ] else ...[
