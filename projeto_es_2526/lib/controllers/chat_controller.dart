@@ -17,7 +17,7 @@ class ChatController extends ChangeNotifier {
   final FirebaseAuth _auth;
 
   late final ChatServiceInterface _chatService;
-  late final PollService _pollService;
+  late final PollServiceInterface _pollService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
   String? _groupName;
@@ -45,7 +45,7 @@ class ChatController extends ChangeNotifier {
     IdentityService? identityService,
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
-    PollService? pollService,
+    PollServiceInterface? pollService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
@@ -268,7 +268,7 @@ class ChatController extends ChangeNotifier {
   // Polls
   // ---------------------------------------------------------------------------
 
-  PollService get pollService => _pollService;
+  PollServiceInterface get pollService => _pollService;
 
   Future<String?> createPoll(String question, List<String> options) async {
     final identity = _anonymousIdentity;

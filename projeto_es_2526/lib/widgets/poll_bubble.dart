@@ -9,7 +9,7 @@ class PollBubble extends StatefulWidget {
   final Message message;
   final bool isOwn;
   final String currentAnonymousId;
-  final PollService pollService;
+  final PollServiceInterface pollService;
   final String groupId;
 
   const PollBubble({
