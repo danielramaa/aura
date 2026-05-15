@@ -109,13 +109,16 @@ void main() {
       FakeFirebaseFirestore firestore,
       String userId,
       String groupId,
-    ) =>
-        firestore
-            .collection('users')
-            .doc(userId)
-            .collection('anonymousIdentities')
-            .doc(groupId)
-            .set({'anonymousId': 'anon-1', 'nickname': 'TestUser', 'avatarIndex': 0});
+    ) => firestore
+        .collection('users')
+        .doc(userId)
+        .collection('anonymousIdentities')
+        .doc(groupId)
+        .set({
+          'anonymousId': 'anon-1',
+          'nickname': 'TestUser',
+          'avatarIndex': 0,
+        });
 
     test('returns seed group when no Firestore doc exists', () async {
       final firestore = FakeFirebaseFirestore();

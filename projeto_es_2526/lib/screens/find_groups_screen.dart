@@ -177,8 +177,8 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                       builder: (_) => ChatScreen(
                                         groupId: group.id,
                                         groupName: group.name,
-                                        memberCount:
-                                            group.memberCount.toString(),
+                                        memberCount: group.memberCount
+                                            .toString(),
                                         groupDescription: group.description,
                                       ),
                                     ),
@@ -221,7 +221,9 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                 ),
                               )
                             : Text(
-                                isJoined ? 'Já seguido' : 'Entrar na comunidade',
+                                isJoined
+                                    ? 'Já seguido'
+                                    : 'Entrar na comunidade',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -263,10 +265,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                   const SizedBox(height: 16),
                   const Text(
                     'Sem ligação',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
@@ -293,11 +292,12 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
 
           final q = _searchQuery.toLowerCase();
           final filtered = allGroups.where((g) {
-            final matchesSearch = q.isEmpty ||
+            final matchesSearch =
+                q.isEmpty ||
                 g.name.toLowerCase().contains(q) ||
                 g.description.toLowerCase().contains(q);
-            final matchesCategory = _selectedCategory == null ||
-                g.category == _selectedCategory;
+            final matchesCategory =
+                _selectedCategory == null || g.category == _selectedCategory;
             return matchesSearch && matchesCategory;
           }).toList();
 
@@ -342,8 +342,9 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                             label: GroupService.categoryLabels[cat] ?? cat,
                             selected: _selectedCategory == cat,
                             onTap: () => setState(
-                              () => _selectedCategory =
-                                  _selectedCategory == cat ? null : cat,
+                              () => _selectedCategory = _selectedCategory == cat
+                                  ? null
+                                  : cat,
                             ),
                           ),
                         ),
@@ -361,7 +362,8 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                               : 'Nenhuma comunidade encontrada.',
                           style: TextStyle(
                             color: Colors.grey[500],
-                            fontStyle: _searchQuery.isEmpty &&
+                            fontStyle:
+                                _searchQuery.isEmpty &&
                                     _selectedCategory != null
                                 ? FontStyle.italic
                                 : FontStyle.normal,
@@ -371,16 +373,14 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                         itemCount: filtered.length,
-                        separatorBuilder: (_, _) =>
-                            const Divider(height: 1),
+                        separatorBuilder: (_, _) => const Divider(height: 1),
                         itemBuilder: (context, i) {
                           final group = filtered[i];
                           final isJoined = _joinedIds.contains(group.id);
                           return InkWell(
                             onTap: () => _showCommunityPreview(group),
                             child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
                               child: Row(
                                 children: [
                                   CircleAvatar(
@@ -459,4 +459,3 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
     );
   }
 }
-
