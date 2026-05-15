@@ -3,6 +3,22 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Returns true when a poll option map is well-formed and starts with no votes.
+    function validPollOption(opt) {
+      return opt.text is string && opt.text.size() > 0 && opt.voteCount == 0;
+    }
+
+    // Validates all options in the list (supports 2–6 entries).
+    function validPollOptions(opts) {
+      return opts.size() >= 2 && opts.size() <= 6
+        && validPollOption(opts[0])
+        && validPollOption(opts[1])
+        && (opts.size() < 3 || validPollOption(opts[2]))
+        && (opts.size() < 4 || validPollOption(opts[3]))
+        && (opts.size() < 5 || validPollOption(opts[4]))
+        && (opts.size() < 6 || validPollOption(opts[5]));
+    }
+
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
 
@@ -71,8 +87,8 @@ service cloud.firestore {
           && request.resource.data.question is string
           && request.resource.data.question.size() > 0
           && request.resource.data.options is list
-          && request.resource.data.options.size() >= 2
-          && request.resource.data.options.size() <= 6
+          && validPollOptions(request.resource.data.options)
+          && request.resource.data.createdAt == request.time
           && request.resource.data.closedAt == null;
 
         // Creator can close the poll (set closedAt); voting updates options counts.
