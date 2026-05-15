@@ -166,7 +166,7 @@ class _PollCard extends StatelessWidget {
     final total = poll.totalVotes;
 
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Row(
