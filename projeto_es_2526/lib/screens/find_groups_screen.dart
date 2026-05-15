@@ -139,7 +139,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '${group.memberCount} members',
+                        '${group.memberCount} membros',
                         style: TextStyle(
                           color: Colors.blue[800],
                           fontWeight: FontWeight.w600,
@@ -149,7 +149,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                     ),
                     const SizedBox(height: 32),
                     const Text(
-                      'About the community',
+                      'Sobre a comunidade',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -233,7 +233,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                 ),
                               )
                             : Text(
-                                isJoined ? 'Already Joined' : 'Join Community',
+                                isJoined ? 'Já seguido' : 'Entrar na comunidade',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -259,7 +259,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Explore',
+          'Explorar',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
@@ -275,7 +275,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                   const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
                   const SizedBox(height: 16),
                   const Text(
-                    'No connection',
+                    'Sem ligação',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -284,7 +284,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: _triggerRetry,
-                    child: const Text('Try again'),
+                    child: const Text('Tentar novamente'),
                   ),
                 ],
               ),
@@ -323,7 +323,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                   controller: _searchController,
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: 'Search communities...',
+                    hintText: 'Pesquisar comunidades...',
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.grey[100],
@@ -342,7 +342,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                   children: [
                     Center(
                       child: CategoryChip(
-                        label: 'All',
+                        label: 'Todas',
                         selected: _selectedCategory == null,
                         onTap: () => setState(() => _selectedCategory = null),
                       ),
@@ -369,8 +369,16 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                 child: filtered.isEmpty
                     ? Center(
                         child: Text(
-                          'No communities found.',
-                          style: TextStyle(color: Colors.grey[500]),
+                          _searchQuery.isEmpty && _selectedCategory != null
+                              ? 'Novas salas em breve'
+                              : 'Nenhuma comunidade encontrada.',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontStyle: _searchQuery.isEmpty &&
+                                    _selectedCategory != null
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
                         ),
                       )
                     : ListView.separated(
@@ -407,7 +415,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          '${group.memberCount} members',
+                                          '${group.memberCount} membros',
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.blue[600],
@@ -428,12 +436,26 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                     ),
                                   ),
                                   if (isJoined)
-                                    const Padding(
-                                      padding: EdgeInsets.only(left: 8),
-                                      child: Icon(
-                                        Icons.check_circle,
-                                        color: Colors.green,
-                                        size: 20,
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Já seguido',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                 ],
