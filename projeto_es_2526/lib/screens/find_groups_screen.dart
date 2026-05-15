@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../models/group.dart';
 import '../services/group_service.dart';
 import '../services/identity_service.dart';
+import '../widgets/category_chip.dart';
 import 'chat_screen.dart';
 
 class FindGroupsScreen extends StatefulWidget {
@@ -28,13 +29,14 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
   late final GroupService _groupService;
   late final IdentityService _identityService;
   late final FirebaseAuth _auth;
-  late final Stream<List<Group>> _groupsStream;
+  late Stream<List<Group>> _groupsStream;
 
   Set<String> _joinedIds = {};
   StreamSubscription<Set<String>>? _joinedIdsSub;
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _selectedCategory;
 
   @override
   void initState() {
@@ -60,6 +62,10 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
     _joinedIdsSub?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _triggerRetry() {
+    setState(() => _groupsStream = _groupService.streamGroups());
   }
 
   void _showCommunityPreview(Group group) {
@@ -121,7 +127,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        '${group.memberCount} members',
+                        '${group.isEstimate ? "~" : ""}${group.memberCount} membros',
                         style: TextStyle(
                           color: Colors.blue[800],
                           fontWeight: FontWeight.w600,
@@ -215,7 +221,9 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                 ),
                               )
                             : Text(
-                                isJoined ? 'Already Joined' : 'Join Community',
+                                isJoined
+                                    ? 'Já seguido'
+                                    : 'Entrar na comunidade',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -241,147 +249,212 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Find Groups',
+          'Explorar',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (q) => setState(() => _searchQuery = q),
-              decoration: InputDecoration(
-                hintText: 'Search by name or condition...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
+      body: StreamBuilder<List<Group>>(
+        stream: _groupsStream,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Sem ligação',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: _triggerRetry,
+                    child: const Text('Tentar novamente'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final firebaseGroups = snapshot.data!;
+          final Map<String, Group> groupsMap = {
+            for (var g in GroupService.defaultGroups) g.id: g,
+          };
+          for (var g in firebaseGroups) {
+            groupsMap[g.id] = g;
+          }
+          final allGroups = groupsMap.values.toList();
+
+          final q = _searchQuery.toLowerCase();
+          final filtered = allGroups.where((g) {
+            final matchesSearch =
+                q.isEmpty ||
+                g.name.toLowerCase().contains(q) ||
+                g.description.toLowerCase().contains(q);
+            final matchesCategory =
+                _selectedCategory == null || g.category == _selectedCategory;
+            return matchesSearch && matchesCategory;
+          }).toList();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val),
+                  decoration: InputDecoration(
+                    hintText: 'Pesquisar comunidades...',
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.grey[100],
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<List<Group>>(
-              stream: _groupsStream,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return const Center(child: Text('Failed to load groups.'));
-                }
-
-                final query = _searchQuery.toLowerCase();
-                final groups = (snapshot.data ?? []).where((g) {
-                  if (query.isEmpty) return true;
-                  return g.name.toLowerCase().contains(query) ||
-                      g.description.toLowerCase().contains(query);
-                }).toList();
-
-                if (groups.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _searchQuery.isEmpty
-                              ? Icons.group_outlined
-                              : Icons.search_off,
-                          size: 64,
-                          color: Colors.grey[300],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'No communities yet'
-                              : 'No communities found',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey[600],
-                            fontWeight: FontWeight.w500,
+              SizedBox(
+                height: 36,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    Center(
+                      child: CategoryChip(
+                        label: 'Todas',
+                        selected: _selectedCategory == null,
+                        onTap: () => setState(() => _selectedCategory = null),
+                      ),
+                    ),
+                    for (final cat in GroupService.categories)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Center(
+                          child: CategoryChip(
+                            label: GroupService.categoryLabels[cat] ?? cat,
+                            selected: _selectedCategory == cat,
+                            onTap: () => setState(
+                              () => _selectedCategory = _selectedCategory == cat
+                                  ? null
+                                  : cat,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isEmpty
-                              ? 'Communities will appear here once created.'
-                              : 'Try a different search term.',
-                          style: TextStyle(color: Colors.grey[400]),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: filtered.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchQuery.isEmpty && _selectedCategory != null
+                              ? 'Novas salas em breve'
+                              : 'Nenhuma comunidade encontrada.',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontStyle:
+                                _searchQuery.isEmpty &&
+                                    _selectedCategory != null
+                                ? FontStyle.italic
+                                : FontStyle.normal,
+                          ),
                         ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: groups.length,
-                  separatorBuilder: (_, _) => const Divider(height: 24),
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-                    final isJoined = _joinedIds.contains(group.id);
-                    return InkWell(
-                      onTap: () => _showCommunityPreview(group),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, i) {
+                          final group = filtered[i];
+                          final isJoined = _joinedIds.contains(group.id);
+                          return InkWell(
+                            onTap: () => _showCommunityPreview(group),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    group.name,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                  CircleAvatar(
+                                    backgroundColor: group.color,
+                                    radius: 22,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          group.name,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '${group.isEstimate ? "~" : ""}${group.memberCount} membros',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.blue[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          group.description,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[600],
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${group.memberCount} members',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.blue[600],
-                                      fontWeight: FontWeight.w500,
+                                  if (isJoined)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 8),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle,
+                                            color: Colors.green,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Já seguido',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.green[700],
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    group.description,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[600],
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
                                 ],
                               ),
                             ),
-                            if (isJoined)
-                              const Padding(
-                                padding: EdgeInsets.only(left: 8),
-                                child: Icon(
-                                  Icons.check_circle,
-                                  color: Colors.green,
-                                  size: 20,
-                                ),
-                              ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

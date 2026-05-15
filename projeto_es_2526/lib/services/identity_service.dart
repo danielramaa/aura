@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/anonymous_identity.dart';
 import '../utils/avatar_utils.dart';
 
@@ -70,9 +71,17 @@ class IdentityService {
     } else {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
-      await _firestore.collection('groups').doc(groupId).update({
-        'memberCount': FieldValue.increment(1),
-      });
+      // Identity is now committed — increment memberCount.
+      // Ignore not-found: default/seeded groups have no Firestore document.
+      try {
+        await _firestore.collection('groups').doc(groupId).update({
+          'memberCount': FieldValue.increment(1),
+        });
+      } on FirebaseException catch (e) {
+        if (e.code != 'not-found') {
+          debugPrint('memberCount increment failed for $groupId: $e');
+        }
+      }
       return newIdentity;
     }
   }
@@ -84,8 +93,12 @@ class IdentityService {
         .collection('anonymousIdentities')
         .doc(groupId);
 
+    final groupDocRef = _firestore.collection('groups').doc(groupId);
+
+    // Read identity and group doc in parallel.
     final userIdentityDoc = await userIdentityRef.get();
     if (!userIdentityDoc.exists) return;
+    final groupDoc = await groupDocRef.get();
 
     final data = userIdentityDoc.data()!;
     final anonymousId = data['anonymousId'] as String?;
@@ -94,9 +107,11 @@ class IdentityService {
 
     final batch = _firestore.batch();
 
-    batch.update(_firestore.collection('groups').doc(groupId), {
-      'memberCount': FieldValue.increment(-1),
-    });
+    // Decrement memberCount atomically with the identity deletion.
+    // Skip if the group has no Firestore document (default/seeded groups).
+    if (groupDoc.exists) {
+      batch.update(groupDocRef, {'memberCount': FieldValue.increment(-1)});
+    }
 
     batch.delete(userIdentityRef);
 
