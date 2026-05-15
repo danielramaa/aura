@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/anonymous_identity.dart';
 import '../utils/avatar_utils.dart';
 
@@ -71,12 +72,16 @@ class IdentityService {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
       // Identity is now committed — increment memberCount.
-      // Swallow errors for groups that have no Firestore document (default/seeded groups).
+      // Ignore not-found: default/seeded groups have no Firestore document.
       try {
         await _firestore.collection('groups').doc(groupId).update({
           'memberCount': FieldValue.increment(1),
         });
-      } catch (_) {}
+      } on FirebaseException catch (e) {
+        if (e.code != 'not-found') {
+          debugPrint('memberCount increment failed for $groupId: $e');
+        }
+      }
       return newIdentity;
     }
   }
