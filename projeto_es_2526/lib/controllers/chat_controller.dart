@@ -6,6 +6,7 @@ import '../models/anonymous_identity.dart';
 import '../models/message.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
+import '../services/poll_service.dart';
 
 class ChatController extends ChangeNotifier {
   static const int maxMessageLength = 2000;
@@ -16,6 +17,7 @@ class ChatController extends ChangeNotifier {
   final FirebaseAuth _auth;
 
   late final ChatServiceInterface _chatService;
+  late final PollServiceInterface _pollService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
   String? _groupName;
@@ -43,10 +45,12 @@ class ChatController extends ChangeNotifier {
     IdentityService? identityService,
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
+    PollServiceInterface? pollService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
+    _pollService = pollService ?? PollService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
         .doc(groupId)
@@ -258,6 +262,23 @@ class ChatController extends ChangeNotifier {
       _isSending = false;
       notifyListeners();
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Polls
+  // ---------------------------------------------------------------------------
+
+  PollServiceInterface get pollService => _pollService;
+
+  Future<String?> createPoll(String question, List<String> options) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Not connected to the room.';
+    return _pollService.createPoll(
+      groupId: groupId,
+      question: question,
+      optionTexts: options,
+      identity: identity,
+    );
   }
 
   // ---------------------------------------------------------------------------
