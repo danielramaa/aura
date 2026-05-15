@@ -111,7 +111,9 @@ void main() {
       final service = UserService(firestore: firestore);
 
       final results = <int>[];
-      final sub = service.streamPendingApplications().listen((apps) => results.add(apps.length));
+      final sub = service.streamPendingApplications().listen(
+        (apps) => results.add(apps.length),
+      );
 
       await firestore.collection('moderator_applications').add({
         'userId': 'u1',
@@ -127,23 +129,25 @@ void main() {
   });
 
   group('UserService.approveApplication', () {
-    test('sets application status to approved and user role to medic', () async {
-      final firestore = FakeFirebaseFirestore();
-      await firestore.collection('users').doc('u1').set({'role': 'user'});
-      final appRef = await firestore.collection('moderator_applications').add({
-        'userId': 'u1',
-        'status': 'pending',
-      });
-      final service = UserService(firestore: firestore);
+    test(
+      'sets application status to approved and user role to medic',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        await firestore.collection('users').doc('u1').set({'role': 'user'});
+        final appRef = await firestore.collection('moderator_applications').add(
+          {'userId': 'u1', 'status': 'pending'},
+        );
+        final service = UserService(firestore: firestore);
 
-      final err = await service.approveApplication(appRef.id, 'u1');
+        final err = await service.approveApplication(appRef.id, 'u1');
 
-      expect(err, isNull);
-      final app = await appRef.get();
-      expect(app.data()?['status'], 'approved');
-      final user = await firestore.collection('users').doc('u1').get();
-      expect(user.data()?['role'], 'medic');
-    });
+        expect(err, isNull);
+        final app = await appRef.get();
+        expect(app.data()?['status'], 'approved');
+        final user = await firestore.collection('users').doc('u1').get();
+        expect(user.data()?['role'], 'medic');
+      },
+    );
   });
 
   group('UserService.denyApplication', () {
@@ -164,36 +168,39 @@ void main() {
   });
 
   group('UserService.revokeMedicRole', () {
-    test('resets user role to user and deletes medicAnonymousIds entries', () async {
-      final firestore = FakeFirebaseFirestore();
-      await firestore.collection('users').doc('u1').set({'role': 'medic'});
-      await firestore
-          .collection('users')
-          .doc('u1')
-          .collection('anonymousIdentities')
-          .doc('g1')
-          .set({'anonymousId': 'anon-1'});
-      await firestore
-          .collection('groups')
-          .doc('g1')
-          .collection('medicAnonymousIds')
-          .doc('anon-1')
-          .set({'isMedic': true});
-      final service = UserService(firestore: firestore);
+    test(
+      'resets user role to user and deletes medicAnonymousIds entries',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        await firestore.collection('users').doc('u1').set({'role': 'medic'});
+        await firestore
+            .collection('users')
+            .doc('u1')
+            .collection('anonymousIdentities')
+            .doc('g1')
+            .set({'anonymousId': 'anon-1'});
+        await firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('medicAnonymousIds')
+            .doc('anon-1')
+            .set({'isMedic': true});
+        final service = UserService(firestore: firestore);
 
-      final err = await service.revokeMedicRole('u1');
+        final err = await service.revokeMedicRole('u1');
 
-      expect(err, isNull);
-      final user = await firestore.collection('users').doc('u1').get();
-      expect(user.data()?['role'], 'user');
-      final badge = await firestore
-          .collection('groups')
-          .doc('g1')
-          .collection('medicAnonymousIds')
-          .doc('anon-1')
-          .get();
-      expect(badge.exists, isFalse);
-    });
+        expect(err, isNull);
+        final user = await firestore.collection('users').doc('u1').get();
+        expect(user.data()?['role'], 'user');
+        final badge = await firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('medicAnonymousIds')
+            .doc('anon-1')
+            .get();
+        expect(badge.exists, isFalse);
+      },
+    );
 
     test('handles user with no group memberships', () async {
       final firestore = FakeFirebaseFirestore();

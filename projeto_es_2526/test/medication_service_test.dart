@@ -26,16 +26,23 @@ void main() {
       final firestore = FakeFirebaseFirestore();
       final service = MedicationService(firestore: firestore);
 
-      expect(
-        await service.streamApprovedMedications('g1').first,
-        isEmpty,
-      );
+      expect(await service.streamApprovedMedications('g1').first, isEmpty);
     });
 
     test('filters out non-approved medications', () async {
       final firestore = FakeFirebaseFirestore();
-      await addMedication(firestore, groupId: 'g1', name: 'Approved Med', status: 'approved');
-      await addMedication(firestore, groupId: 'g1', name: 'Pending Med', status: 'pending');
+      await addMedication(
+        firestore,
+        groupId: 'g1',
+        name: 'Approved Med',
+        status: 'approved',
+      );
+      await addMedication(
+        firestore,
+        groupId: 'g1',
+        name: 'Pending Med',
+        status: 'pending',
+      );
       final service = MedicationService(firestore: firestore);
 
       final meds = await service.streamApprovedMedications('g1').first;
@@ -45,8 +52,18 @@ void main() {
 
     test('filters out medications from other groups', () async {
       final firestore = FakeFirebaseFirestore();
-      await addMedication(firestore, groupId: 'g1', name: 'Group 1 Med', status: 'approved');
-      await addMedication(firestore, groupId: 'g2', name: 'Group 2 Med', status: 'approved');
+      await addMedication(
+        firestore,
+        groupId: 'g1',
+        name: 'Group 1 Med',
+        status: 'approved',
+      );
+      await addMedication(
+        firestore,
+        groupId: 'g2',
+        name: 'Group 2 Med',
+        status: 'approved',
+      );
       final service = MedicationService(firestore: firestore);
 
       final meds = await service.streamApprovedMedications('g1').first;
@@ -58,8 +75,20 @@ void main() {
       final firestore = FakeFirebaseFirestore();
       final older = Timestamp.fromDate(DateTime(2024, 1, 1));
       final newer = Timestamp.fromDate(DateTime(2024, 6, 1));
-      await addMedication(firestore, groupId: 'g1', name: 'Old Med', status: 'approved', timestamp: older);
-      await addMedication(firestore, groupId: 'g1', name: 'New Med', status: 'approved', timestamp: newer);
+      await addMedication(
+        firestore,
+        groupId: 'g1',
+        name: 'Old Med',
+        status: 'approved',
+        timestamp: older,
+      );
+      await addMedication(
+        firestore,
+        groupId: 'g1',
+        name: 'New Med',
+        status: 'approved',
+        timestamp: newer,
+      );
       final service = MedicationService(firestore: firestore);
 
       final meds = await service.streamApprovedMedications('g1').first;
@@ -67,17 +96,31 @@ void main() {
       expect(meds.last.name, 'Old Med');
     });
 
-    test('medications with null timestamp sort to the end (epoch fallback)', () async {
-      final firestore = FakeFirebaseFirestore();
-      final ts = Timestamp.fromDate(DateTime(2024, 6, 1));
-      await addMedication(firestore, groupId: 'g1', name: 'Timestamped', status: 'approved', timestamp: ts);
-      await addMedication(firestore, groupId: 'g1', name: 'No Timestamp', status: 'approved');
-      final service = MedicationService(firestore: firestore);
+    test(
+      'medications with null timestamp sort to the end (epoch fallback)',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final ts = Timestamp.fromDate(DateTime(2024, 6, 1));
+        await addMedication(
+          firestore,
+          groupId: 'g1',
+          name: 'Timestamped',
+          status: 'approved',
+          timestamp: ts,
+        );
+        await addMedication(
+          firestore,
+          groupId: 'g1',
+          name: 'No Timestamp',
+          status: 'approved',
+        );
+        final service = MedicationService(firestore: firestore);
 
-      final meds = await service.streamApprovedMedications('g1').first;
-      expect(meds.first.name, 'Timestamped');
-      expect(meds.last.name, 'No Timestamp');
-    });
+        final meds = await service.streamApprovedMedications('g1').first;
+        expect(meds.first.name, 'Timestamped');
+        expect(meds.last.name, 'No Timestamp');
+      },
+    );
   });
 
   group('MedicationService.submitMedication', () {

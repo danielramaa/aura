@@ -55,7 +55,9 @@ class Message {
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
 
     final rawSenderRole = data['senderRole'];
-    final parsedRole = UserRole.fromString(rawSenderRole is String ? rawSenderRole : null);
+    final parsedRole = UserRole.fromString(
+      rawSenderRole is String ? rawSenderRole : null,
+    );
 
     final typeStr = data['type'] as String?;
     final msgType = typeStr == 'poll' ? MessageType.poll : MessageType.text;

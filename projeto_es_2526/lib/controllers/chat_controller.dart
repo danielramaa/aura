@@ -285,7 +285,8 @@ class ChatController extends ChangeNotifier {
                 .doc(_anonymousIdentity!.anonymousId)
                 .set({'isMedic': true})
                 .catchError(
-                  (Object e) => debugPrint('Failed to mark anonymousId as medic: $e'),
+                  (Object e) =>
+                      debugPrint('Failed to mark anonymousId as medic: $e'),
                 ),
           );
         }
