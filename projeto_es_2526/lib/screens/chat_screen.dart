@@ -661,7 +661,7 @@ class _ChatScreenState extends State<ChatScreen> {
       shrinkWrap: true,
       padding: EdgeInsets.zero,
       itemCount: itemCount,
-      separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
+      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey[200]),
       itemBuilder: (context, index) {
         if (index >= results.length) {
           return TextButton.icon(
