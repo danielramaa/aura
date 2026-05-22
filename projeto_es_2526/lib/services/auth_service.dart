@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/legal_document.dart';
 import '../models/user_role.dart';
 
 class AuthService {
@@ -31,22 +32,68 @@ class AuthService {
     return _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
-  Future<UserCredential> register(String email, String password) async {
+  Future<UserCredential> register(
+    String email,
+    String password, {
+    DateTime? dateOfBirth,
+    bool acceptedTerms = false,
+  }) async {
+    if (dateOfBirth != null && !_isAtLeast13(dateOfBirth)) {
+      throw ArgumentError('Tem de ter pelo menos 13 anos para criar conta.');
+    }
+
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
     );
     try {
-      await _firestore.collection('users').doc(credential.user!.uid).set({
+      final userData = <String, Object?>{
         'role': UserRole.user.firestoreValue,
         'createdAt': FieldValue.serverTimestamp(),
-      });
+        'termsAccepted': acceptedTerms,
+      };
+
+      if (dateOfBirth != null) {
+        userData.addAll({
+          'dateOfBirth': Timestamp.fromDate(
+            DateTime(dateOfBirth.year, dateOfBirth.month, dateOfBirth.day),
+          ),
+          'ageVerifiedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (acceptedTerms) {
+        userData.addAll({
+          'termsAcceptedAt': FieldValue.serverTimestamp(),
+          'termsVersion': LegalDocuments.termsVersion,
+          'privacyPolicyVersion': LegalDocuments.privacyPolicyVersion,
+        });
+      }
+
+      await _firestore
+          .collection('users')
+          .doc(credential.user!.uid)
+          .set(userData);
     } catch (_) {
-      // Roll back the Auth account so there's no dangling user without a profile.
       await credential.user!.delete();
       rethrow;
     }
     return credential;
+  }
+
+  bool _isAtLeast13(DateTime dateOfBirth) {
+    final today = DateTime.now();
+    final minimumDateOfBirth = DateTime(
+      today.year - 13,
+      today.month,
+      today.day,
+    );
+    final normalizedDateOfBirth = DateTime(
+      dateOfBirth.year,
+      dateOfBirth.month,
+      dateOfBirth.day,
+    );
+    return !normalizedDateOfBirth.isAfter(minimumDateOfBirth);
   }
 
   Future<void> logout() async {

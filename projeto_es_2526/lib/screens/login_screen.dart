@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../models/legal_document.dart';
 import '../services/auth_service.dart';
 import '../utils/validators.dart';
+import '../widgets/legal_document_dialog.dart';
 import 'forgot_password.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,13 +19,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
   late final _authService = widget.authService ?? AuthService();
 
   bool _isLogin = true;
   bool _stayLoggedIn = true;
+  bool _acceptedTerms = false;
   bool _loading = false;
   String? _errorMessage;
   String _password = '';
+  DateTime? _dateOfBirth;
 
   @override
   void initState() {
@@ -37,6 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _dateOfBirthController.dispose();
     super.dispose();
   }
 
@@ -70,10 +76,14 @@ class _LoginScreenState extends State<LoginScreen> {
         await _authService.register(
           _emailController.text.trim(),
           _passwordController.text,
+          dateOfBirth: _dateOfBirth,
+          acceptedTerms: _acceptedTerms,
         );
       }
     } on FirebaseAuthException catch (e) {
       setState(() => _errorMessage = _friendlyError(e.code));
+    } on ArgumentError catch (e) {
+      setState(() => _errorMessage = e.message?.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -99,6 +109,44 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   static const _blue = Color(0xFF185FA5);
+
+  Future<void> _openLegalDocument(LegalDocument document) {
+    return LegalDocumentDialog.show(context, document);
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    final today = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate:
+          _dateOfBirth ?? DateTime(today.year - 13, today.month, today.day),
+      firstDate: DateTime(today.year - 120),
+      lastDate: today,
+    );
+
+    if (picked == null) return;
+
+    setState(() {
+      _dateOfBirth = DateTime(picked.year, picked.month, picked.day);
+      _dateOfBirthController.text = _formatDate(_dateOfBirth!);
+    });
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  bool _isAtLeast13(DateTime dateOfBirth) {
+    final today = DateTime.now();
+    final minimumDateOfBirth = DateTime(
+      today.year - 13,
+      today.month,
+      today.day,
+    );
+    return !dateOfBirth.isAfter(minimumDateOfBirth);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,6 +220,28 @@ class _LoginScreenState extends State<LoginScreen> {
                         },
                       ),
                     ],
+                    if (!_isLogin) ...[
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _dateOfBirthController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Data de nascimento',
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        onTap: _loading ? null : _pickDateOfBirth,
+                        validator: (_) {
+                          if (_dateOfBirth == null) {
+                            return 'Indique a sua data de nascimento';
+                          }
+                          if (!_isAtLeast13(_dateOfBirth!)) {
+                            return 'Tem de ter pelo menos 13 anos para criar conta';
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
                     if (_isLogin) ...[
                       Align(
                         alignment: Alignment.centerRight,
@@ -186,6 +256,43 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                 ),
                           child: const Text('Forgot password?'),
+                        ),
+                      ),
+                    ],
+                    if (!_isLogin) ...[
+                      const SizedBox(height: 12),
+                      CheckboxListTile(
+                        value: _acceptedTerms,
+                        onChanged: _loading
+                            ? null
+                            : (value) => setState(
+                                () => _acceptedTerms = value ?? false,
+                              ),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        title: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text('Eu li e aceito os '),
+                            TextButton(
+                              onPressed: _loading
+                                  ? null
+                                  : () => _openLegalDocument(
+                                      LegalDocuments.terms,
+                                    ),
+                              child: const Text('Termos e Condições'),
+                            ),
+                            const Text(' e a '),
+                            TextButton(
+                              onPressed: _loading
+                                  ? null
+                                  : () => _openLegalDocument(
+                                      LegalDocuments.privacyPolicy,
+                                    ),
+                              child: const Text('Política de Privacidade'),
+                            ),
+                            const Text('.'),
+                          ],
                         ),
                       ),
                     ],
@@ -212,7 +319,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                     const SizedBox(height: 16),
                     FilledButton(
-                      onPressed: _loading ? null : _submit,
+                      onPressed: (_loading || (!_isLogin && !_acceptedTerms))
+                          ? null
+                          : _submit,
                       child: _loading
                           ? const SizedBox(
                               height: 20,
@@ -227,6 +336,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? null
                           : () => setState(() {
                               _isLogin = !_isLogin;
+                              _acceptedTerms = false;
+                              _dateOfBirth = null;
+                              _dateOfBirthController.clear();
                               _errorMessage = null;
                             }),
                       child: Text(
