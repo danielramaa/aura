@@ -1,10 +1,21 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/message_search_result.dart';
 
 abstract class ChatServiceInterface {
   Stream<List<Message>> streamMessages(String groupId);
+
+  Future<MessageSearchPage> searchMessages({
+    required String groupId,
+    required String query,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int pageSize = 40,
+    int maxResults = 20,
+  });
 
   Future<String?> sendMessage({
     required String groupId,
@@ -51,6 +62,86 @@ class ChatService implements ChatServiceInterface {
       .orderBy('timestamp', descending: true)
       .snapshots()
       .map((snap) => snap.docs.map(Message.fromFirestore).toList());
+
+  @override
+  Future<MessageSearchPage> searchMessages({
+    required String groupId,
+    required String query,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int pageSize = 40,
+    int maxResults = 20,
+  }) async {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const MessageSearchPage(
+        results: [],
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
+
+    final baseQuery = _messagesRef(groupId).orderBy(
+      'timestamp',
+      descending: true,
+    );
+    var firestoreQuery = baseQuery.limit(pageSize);
+    if (startAfter != null) {
+      firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
+    }
+
+    final snap = await firestoreQuery.get();
+    final results = <MessageSearchResult>[];
+    DocumentSnapshot<Map<String, dynamic>>? lastScannedDocument;
+
+    for (final doc in snap.docs) {
+      lastScannedDocument = doc;
+      final message = Message.fromFirestore(doc);
+      if (message.type != MessageType.text) continue;
+
+      final text = message.text;
+      final matchStart = text.toLowerCase().indexOf(normalizedQuery);
+      if (matchStart == -1) continue;
+
+      results.add(
+        MessageSearchResult(
+          message: message,
+          query: query.trim(),
+          snippet: _buildSearchSnippet(
+            text,
+            matchStart,
+            normalizedQuery.length,
+          ),
+          matchStart: _snippetMatchStart(text, matchStart),
+          matchEnd: _snippetMatchStart(text, matchStart) + query.trim().length,
+          snapshot: doc,
+        ),
+      );
+
+      if (results.length >= maxResults) break;
+    }
+
+    return MessageSearchPage(
+      results: results,
+      lastDocument: lastScannedDocument ?? startAfter,
+      hasMore: snap.docs.length == pageSize,
+    );
+  }
+
+  int _snippetMatchStart(String text, int matchStart) {
+    const contextLength = 35;
+    final start = math.max(0, matchStart - contextLength);
+    final prefixLength = start > 0 ? 3 : 0;
+    return prefixLength + matchStart - start;
+  }
+
+  String _buildSearchSnippet(String text, int matchStart, int queryLength) {
+    const contextLength = 35;
+    final start = math.max(0, matchStart - contextLength);
+    final end = math.min(text.length, matchStart + queryLength + contextLength);
+    final prefix = start > 0 ? '...' : '';
+    final suffix = end < text.length ? '...' : '';
+    return '$prefix${text.substring(start, end)}$suffix';
+  }
 
   @override
   Future<String?> sendMessage({

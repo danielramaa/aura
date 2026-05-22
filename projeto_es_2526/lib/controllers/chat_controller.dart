@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/message_search_result.dart';
 import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
@@ -24,6 +25,7 @@ class ChatController extends ChangeNotifier {
   String? _groupName;
 
   List<Message> _messages = [];
+  List<MessageSearchResult> _searchResults = [];
   List<String> _roomNicknames = [];
   Set<String> _medicAnonymousIds = {};
   StreamSubscription? _messagesSubscription;
@@ -32,7 +34,12 @@ class ChatController extends ChangeNotifier {
   bool _isDisposed = false;
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isSearchingMessages = false;
+  bool _hasMoreSearchResults = false;
   String? _error;
+  String? _searchError;
+  String _messageSearchQuery = '';
+  DocumentSnapshot<Map<String, dynamic>>? _lastSearchDocument;
 
   Timer? _typingTimer;
   bool _isTyping = false;
@@ -88,11 +95,16 @@ class ChatController extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   List<Message> get messages => _messages;
+  List<MessageSearchResult> get searchResults => _searchResults;
   List<String> get roomNicknames => _roomNicknames;
   Set<String> get medicAnonymousIds => _medicAnonymousIds;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
+  bool get isSearchingMessages => _isSearchingMessages;
+  bool get hasMoreSearchResults => _hasMoreSearchResults;
   String? get error => _error;
+  String? get searchError => _searchError;
+  String get messageSearchQuery => _messageSearchQuery;
   AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
 
   bool hasReactionError(String messageId) =>
@@ -237,6 +249,102 @@ class ChatController extends ChangeNotifier {
     final userId = _auth.currentUser?.uid;
     if (userId == null) throw Exception('Not authenticated');
     await _identityService.leaveGroup(userId, groupId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Message search
+  // ---------------------------------------------------------------------------
+
+  Future<void> searchMessages(String query) async {
+    final trimmed = query.trim();
+    _messageSearchQuery = trimmed;
+    _searchResults = [];
+    _lastSearchDocument = null;
+    _hasMoreSearchResults = false;
+    _searchError = null;
+
+    if (trimmed.isEmpty) {
+      _isSearchingMessages = false;
+      notifyListeners();
+      return;
+    }
+
+    _isSearchingMessages = true;
+    notifyListeners();
+
+    try {
+      final page = await _chatService.searchMessages(
+        groupId: groupId,
+        query: trimmed,
+      );
+      if (_isDisposed) return;
+      if (_messageSearchQuery != trimmed) return;
+
+      _searchResults = page.results;
+      _lastSearchDocument = page.lastDocument;
+      _hasMoreSearchResults = page.hasMore;
+    } catch (_) {
+      if (_isDisposed) return;
+      if (_messageSearchQuery != trimmed) return;
+      _searchError = 'Não foi possível pesquisar mensagens.';
+    } finally {
+      if (!_isDisposed && _messageSearchQuery == trimmed) {
+        _isSearchingMessages = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> loadMoreSearchResults() async {
+    if (_messageSearchQuery.isEmpty ||
+        _isSearchingMessages ||
+        !_hasMoreSearchResults) {
+      return;
+    }
+
+    final query = _messageSearchQuery;
+    final startAfter = _lastSearchDocument;
+
+    _isSearchingMessages = true;
+    _searchError = null;
+    notifyListeners();
+
+    try {
+      final page = await _chatService.searchMessages(
+        groupId: groupId,
+        query: query,
+        startAfter: startAfter,
+      );
+      if (_isDisposed) return;
+      if (_messageSearchQuery != query || _messageSearchQuery.isEmpty) return;
+
+      _searchResults = [..._searchResults, ...page.results];
+      _lastSearchDocument = page.lastDocument;
+      _hasMoreSearchResults = page.hasMore;
+    } catch (_) {
+      if (_isDisposed) return;
+      if (_messageSearchQuery != query) return;
+      _searchError = 'Não foi possível carregar mensagens antigas.';
+    } finally {
+      if (!_isDisposed && _messageSearchQuery == query) {
+        _isSearchingMessages = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void clearMessageSearch() {
+    _messageSearchQuery = '';
+    _searchResults = [];
+    _lastSearchDocument = null;
+    _hasMoreSearchResults = false;
+    _searchError = null;
+    _isSearchingMessages = false;
+    notifyListeners();
+  }
+
+  int indexOfMessage(String messageId) {
+    return _messages.indexWhere((message) => message.id == messageId);
   }
 
   // ---------------------------------------------------------------------------
