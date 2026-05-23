@@ -24,6 +24,15 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)).data;
     }
 
+    function isAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function currentAnonymousId(groupId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId;
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -164,6 +173,78 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.resource.data.senderId == request.auth.uid;
       allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if false;
+    }
+
+    match /user_reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'groupId',
+          'groupName',
+          'reportedAnonymousId',
+          'reportedNickname',
+          'reportedAvatarIndex',
+          'reporterAnonymousId',
+          'category',
+          'reason',
+          'description',
+          'status',
+          'createdAt',
+        ])
+        && request.resource.data.groupId is string
+        && request.resource.data.groupName is string
+        && request.resource.data.reportedAnonymousId is string
+        && request.resource.data.reportedAnonymousId.size() > 0
+        && request.resource.data.reportedNickname is string
+        && request.resource.data.reportedAvatarIndex is int
+        && request.resource.data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId)
+        && request.resource.data.reportedAnonymousId != request.resource.data.reporterAnonymousId
+        && request.resource.data.category in [
+          'Spam',
+          'Harassment',
+          'Misinformation',
+          'Abuse',
+          'Other',
+        ]
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 200
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+        && request.resource.data.status in ['reviewed', 'dismissed']
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /admin_notifications/{notificationId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'type',
+          'reportId',
+          'groupId',
+          'groupName',
+          'description',
+          'isRead',
+          'timestamp',
+        ])
+        && request.resource.data.type == 'user_report'
+        && request.resource.data.reportId is string
+        && request.resource.data.groupId is string
+        && request.resource.data.groupName is string
+        && request.resource.data.description is string
+        && request.resource.data.isRead == false
+        && request.resource.data.timestamp == request.time
+        && existsAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId))
+        && getAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.groupId == request.resource.data.groupId
+        && getAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId);
+      allow read: if isAdmin();
+      allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
       allow delete: if false;
     }

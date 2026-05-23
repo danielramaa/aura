@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/moderator_application.dart';
+import '../models/user_report.dart';
 import '../models/user_role.dart';
 
 class UserService {
@@ -28,6 +29,38 @@ class UserService {
         .map(
           (snap) => snap.docs.map(ModeratorApplication.fromFirestore).toList(),
         );
+  }
+
+  Stream<List<UserReport>> streamPendingUserReports() {
+    return _firestore
+        .collection('user_reports')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) {
+          final reports = snap.docs.map(UserReport.fromFirestore).toList();
+          reports.sort((a, b) {
+            final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
+            final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+            return bTime.compareTo(aTime);
+          });
+          return reports;
+        });
+  }
+
+  Future<String?> updateUserReportStatus(String reportId, String status) async {
+    if (!['reviewed', 'dismissed'].contains(status)) {
+      return 'Estado da denúncia inválido.';
+    }
+
+    try {
+      await _firestore.collection('user_reports').doc(reportId).update({
+        'status': status,
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (_) {
+      return 'Não foi possível atualizar a denúncia.';
+    }
   }
 
   Future<String?> approveApplication(String appId, String userId) async {
