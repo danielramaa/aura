@@ -199,37 +199,39 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (!mounted || shouldReport != true) return;
-    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(Duration.zero);
     if (!mounted) return;
     await _showReportUserDialog(message);
   }
 
   Future<void> _showReportUserDialog(Message message) async {
     final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
 
     final err = await showDialog<String?>(
       context: screenContext,
       builder: (_) => _ReportUserDialog(
         reportedNickname: message.senderNickname,
-        onSubmit: ({
-          required String category,
-          required String reason,
-          required String description,
-        }) {
-          return _controller.reportUser(
-            reportedMessage: message,
-            category: category,
-            reason: reason,
-            description: description,
-          );
-        },
+        onSubmit:
+            ({
+              required String category,
+              required String reason,
+              required String description,
+            }) {
+              return _controller.reportUser(
+                reportedMessage: message,
+                category: category,
+                reason: reason,
+                description: description,
+              );
+            },
       ),
     );
 
     if (!mounted || err == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(screenContext).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(err.isEmpty ? 'Denúncia enviada com sucesso.' : err),
         ),
@@ -982,7 +984,8 @@ class _ReportUserDialog extends StatefulWidget {
     required String category,
     required String reason,
     required String description,
-  }) onSubmit;
+  })
+  onSubmit;
 
   const _ReportUserDialog({
     required this.reportedNickname,
@@ -1032,7 +1035,7 @@ class _ReportUserDialogState extends State<_ReportUserDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedCategory,
+              initialValue: _selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Categoria',
                 border: OutlineInputBorder(),

@@ -43,19 +43,18 @@ void main() {
         'Comentários inapropriados repetidos',
       );
       expect(reports.docs.first.data()['reportedAnonymousId'], 'anon-reported');
-      expect(
-        reports.docs.first.data()['reporterAnonymousId'],
-        'anon-reporter',
-      );
+      expect(reports.docs.first.data()['reporterAnonymousId'], 'anon-reporter');
       expect(reports.docs.first.data().containsKey('reporterUserId'), isFalse);
 
-      await Future.delayed(Duration.zero);
       final notifications = await firestore
           .collection('admin_notifications')
           .get();
       expect(notifications.docs.length, 1);
       expect(notifications.docs.first.data()['type'], 'user_report');
-      expect(notifications.docs.first.data()['reportId'], reports.docs.first.id);
+      expect(
+        notifications.docs.first.data()['reportId'],
+        reports.docs.first.id,
+      );
     });
 
     test('does not allow reporting yourself', () async {

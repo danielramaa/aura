@@ -16,10 +16,12 @@ class AdminUserReportsScreen extends StatelessWidget {
     UserReport report,
     String status,
   ) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final err = await _userService.updateUserReportStatus(report.id, status);
-    if (!context.mounted) return;
-    Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!navigator.mounted) return;
+    navigator.pop();
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
           err ??

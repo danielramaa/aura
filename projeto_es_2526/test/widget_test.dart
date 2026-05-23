@@ -234,7 +234,7 @@ void main() {
       );
 
       await tester.tap(find.text('BraveOwl7'));
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(tapped, isTrue);
     });

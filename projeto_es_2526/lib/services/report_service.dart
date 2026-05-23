@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -101,12 +99,10 @@ class ReportService implements ReportServiceInterface {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      unawaited(
-        _createAdminNotification(
-          reportId: reportRef.id,
-          groupId: groupId,
-          groupName: safeGroupName,
-        ),
+      await _createAdminNotification(
+        reportId: reportRef.id,
+        groupId: groupId,
+        groupName: safeGroupName,
       );
       return null;
     } on FirebaseException catch (e) {
