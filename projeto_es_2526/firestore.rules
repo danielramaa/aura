@@ -33,6 +33,18 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId;
     }
 
+    function ownsUserReportNotification() {
+      return exists(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId))
+        && get(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.groupId == request.resource.data.groupId
+        && get(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId);
+    }
+
+    function ownsMessageReportNotification() {
+      return exists(/databases/$(database)/documents/message_reports/$(request.resource.data.reportId))
+        && get(/databases/$(database)/documents/message_reports/$(request.resource.data.reportId)).data.groupId == request.resource.data.groupId
+        && get(/databases/$(database)/documents/message_reports/$(request.resource.data.reportId)).data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId);
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -222,6 +234,53 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /message_reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'groupId',
+          'groupName',
+          'messageId',
+          'messageText',
+          'messageSenderAnonymousId',
+          'messageSenderNickname',
+          'messageSenderAvatarIndex',
+          'reporterAnonymousId',
+          'category',
+          'details',
+          'status',
+          'createdAt',
+        ])
+        && request.resource.data.groupId is string
+        && request.resource.data.groupName is string
+        && request.resource.data.messageId is string
+        && request.resource.data.messageId.size() > 0
+        && request.resource.data.messageText is string
+        && request.resource.data.messageText.size() > 0
+        && request.resource.data.messageText.size() <= 2000
+        && request.resource.data.messageSenderAnonymousId is string
+        && request.resource.data.messageSenderAnonymousId.size() > 0
+        && request.resource.data.messageSenderNickname is string
+        && request.resource.data.messageSenderAvatarIndex is int
+        && request.resource.data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId)
+        && request.resource.data.category in [
+          'Spam',
+          'Misinformation',
+          'Bullying',
+          'LifeRisk',
+          'Other',
+        ]
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+        && request.resource.data.status in ['reviewed', 'dismissed']
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
     match /admin_notifications/{notificationId} {
       allow create: if request.auth != null
         && request.resource.data.keys().hasOnly([
@@ -233,16 +292,20 @@ service cloud.firestore {
           'isRead',
           'timestamp',
         ])
-        && request.resource.data.type == 'user_report'
+        && request.resource.data.type in ['user_report', 'message_report']
         && request.resource.data.reportId is string
         && request.resource.data.groupId is string
         && request.resource.data.groupName is string
         && request.resource.data.description is string
         && request.resource.data.isRead == false
         && request.resource.data.timestamp == request.time
-        && existsAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId))
-        && getAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.groupId == request.resource.data.groupId
-        && getAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId);
+        && (
+          (request.resource.data.type == 'user_report'
+            && ownsUserReportNotification())
+          ||
+          (request.resource.data.type == 'message_report'
+            && ownsMessageReportNotification())
+        );
       allow read: if isAdmin();
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);

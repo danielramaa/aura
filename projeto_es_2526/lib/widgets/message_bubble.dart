@@ -53,6 +53,7 @@ class MessageBubble extends StatelessWidget {
   final bool hasReactionError;
   final bool isRetryingReaction;
   final bool isHighlighted;
+  final VoidCallback? onTap;
   final VoidCallback onLongPress;
   final VoidCallback onReply;
   final VoidCallback? onSenderTap;
@@ -68,6 +69,7 @@ class MessageBubble extends StatelessWidget {
     required this.hasReactionError,
     required this.isRetryingReaction,
     this.isHighlighted = false,
+    this.onTap,
     required this.onLongPress,
     required this.onReply,
     this.onSenderTap,
@@ -171,11 +173,13 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onDoubleTap: onLongPress,
-      onLongPress: onReply,
-      child: Align(
-        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+    return Align(
+      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        onDoubleTap: onLongPress,
+        onLongPress: onReply,
         child: AnimatedScale(
           scale: isHighlighted ? 1.04 : 1,
           duration: const Duration(milliseconds: 180),

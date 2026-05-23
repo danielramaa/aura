@@ -239,6 +239,78 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  Future<void> _showMessageReportOptions(
+    BuildContext context,
+    Message message,
+  ) async {
+    final shouldReport = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.message_outlined),
+              title: const Text('Mensagem'),
+              subtitle: Text(
+                message.text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(
+                Icons.report_gmailerrorred_outlined,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Denunciar mensagem',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () => Navigator.pop(sheetContext, true),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || shouldReport != true) return;
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _showReportMessageDialog(message);
+  }
+
+  Future<void> _showReportMessageDialog(Message message) async {
+    final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
+
+    final err = await showDialog<String?>(
+      context: screenContext,
+      builder: (_) => _ReportMessageDialog(
+        messageText: message.text,
+        initialCategory: ReportService.suggestedMessageCategory(message.text),
+        onSubmit: ({required String category, required String details}) {
+          return _controller.reportMessage(
+            message: message,
+            category: category,
+            details: details,
+          );
+        },
+      ),
+    );
+
+    if (!mounted || err == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(err.isEmpty ? 'Denúncia enviada com sucesso.' : err),
+        ),
+      );
+    });
+  }
+
   void _showEmojiPicker(BuildContext context, Message message) {
     final identity = _controller.anonymousIdentity;
     if (identity == null) return;
@@ -600,6 +672,7 @@ class _ChatScreenState extends State<ChatScreen> {
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),
           isHighlighted: _highlightedMessageId == message.id,
+          onTap: () => _showMessageReportOptions(context, message),
           onLongPress: () => _currentUserRole == UserRole.admin
               ? _showMessageOptions(context, message)
               : _showEmojiPicker(context, message),
@@ -1085,6 +1158,143 @@ class _ReportUserDialogState extends State<_ReportUserDialog> {
               ),
             ),
           ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[50],
+            foregroundColor: Colors.red,
+            elevation: 0,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Enviar denúncia'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportMessageDialog extends StatefulWidget {
+  final String messageText;
+  final String initialCategory;
+  final Future<String?> Function({
+    required String category,
+    required String details,
+  })
+  onSubmit;
+
+  const _ReportMessageDialog({
+    required this.messageText,
+    required this.initialCategory,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportMessageDialog> createState() => _ReportMessageDialogState();
+}
+
+class _ReportMessageDialogState extends State<_ReportMessageDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _detailsController = TextEditingController();
+
+  late String _selectedCategory;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory =
+        ReportService.messageReportCategories.contains(widget.initialCategory)
+        ? widget.initialCategory
+        : ReportService.messageReportCategories.first;
+  }
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final err = await widget.onSubmit(
+      category: _selectedCategory,
+      details: _detailsController.text,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).pop(err ?? '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Denunciar mensagem'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.messageText,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Categoria',
+                  border: OutlineInputBorder(),
+                ),
+                items: ReportService.messageReportCategories
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(
+                          ReportService.labelForMessageCategory(category),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isSubmitting
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _selectedCategory = value);
+                        }
+                      },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _detailsController,
+                enabled: !_isSubmitting,
+                minLines: 3,
+                maxLines: 5,
+                maxLength: ReportService.maxDescriptionLength,
+                decoration: const InputDecoration(
+                  labelText: 'Detalhes adicionais',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [

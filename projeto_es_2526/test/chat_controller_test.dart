@@ -392,6 +392,31 @@ void main() {
       expect(reports.docs.first.data()['reportedNickname'], 'BraveOwl7');
       expect(reports.docs.first.data()['groupName'], 'g1');
     });
+
+    test('creates a report for a message', () async {
+      final message = Message(
+        id: 'm1',
+        text: 'mensagem imprópria',
+        anonymousId: 'anon-author',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 2,
+        timestamp: Timestamp.now(),
+      );
+
+      final err = await controller.reportMessage(
+        message: message,
+        category: 'Misinformation',
+        details: 'Informação falsa sobre saúde.',
+      );
+
+      expect(err, isNull);
+      final reports = await firestore.collection('message_reports').get();
+      expect(reports.docs.length, 1);
+      expect(reports.docs.first.data()['messageId'], 'm1');
+      expect(reports.docs.first.data()['messageText'], 'mensagem imprópria');
+      expect(reports.docs.first.data()['messageSenderNickname'], 'BraveOwl7');
+      expect(reports.docs.first.data()['groupName'], 'g1');
+    });
   });
 
   group('AnonymousIdentity.fromMap', () {

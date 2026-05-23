@@ -204,6 +204,7 @@ void main() {
       tester,
     ) async {
       var tapped = false;
+      var reportTapped = false;
       final message = Message(
         id: 'm1',
         text: 'hello',
@@ -223,6 +224,7 @@ void main() {
               currentAnonymousId: 'anon-current',
               hasReactionError: false,
               isRetryingReaction: false,
+              onTap: () => reportTapped = true,
               onLongPress: () {},
               onReply: () {},
               onSenderTap: () => tapped = true,
@@ -234,6 +236,45 @@ void main() {
       );
 
       await tester.tap(find.text('BraveOwl7'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(tapped, isTrue);
+      expect(reportTapped, isFalse);
+    });
+
+    testWidgets('tapping a message bubble triggers onTap', (tester) async {
+      var tapped = false;
+      final message = Message(
+        id: 'm1',
+        text: 'hello',
+        anonymousId: 'anon-1',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 0,
+        timestamp: Timestamp.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubble(
+              message: message,
+              isOwn: false,
+              isSenderMedic: false,
+              currentAnonymousId: 'anon-current',
+              hasReactionError: false,
+              isRetryingReaction: false,
+              onTap: () => tapped = true,
+              onLongPress: () {},
+              onReply: () {},
+              onSenderTap: () {},
+              onToggleReaction: (_) {},
+              onRetryReaction: () {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(AnimatedContainer));
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(tapped, isTrue);
