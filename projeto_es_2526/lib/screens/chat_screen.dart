@@ -12,6 +12,7 @@ import '../widgets/create_poll_sheet.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/medications_dialog.dart';
+import '../widgets/pinned_messages_banner.dart';
 import '../widgets/poll_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -41,6 +42,8 @@ class _ChatScreenState extends State<ChatScreen> {
   List<String> _mentionSuggestions = [];
   UserRole _currentUserRole = UserRole.user;
   StreamSubscription<UserRole>? _roleSub;
+  String? _highlightedMessageId;
+  Timer? _highlightTimer;
 
   @override
   void initState() {
@@ -59,6 +62,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _roleSub?.cancel();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
@@ -115,7 +119,34 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
+  void _scrollToMessage(String messageId) {
+    final messages = _controller.messages;
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    if (_scrollController.hasClients) {
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final target = maxExtent * (index / messages.length);
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOut,
+      );
+    }
+
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
+  }
+
+  bool get _isModerator =>
+      _currentUserRole == UserRole.admin ||
+      _currentUserRole == UserRole.medic;
+
   void _showMessageOptions(BuildContext context, Message message) {
+    final isPinned = _controller.isMessagePinned(message.id);
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
@@ -131,16 +162,32 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                'Delete message',
-                style: TextStyle(color: Colors.red),
+              leading: Icon(
+                isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                color: const Color(0xFF185FA5),
               ),
+              title: Text(isPinned ? 'Unpin message' : 'Pin message'),
               onTap: () {
                 Navigator.pop(context);
-                _controller.deleteMessage(message.id);
+                if (isPinned) {
+                  _controller.unpinMessage(message.id);
+                } else {
+                  _controller.pinMessage(message);
+                }
               },
             ),
+            if (_currentUserRole == UserRole.admin)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete message',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _controller.deleteMessage(message.id);
+                },
+              ),
           ],
         ),
       ),
@@ -398,6 +445,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
           return Column(
             children: [
+              PinnedMessagesBanner(
+                pinnedMessages: _controller.pinnedMessages,
+                canUnpin: _isModerator,
+                onUnpin: _controller.unpinMessage,
+                onNavigate: _scrollToMessage,
+              ),
               Expanded(child: _buildBody()),
               _buildTypingIndicator(),
               _buildReplyPreview(),
@@ -448,10 +501,12 @@ class _ChatScreenState extends State<ChatScreen> {
           isSenderMedic: _controller.medicAnonymousIds.contains(
             message.anonymousId,
           ),
+          isPinned: _controller.isMessagePinned(message.id),
+          isHighlighted: _highlightedMessageId == message.id,
           currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
           hasReactionError: _controller.hasReactionError(message.id),
           isRetryingReaction: _controller.isRetryingReaction(message.id),
-          onLongPress: () => _currentUserRole == UserRole.admin
+          onLongPress: () => _isModerator
               ? _showMessageOptions(context, message)
               : _showEmojiPicker(context, message),
           onReply: () => _startReply(message),

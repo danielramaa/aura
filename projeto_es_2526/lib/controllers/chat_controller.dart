@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/pinned_message.dart';
 import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
@@ -24,9 +25,11 @@ class ChatController extends ChangeNotifier {
   String? _groupName;
 
   List<Message> _messages = [];
+  List<PinnedMessage> _pinnedMessages = [];
   List<String> _roomNicknames = [];
   Set<String> _medicAnonymousIds = {};
   StreamSubscription? _messagesSubscription;
+  StreamSubscription? _pinnedMessagesSubscription;
   StreamSubscription? _medicSub;
 
   bool _isDisposed = false;
@@ -88,6 +91,7 @@ class ChatController extends ChangeNotifier {
   // ---------------------------------------------------------------------------
 
   List<Message> get messages => _messages;
+  List<PinnedMessage> get pinnedMessages => _pinnedMessages;
   List<String> get roomNicknames => _roomNicknames;
   Set<String> get medicAnonymousIds => _medicAnonymousIds;
   bool get isLoading => _isLoading;
@@ -188,6 +192,16 @@ class ChatController extends ChangeNotifier {
               if (_isDisposed) return;
               _error = "Não foi possível carregar as mensagens.";
               _isLoading = false;
+              notifyListeners();
+            },
+          );
+
+      _pinnedMessagesSubscription = _chatService
+          .streamPinnedMessages(groupId)
+          .listen(
+            (pinned) {
+              if (_isDisposed) return;
+              _pinnedMessages = pinned;
               notifyListeners();
             },
           );
@@ -370,6 +384,31 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  bool isMessagePinned(String messageId) =>
+      _pinnedMessages.any((p) => p.messageId == messageId);
+
+  Future<void> pinMessage(Message message) async {
+    final err = await _chatService.pinMessage(
+      groupId: groupId,
+      message: message,
+    );
+    if (err != null && !_isDisposed) {
+      _error = err;
+      notifyListeners();
+    }
+  }
+
+  Future<void> unpinMessage(String messageId) async {
+    final err = await _chatService.unpinMessage(
+      groupId: groupId,
+      messageId: messageId,
+    );
+    if (err != null && !_isDisposed) {
+      _error = err;
+      notifyListeners();
+    }
+  }
+
   Future<void> retryReaction(String messageId) async {
     final emoji = _reactionErrors[messageId];
     if (emoji == null) return;
@@ -439,6 +478,7 @@ class ChatController extends ChangeNotifier {
     _typingTimer?.cancel();
     _clearTypingStatus();
     _messagesSubscription?.cancel();
+    _pinnedMessagesSubscription?.cancel();
     _medicSub?.cancel();
     super.dispose();
   }

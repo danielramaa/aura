@@ -49,6 +49,8 @@ class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
   final bool isSenderMedic;
+  final bool isPinned;
+  final bool isHighlighted;
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
@@ -62,6 +64,8 @@ class MessageBubble extends StatelessWidget {
     required this.message,
     required this.isOwn,
     required this.isSenderMedic,
+    this.isPinned = false,
+    this.isHighlighted = false,
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
@@ -170,57 +174,71 @@ class MessageBubble extends StatelessWidget {
     return GestureDetector(
       onDoubleTap: onLongPress,
       onLongPress: onReply,
-      child: Align(
-        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (!isOwn) _buildAvatar(),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.75,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!isOwn || isSenderMedic)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (!isOwn)
-                                Text(
-                                  message.senderNickname,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    color: Color(0xFF185FA5),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 400),
+        color: isHighlighted
+            ? const Color(0xFFFFF9C4)
+            : Colors.transparent,
+        child: Align(
+          alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (!isOwn) _buildAvatar(),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isOwn || isSenderMedic || isPinned)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!isOwn)
+                                  Text(
+                                    message.senderNickname,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: Color(0xFF185FA5),
+                                    ),
                                   ),
-                                ),
-                              if (isSenderMedic)
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: isOwn ? 0 : 4.0,
+                                if (isSenderMedic)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      left: isOwn ? 0 : 4.0,
+                                    ),
+                                    child: const Icon(
+                                      Icons.verified,
+                                      size: 14,
+                                      color: Color(0xFF185FA5),
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.verified,
-                                    size: 14,
-                                    color: Color(0xFF185FA5),
+                                if (isPinned)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    child: Icon(
+                                      Icons.push_pin,
+                                      size: 13,
+                                      color: Color(0xFF185FA5),
+                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                       if (message.replyToText != null)
                         Container(
                           margin: const EdgeInsets.only(bottom: 6),
@@ -259,6 +277,7 @@ class MessageBubble extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 }
