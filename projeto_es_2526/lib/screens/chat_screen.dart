@@ -12,6 +12,7 @@ import '../widgets/create_poll_sheet.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/medications_dialog.dart';
+import '../widgets/pinned_messages_banner.dart';
 import '../widgets/poll_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -41,6 +42,15 @@ class _ChatScreenState extends State<ChatScreen> {
   List<String> _mentionSuggestions = [];
   UserRole _currentUserRole = UserRole.user;
   StreamSubscription<UserRole>? _roleSub;
+  String? _highlightedMessageId;
+  Timer? _highlightTimer;
+
+  // Per-message keys so scroll-to-message can use Scrollable.ensureVisible for
+  // precise, correctly-aligned positioning despite variable-height bubbles.
+  final Map<String, GlobalKey> _messageKeys = {};
+
+  GlobalKey _keyForMessage(String messageId) =>
+      _messageKeys.putIfAbsent(messageId, () => GlobalKey());
 
   @override
   void initState() {
@@ -59,6 +69,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _roleSub?.cancel();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
@@ -115,7 +126,58 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
+  void _scrollToMessage(String messageId) {
+    final messages = _controller.messages;
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final context = _messageKeys[messageId]?.currentContext;
+    if (context != null) {
+      // Already built and laid out: position it precisely.
+      _ensureMessageVisible(messageId);
+    } else if (_scrollController.hasClients) {
+      // Off-screen in the lazy builder, so its context doesn't exist yet.
+      // Jump to an approximate offset to bring it into the build window, then
+      // refine on the next frame once the item has been laid out.
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final target = maxExtent * (index / messages.length);
+      _scrollController
+          .animateTo(
+            target,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOut,
+          )
+          .then((_) => _ensureMessageVisible(messageId));
+    }
+
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
+  }
+
+  /// Brings the message into view with correct alignment, using the per-item
+  /// key. No-op if the item still isn't built (target far outside the range
+  /// the approximate jump reached).
+  void _ensureMessageVisible(String messageId) {
+    if (!mounted) return;
+    final context = _messageKeys[messageId]?.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      alignment: 0.4,
+    );
+  }
+
+  bool get _isModerator =>
+      _currentUserRole == UserRole.admin ||
+      _currentUserRole == UserRole.medic;
+
   void _showMessageOptions(BuildContext context, Message message) {
+    final isPinned = _controller.isMessagePinned(message.id);
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => SafeArea(
@@ -131,16 +193,32 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                'Delete message',
-                style: TextStyle(color: Colors.red),
+              leading: Icon(
+                isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                color: const Color(0xFF185FA5),
               ),
+              title: Text(isPinned ? 'Unpin message' : 'Pin message'),
               onTap: () {
                 Navigator.pop(context);
-                _controller.deleteMessage(message.id);
+                if (isPinned) {
+                  _controller.unpinMessage(message.id);
+                } else {
+                  _controller.pinMessage(message);
+                }
               },
             ),
+            if (_currentUserRole == UserRole.admin)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete message',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _controller.deleteMessage(message.id);
+                },
+              ),
           ],
         ),
       ),
@@ -398,6 +476,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
           return Column(
             children: [
+              PinnedMessagesBanner(
+                pinnedMessages: _controller.pinnedMessages,
+                canUnpin: _isModerator,
+                onUnpin: _controller.unpinMessage,
+                onNavigate: _scrollToMessage,
+              ),
               Expanded(child: _buildBody()),
               _buildTypingIndicator(),
               _buildReplyPreview(),
@@ -430,34 +514,44 @@ class _ChatScreenState extends State<ChatScreen> {
         final message = messages[index];
         final isOwn =
             message.anonymousId == _controller.anonymousIdentity?.anonymousId;
+        final messageKey = _keyForMessage(message.id);
 
         if (message.type == MessageType.poll && message.pollId != null) {
-          return PollBubble(
-            message: message,
-            isOwn: isOwn,
-            currentAnonymousId:
-                _controller.anonymousIdentity?.anonymousId ?? '',
-            pollService: _controller.pollService,
-            groupId: widget.groupId,
+          return KeyedSubtree(
+            key: messageKey,
+            child: PollBubble(
+              message: message,
+              isOwn: isOwn,
+              currentAnonymousId:
+                  _controller.anonymousIdentity?.anonymousId ?? '',
+              pollService: _controller.pollService,
+              groupId: widget.groupId,
+            ),
           );
         }
 
-        return MessageBubble(
-          message: message,
-          isOwn: isOwn,
-          isSenderMedic: _controller.medicAnonymousIds.contains(
-            message.anonymousId,
+        return KeyedSubtree(
+          key: messageKey,
+          child: MessageBubble(
+            message: message,
+            isOwn: isOwn,
+            isSenderMedic: _controller.medicAnonymousIds.contains(
+              message.anonymousId,
+            ),
+            isPinned: _controller.isMessagePinned(message.id),
+            isHighlighted: _highlightedMessageId == message.id,
+            currentAnonymousId:
+                _controller.anonymousIdentity?.anonymousId ?? '',
+            hasReactionError: _controller.hasReactionError(message.id),
+            isRetryingReaction: _controller.isRetryingReaction(message.id),
+            onShowOptions: () => _isModerator
+                ? _showMessageOptions(context, message)
+                : _showEmojiPicker(context, message),
+            onReply: () => _startReply(message),
+            onToggleReaction: (emoji) =>
+                _controller.toggleReaction(message.id, emoji),
+            onRetryReaction: () => _controller.retryReaction(message.id),
           ),
-          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
-          hasReactionError: _controller.hasReactionError(message.id),
-          isRetryingReaction: _controller.isRetryingReaction(message.id),
-          onLongPress: () => _currentUserRole == UserRole.admin
-              ? _showMessageOptions(context, message)
-              : _showEmojiPicker(context, message),
-          onReply: () => _startReply(message),
-          onToggleReaction: (emoji) =>
-              _controller.toggleReaction(message.id, emoji),
-          onRetryReaction: () => _controller.retryReaction(message.id),
         );
       },
     );
