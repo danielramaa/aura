@@ -295,9 +295,9 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _jumpToSearchResult(MessageSearchResult result) async {
-    final index = _controller.indexOfMessage(result.message.id);
-    if (index == -1) {
+  void _jumpToSearchResult(MessageSearchResult result) {
+    final messageId = result.message.id;
+    if (_controller.indexOfMessage(messageId) == -1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Mensagem não encontrada no chat.')),
       );
@@ -305,22 +305,11 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _closeSearch();
-    setState(() => _highlightedMessageId = result.message.id);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!_scrollController.hasClients) return;
-      final maxOffset = _scrollController.position.maxScrollExtent;
-      final targetOffset = (index * 92.0).clamp(0.0, maxOffset).toDouble();
-      await _scrollController.animateTo(
-        targetOffset,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOutCubic,
-      );
-    });
-
-    _highlightTimer?.cancel();
-    _highlightTimer = Timer(const Duration(milliseconds: 1400), () {
-      if (mounted) setState(() => _highlightedMessageId = null);
+    // Defer until the search panel is gone so the list has its final height
+    // before _scrollToMessage reads scroll offsets. It handles the precise
+    // key-based positioning and the highlight pulse.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToMessage(messageId);
     });
   }
 

@@ -117,6 +117,7 @@ class ChatService implements ChatServiceInterface {
       final matchStart = text.toLowerCase().indexOf(normalizedQuery);
       if (matchStart == -1) continue;
 
+      final snippetMatchStart = _snippetMatchStart(text, matchStart);
       results.add(
         MessageSearchResult(
           message: message,
@@ -126,8 +127,8 @@ class ChatService implements ChatServiceInterface {
             matchStart,
             normalizedQuery.length,
           ),
-          matchStart: _snippetMatchStart(text, matchStart),
-          matchEnd: _snippetMatchStart(text, matchStart) + query.trim().length,
+          matchStart: snippetMatchStart,
+          matchEnd: snippetMatchStart + normalizedQuery.length,
           snapshot: doc,
         ),
       );
