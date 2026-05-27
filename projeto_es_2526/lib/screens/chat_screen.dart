@@ -544,7 +544,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 _controller.anonymousIdentity?.anonymousId ?? '',
             hasReactionError: _controller.hasReactionError(message.id),
             isRetryingReaction: _controller.isRetryingReaction(message.id),
-            onLongPress: () => _isModerator
+            onShowOptions: () => _isModerator
                 ? _showMessageOptions(context, message)
                 : _showEmojiPicker(context, message),
             onReply: () => _startReply(message),

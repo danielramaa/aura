@@ -54,7 +54,10 @@ class MessageBubble extends StatelessWidget {
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
-  final VoidCallback onLongPress;
+  /// Opens the options/react menu. Wired to the double-tap gesture.
+  final VoidCallback onShowOptions;
+
+  /// Starts a reply. Wired to the long-press gesture.
   final VoidCallback onReply;
   final ValueChanged<String> onToggleReaction;
   final VoidCallback onRetryReaction;
@@ -69,7 +72,7 @@ class MessageBubble extends StatelessWidget {
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
-    required this.onLongPress,
+    required this.onShowOptions,
     required this.onReply,
     required this.onToggleReaction,
     required this.onRetryReaction,
@@ -172,7 +175,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onDoubleTap: onLongPress,
+      onDoubleTap: onShowOptions,
       onLongPress: onReply,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 400),
