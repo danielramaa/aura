@@ -25,7 +25,7 @@ class LegalDocumentDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Version ${document.version}',
+                'Versão ${document.version}',
                 style: Theme.of(context).textTheme.labelMedium,
               ),
               const SizedBox(height: 12),
@@ -37,7 +37,7 @@ class LegalDocumentDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: const Text('Fechar'),
         ),
       ],
     );

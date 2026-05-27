@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/legal_document.dart';
 import '../models/user_role.dart';
+import '../utils/validators.dart';
 
 class AuthService {
   static const _stayLoggedInKey = 'stay_logged_in';
@@ -38,7 +39,7 @@ class AuthService {
     DateTime? dateOfBirth,
     bool acceptedTerms = false,
   }) async {
-    if (dateOfBirth != null && !_isAtLeast13(dateOfBirth)) {
+    if (dateOfBirth != null && !isAtLeastMinimumAge(dateOfBirth)) {
       throw ArgumentError('Tem de ter pelo menos 13 anos para criar conta.');
     }
 
@@ -75,25 +76,11 @@ class AuthService {
           .doc(credential.user!.uid)
           .set(userData);
     } catch (_) {
+      // Roll back the Auth account so there's no dangling user without a profile.
       await credential.user!.delete();
       rethrow;
     }
     return credential;
-  }
-
-  bool _isAtLeast13(DateTime dateOfBirth) {
-    final today = DateTime.now();
-    final minimumDateOfBirth = DateTime(
-      today.year - 13,
-      today.month,
-      today.day,
-    );
-    final normalizedDateOfBirth = DateTime(
-      dateOfBirth.year,
-      dateOfBirth.month,
-      dateOfBirth.day,
-    );
-    return !normalizedDateOfBirth.isAfter(minimumDateOfBirth);
   }
 
   Future<void> logout() async {

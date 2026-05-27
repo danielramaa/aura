@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:projeto_es_2526/models/legal_document.dart';
 import 'package:projeto_es_2526/models/user_role.dart';
 import 'package:projeto_es_2526/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -115,6 +117,114 @@ void main() {
       await sub.cancel();
       expect(states, contains(true));
       expect(states, contains(false));
+    });
+  });
+
+  group('AuthService — registration compliance', () {
+    DateTime ageInYears(int years) {
+      final today = DateTime.now();
+      return DateTime(today.year - years, today.month, today.day);
+    }
+
+    test('stores acceptance timestamp and document versions when accepted',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+        acceptedTerms: true,
+      );
+
+      final data =
+          (await firestore.collection('users').doc(credential.user!.uid).get())
+              .data()!;
+      expect(data['termsAccepted'], isTrue);
+      expect(data['termsAcceptedAt'], isNotNull);
+      expect(data['termsVersion'], LegalDocuments.termsVersion);
+      expect(data['privacyPolicyVersion'], LegalDocuments.privacyPolicyVersion);
+    });
+
+    test('records non-acceptance and omits version fields when not accepted',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+      );
+
+      final data =
+          (await firestore.collection('users').doc(credential.user!.uid).get())
+              .data()!;
+      expect(data['termsAccepted'], isFalse);
+      expect(data.containsKey('termsAcceptedAt'), isFalse);
+      expect(data.containsKey('termsVersion'), isFalse);
+      expect(data.containsKey('privacyPolicyVersion'), isFalse);
+    });
+
+    test('stores date of birth and verification timestamp when provided',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+      final dob = ageInYears(20);
+
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+        dateOfBirth: dob,
+      );
+
+      final data =
+          (await firestore.collection('users').doc(credential.user!.uid).get())
+              .data()!;
+      expect((data['dateOfBirth'] as Timestamp).toDate(), dob);
+      expect(data['ageVerifiedAt'], isNotNull);
+    });
+
+    test('allows registration for someone exactly at the minimum age',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      await expectLater(
+        service.register(
+          'new@example.com',
+          'password123',
+          dateOfBirth: ageInYears(13),
+        ),
+        completes,
+      );
+    });
+
+    test('rejects an under-age date of birth without creating an account',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      await expectLater(
+        service.register(
+          'new@example.com',
+          'password123',
+          dateOfBirth: ageInYears(10),
+        ),
+        throwsArgumentError,
+      );
+      expect(auth.currentUser, isNull);
+      final users = await firestore.collection('users').get();
+      expect(users.docs, isEmpty);
     });
   });
 

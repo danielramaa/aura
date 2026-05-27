@@ -78,7 +78,7 @@ Ao abrigo do RGPD, tem o direito de aceder, corrigir ou eliminar os seus dados p
 Mantemos os seus dados enquanto a sua conta estiver ativa. Se optar por eliminar a sua conta, existe um período de tolerância de 30 dias durante o qual os seus dados ficam ocultos, após o qual são permanentemente apagados das nossas bases de dados ativas.
 
 7. Contacto
-Para quaisquer pedidos relacionados com a privacidade ou questões sobre como os seus dados são tratados, contacte o nosso Encarregado da Proteção de Dados através de privacidade@oseudominio.com.
+Para quaisquer pedidos relacionados com a privacidade ou questões sobre como os seus dados são tratados, contacte o nosso Encarregado da Proteção de Dados através de privacidade@aura.com.
 ''',
   );
 }

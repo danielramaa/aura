@@ -138,16 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return '$day/$month/${date.year}';
   }
 
-  bool _isAtLeast13(DateTime dateOfBirth) {
-    final today = DateTime.now();
-    final minimumDateOfBirth = DateTime(
-      today.year - 13,
-      today.month,
-      today.day,
-    );
-    return !dateOfBirth.isAfter(minimumDateOfBirth);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Theme(
@@ -235,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (_dateOfBirth == null) {
                             return 'Indique a sua data de nascimento';
                           }
-                          if (!_isAtLeast13(_dateOfBirth!)) {
+                          if (!isAtLeastMinimumAge(_dateOfBirth!)) {
                             return 'Tem de ter pelo menos 13 anos para criar conta';
                           }
                           return null;
