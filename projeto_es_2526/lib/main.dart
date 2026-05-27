@@ -10,6 +10,7 @@ import 'controllers/home_controller.dart';
 import 'controllers/main_controller.dart';
 import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/reaccept_terms_screen.dart';
 import 'services/auth_service.dart';
 
 @pragma('vm:entry-point')
@@ -65,12 +66,14 @@ class AuthGate extends StatefulWidget {
   final Stream<User?>? authStream;
   final MainController? mainController;
   final HomeController? homeController;
+  final AuthService? authService;
 
   const AuthGate({
     super.key,
     this.authStream,
     this.mainController,
     this.homeController,
+    this.authService,
   });
 
   @override
@@ -79,6 +82,7 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   late final Stream<User?> _authStream;
+  late final AuthService _authService = widget.authService ?? AuthService();
   late final MainController _mainController;
   HomeController? _homeController;
   String? _currentUserId;
@@ -174,9 +178,13 @@ class _AuthGateState extends State<AuthGate> {
             _homeController =
                 widget.homeController ?? HomeController(userId: uid);
           }
-          return MainScreen(
-            mainController: _mainController,
-            homeController: _homeController!,
+          return LegalAcceptanceGate(
+            authService: _authService,
+            userId: uid,
+            child: MainScreen(
+              mainController: _mainController,
+              homeController: _homeController!,
+            ),
           );
         }
         if (_ownsHomeController) {
@@ -185,6 +193,77 @@ class _AuthGateState extends State<AuthGate> {
         }
         _currentUserId = null;
         return const LoginScreen();
+      },
+    );
+  }
+}
+
+/// Gates an authenticated user's access to [child] until their stored legal
+/// acceptance matches the current document versions. When it's outdated the
+/// user must re-accept to continue or decline (which logs them out).
+class LegalAcceptanceGate extends StatefulWidget {
+  final AuthService authService;
+  final String userId;
+  final Widget child;
+
+  const LegalAcceptanceGate({
+    super.key,
+    required this.authService,
+    required this.userId,
+    required this.child,
+  });
+
+  @override
+  State<LegalAcceptanceGate> createState() => _LegalAcceptanceGateState();
+}
+
+class _LegalAcceptanceGateState extends State<LegalAcceptanceGate> {
+  late Future<bool> _needsReacceptance;
+
+  @override
+  void initState() {
+    super.initState();
+    _needsReacceptance = widget.authService.needsLegalReacceptance(
+      widget.userId,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant LegalAcceptanceGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _needsReacceptance = widget.authService.needsLegalReacceptance(
+        widget.userId,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: _needsReacceptance,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        // Fail open on read errors so a transient Firestore failure can't lock
+        // an already-authenticated user out of the app.
+        if (snapshot.data == true) {
+          return ReacceptTermsScreen(
+            onAccept: () async {
+              await widget.authService.acceptCurrentLegalDocuments(
+                widget.userId,
+              );
+              if (mounted) {
+                setState(() => _needsReacceptance = Future.value(false));
+              }
+            },
+            onDecline: () => widget.authService.logout(),
+          );
+        }
+        return widget.child;
       },
     );
   }

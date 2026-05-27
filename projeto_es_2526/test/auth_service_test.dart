@@ -241,6 +241,76 @@ void main() {
     });
   });
 
+  group('AuthService — legal re-acceptance', () {
+    AuthService serviceFor(FakeFirebaseFirestore store) =>
+        AuthService(auth: MockFirebaseAuth(), firestore: store);
+
+    Future<void> seedUser(
+      FakeFirebaseFirestore store, {
+      Object? termsVersion,
+      Object? privacyVersion,
+    }) async {
+      await store.collection('users').doc('u1').set({
+        'termsVersion': ?termsVersion,
+        'privacyPolicyVersion': ?privacyVersion,
+      });
+    }
+
+    test('returns false when stored versions match the current ones', () async {
+      await seedUser(
+        firestore,
+        termsVersion: LegalDocuments.termsVersion,
+        privacyVersion: LegalDocuments.privacyPolicyVersion,
+      );
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isFalse);
+    });
+
+    test('returns true when the terms version is outdated', () async {
+      await seedUser(
+        firestore,
+        termsVersion: '0.0',
+        privacyVersion: LegalDocuments.privacyPolicyVersion,
+      );
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isTrue);
+    });
+
+    test('returns true when the privacy policy version is outdated', () async {
+      await seedUser(
+        firestore,
+        termsVersion: LegalDocuments.termsVersion,
+        privacyVersion: '0.0',
+      );
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isTrue);
+    });
+
+    test('returns true for a legacy user missing the version fields', () async {
+      await seedUser(firestore);
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isTrue);
+    });
+
+    test('returns false when the user document does not exist', () async {
+      expect(
+        await serviceFor(firestore).needsLegalReacceptance('missing'),
+        isFalse,
+      );
+    });
+
+    test('acceptCurrentLegalDocuments records the current versions', () async {
+      await seedUser(firestore, termsVersion: '0.0', privacyVersion: '0.0');
+      final service = serviceFor(firestore);
+
+      await service.acceptCurrentLegalDocuments('u1');
+
+      final data =
+          (await firestore.collection('users').doc('u1').get()).data()!;
+      expect(data['termsAccepted'], isTrue);
+      expect(data['termsAcceptedAt'], isNotNull);
+      expect(data['termsVersion'], LegalDocuments.termsVersion);
+      expect(data['privacyPolicyVersion'], LegalDocuments.privacyPolicyVersion);
+      expect(await service.needsLegalReacceptance('u1'), isFalse);
+    });
+  });
+
   group('AuthService — stayLoggedIn preference', () {
     test('defaults to true when not set', () async {
       final service = AuthService(

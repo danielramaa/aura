@@ -42,6 +42,21 @@ service cloud.firestore {
           'dateOfBirth',
           'ageVerifiedAt',
         ]);
+      // Re-acceptance: an existing user may refresh their own acceptance record
+      // when the documents are updated, but only these fields together and with
+      // a server-set timestamp, so the audit trail can't be backdated or forged.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'termsAccepted',
+          'termsAcceptedAt',
+          'termsVersion',
+          'privacyPolicyVersion',
+        ])
+        && request.resource.data.termsAccepted == true
+        && request.resource.data.termsAcceptedAt == request.time
+        && request.resource.data.termsVersion is string
+        && request.resource.data.privacyPolicyVersion is string;
       // Admins can update the role field exclusively.
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'

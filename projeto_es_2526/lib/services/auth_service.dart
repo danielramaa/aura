@@ -81,6 +81,28 @@ class AuthService {
     return credential;
   }
 
+  /// Whether [uid]'s stored legal acceptance is missing or predates the current
+  /// published document versions, so the user must re-accept before continuing.
+  Future<bool> needsLegalReacceptance(String uid) async {
+    final snapshot = await _firestore.collection('users').doc(uid).get();
+    final data = snapshot.data();
+    if (data == null) return false;
+    return data['termsVersion'] != LegalDocuments.termsVersion ||
+        data['privacyPolicyVersion'] != LegalDocuments.privacyPolicyVersion;
+  }
+
+  /// Records that [uid] accepted the current document versions. The acceptance
+  /// timestamp is server-set so it can't be backdated, matching the Firestore
+  /// rule that guards re-acceptance writes.
+  Future<void> acceptCurrentLegalDocuments(String uid) async {
+    await _firestore.collection('users').doc(uid).update({
+      'termsAccepted': true,
+      'termsAcceptedAt': FieldValue.serverTimestamp(),
+      'termsVersion': LegalDocuments.termsVersion,
+      'privacyPolicyVersion': LegalDocuments.privacyPolicyVersion,
+    });
+  }
+
   Future<void> logout() async {
     await _auth.signOut();
   }
