@@ -527,9 +527,15 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           }
 
+          // While searching, the panel takes over the body so its result list
+          // is the only flexible child — stacking it above the message list
+          // overflowed once the keyboard shrank the available height.
+          if (_isSearchOpen) {
+            return Column(children: [Expanded(child: _buildSearchPanel())]);
+          }
+
           return Column(
             children: [
-              if (_isSearchOpen) _buildSearchPanel(),
               PinnedMessagesBanner(
                 pinnedMessages: _controller.pinnedMessages,
                 canUnpin: _isModerator,
@@ -630,11 +636,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: SafeArea(
         top: false,
-        bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _searchController,
@@ -680,10 +684,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
               if (hasQuery) ...[
                 const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  child: _buildSearchResultsList(results, query),
-                ),
+                Expanded(child: _buildSearchResultsList(results, query)),
               ],
             ],
           ),
@@ -737,7 +738,6 @@ class _ChatScreenState extends State<ChatScreen> {
         results.length + (_controller.hasMoreSearchResults ? 1 : 0);
 
     return ListView.separated(
-      shrinkWrap: true,
       padding: EdgeInsets.zero,
       itemCount: itemCount,
       separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey[200]),
