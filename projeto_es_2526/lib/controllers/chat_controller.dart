@@ -26,6 +26,9 @@ class ChatController extends ChangeNotifier {
 
   List<Message> _messages = [];
   List<PinnedMessage> _pinnedMessages = [];
+  // Mirror of the pinned message ids for O(1) isMessagePinned lookups, which
+  // run once per bubble on every list rebuild.
+  Set<String> _pinnedMessageIds = {};
   List<String> _roomNicknames = [];
   Set<String> _medicAnonymousIds = {};
   StreamSubscription? _messagesSubscription;
@@ -202,12 +205,14 @@ class ChatController extends ChangeNotifier {
             (pinned) {
               if (_isDisposed) return;
               _pinnedMessages = pinned;
+              _pinnedMessageIds = pinned.map((p) => p.messageId).toSet();
               notifyListeners();
             },
             onError: (e) {
               if (_isDisposed) return;
               _error = "Não foi possível carregar as mensagens fixadas.";
               _pinnedMessages = [];
+              _pinnedMessageIds = {};
               notifyListeners();
             },
           );
@@ -391,7 +396,7 @@ class ChatController extends ChangeNotifier {
   }
 
   bool isMessagePinned(String messageId) =>
-      _pinnedMessages.any((p) => p.messageId == messageId);
+      _pinnedMessageIds.contains(messageId);
 
   Future<void> pinMessage(Message message) async {
     final err = await _chatService.pinMessage(

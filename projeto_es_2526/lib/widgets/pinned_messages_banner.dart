@@ -103,15 +103,22 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
   }
 
   Widget _buildPinnedList() {
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 8),
-      itemCount: widget.pinnedMessages.length,
-      separatorBuilder: (context, i) =>
-          Divider(height: 1, color: Colors.grey[200]),
-      itemBuilder: (context, index) =>
-          _buildPinnedItem(widget.pinnedMessages[index]),
+    // Cap the expanded list so a large number of pins can't grow the banner
+    // past the available space (the banner is a non-flexible child of the chat
+    // Column); beyond the cap the list scrolls internally.
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: const EdgeInsets.only(bottom: 8),
+        itemCount: widget.pinnedMessages.length,
+        separatorBuilder: (context, i) =>
+            Divider(height: 1, color: Colors.grey[200]),
+        itemBuilder: (context, index) =>
+            _buildPinnedItem(widget.pinnedMessages[index]),
+      ),
     );
   }
 
