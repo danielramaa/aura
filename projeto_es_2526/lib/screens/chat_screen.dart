@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
+import '../models/message_search_result.dart';
 import '../models/user_role.dart';
 import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
@@ -36,14 +38,18 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   late final ChatController _controller;
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   Message? _replyingTo;
+  Timer? _searchDebounce;
+  Timer? _highlightTimer;
   List<String> _mentionSuggestions = [];
   UserRole _currentUserRole = UserRole.user;
   StreamSubscription<UserRole>? _roleSub;
+  bool _isSearchOpen = false;
   String? _highlightedMessageId;
-  Timer? _highlightTimer;
 
   // Per-message keys so scroll-to-message can use Scrollable.ensureVisible for
   // precise, correctly-aligned positioning despite variable-height bubbles.
@@ -75,6 +81,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _controller.dispose();
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -265,6 +274,45 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _openSearch() {
+    setState(() => _isSearchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _controller.clearMessageSearch();
+    setState(() => _isSearchOpen = false);
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _controller.searchMessages(query);
+    });
+  }
+
+  void _jumpToSearchResult(MessageSearchResult result) {
+    final messageId = result.message.id;
+    if (_controller.indexOfMessage(messageId) == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mensagem não encontrada no chat.')),
+      );
+      return;
+    }
+
+    _closeSearch();
+    // Defer until the search panel is gone so the list has its final height
+    // before _scrollToMessage reads scroll offsets. It handles the precise
+    // key-based positioning and the highlight pulse.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToMessage(messageId);
+    });
+  }
+
   Future<bool> _processLeaveGroup() async {
     try {
       await _controller.leaveGroup();
@@ -411,6 +459,11 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
+            icon: Icon(_isSearchOpen ? Icons.close : Icons.search),
+            tooltip: _isSearchOpen ? 'Fechar pesquisa' : 'Pesquisar mensagens',
+            onPressed: _isSearchOpen ? _closeSearch : _openSearch,
+          ),
+          IconButton(
             icon: const Icon(Icons.medical_services_outlined),
             tooltip: 'Medications',
             onPressed: () {
@@ -476,6 +529,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           return Column(
             children: [
+              if (_isSearchOpen) _buildSearchPanel(),
               PinnedMessagesBanner(
                 pinnedMessages: _controller.pinnedMessages,
                 canUnpin: _isModerator,
@@ -555,6 +609,220 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       },
     );
+  }
+
+  Widget _buildSearchPanel() {
+    final query = _controller.messageSearchQuery;
+    final results = _controller.searchResults;
+    final hasQuery = query.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Pesquisar mensagens...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchDebounce?.cancel();
+                            _searchController.clear();
+                            _controller.clearMessageSearch();
+                            setState(() {});
+                          },
+                        ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onChanged: (value) {
+                  setState(() {});
+                  _onSearchChanged(value);
+                },
+                onSubmitted: _controller.searchMessages,
+              ),
+              if (_controller.searchError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _controller.searchError!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              if (hasQuery) ...[
+                const SizedBox(height: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 280),
+                  child: _buildSearchResultsList(results, query),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsList(
+    List<MessageSearchResult> results,
+    String query,
+  ) {
+    if (_controller.isSearchingMessages && results.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (results.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _controller.hasMoreSearchResults
+                  ? 'Sem resultados nas mensagens recentes.'
+                  : 'Sem resultados para "$query".',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            if (_controller.hasMoreSearchResults) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _controller.isSearchingMessages
+                    ? null
+                    : _controller.loadMoreSearchResults,
+                icon: const Icon(Icons.expand_more),
+                label: const Text('Pesquisar mensagens antigas'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final itemCount =
+        results.length + (_controller.hasMoreSearchResults ? 1 : 0);
+
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      itemCount: itemCount,
+      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey[200]),
+      itemBuilder: (context, index) {
+        if (index >= results.length) {
+          return TextButton.icon(
+            onPressed: _controller.isSearchingMessages
+                ? null
+                : _controller.loadMoreSearchResults,
+            icon: _controller.isSearchingMessages
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.expand_more),
+            label: const Text('Carregar mensagens antigas'),
+          );
+        }
+
+        final result = results[index];
+        return ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          title: Text(
+            result.message.senderNickname,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  children: _buildSearchSnippetSpans(result),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _formatSearchTimestamp(result.message.timestamp),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+          trailing: const Icon(Icons.subdirectory_arrow_left, size: 18),
+          onTap: () => _jumpToSearchResult(result),
+        );
+      },
+    );
+  }
+
+  List<TextSpan> _buildSearchSnippetSpans(MessageSearchResult result) {
+    final spans = <TextSpan>[];
+    final start = result.matchStart.clamp(0, result.snippet.length).toInt();
+    final end = result.matchEnd.clamp(start, result.snippet.length).toInt();
+
+    if (start > 0) {
+      spans.add(TextSpan(text: result.snippet.substring(0, start)));
+    }
+    spans.add(
+      TextSpan(
+        text: result.snippet.substring(start, end),
+        style: const TextStyle(
+          backgroundColor: Color(0xFFFFE08A),
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+    if (end < result.snippet.length) {
+      spans.add(TextSpan(text: result.snippet.substring(end)));
+    }
+
+    return spans;
+  }
+
+  String _formatSearchTimestamp(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$day/$month/${date.year} $hour:$minute';
   }
 
   Widget _buildTypingIndicator() {

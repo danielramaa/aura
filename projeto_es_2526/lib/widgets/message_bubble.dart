@@ -54,6 +54,7 @@ class MessageBubble extends StatelessWidget {
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
+
   /// Opens the options/react menu. Wired to the double-tap gesture.
   final VoidCallback onShowOptions;
 
@@ -177,13 +178,12 @@ class MessageBubble extends StatelessWidget {
     return GestureDetector(
       onDoubleTap: onShowOptions,
       onLongPress: onReply,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 400),
-        color: isHighlighted
-            ? const Color(0xFFFFF9C4)
-            : Colors.transparent,
-        child: Align(
-          alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+      child: Align(
+        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
+        child: AnimatedScale(
+          scale: isHighlighted ? 1.04 : 1,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
           child: Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
@@ -192,7 +192,8 @@ class MessageBubble extends StatelessWidget {
               children: [
                 if (!isOwn) _buildAvatar(),
                 Flexible(
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.all(12),
                     constraints: BoxConstraints(
                       maxWidth: MediaQuery.of(context).size.width * 0.75,
@@ -200,6 +201,20 @@ class MessageBubble extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
+                      border: isHighlighted
+                          ? Border.all(color: const Color(0xFF185FA5), width: 2)
+                          : null,
+                      boxShadow: isHighlighted
+                          ? [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF185FA5,
+                                ).withValues(alpha: 0.22),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,45 +257,45 @@ class MessageBubble extends StatelessWidget {
                               ],
                             ),
                           ),
-                      if (message.replyToText != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border(
-                              left: BorderSide(
-                                color: Colors.grey[400]!,
-                                width: 3,
+                        if (message.replyToText != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border(
+                                left: BorderSide(
+                                  color: Colors.grey[400]!,
+                                  width: 3,
+                                ),
                               ),
                             ),
-                          ),
-                          child: Text(
-                            message.replyToText!,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black87,
+                            child: Text(
+                              message.replyToText!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      _buildMessageText(message.text, message.mentions),
-                      _buildReactionBar(context),
-                    ],
+                        _buildMessageText(message.text, message.mentions),
+                        _buildReactionBar(context),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              if (isOwn) _buildAvatar(),
-            ],
+                if (isOwn) _buildAvatar(),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
   }
 }

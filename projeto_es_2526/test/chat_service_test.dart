@@ -532,4 +532,154 @@ void main() {
       expect(await service.streamPinnedMessages('g1').first, isEmpty);
     });
   });
+
+  group('ChatService — searchMessages', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+    });
+
+    CollectionReference<Map<String, dynamic>> messagesRef() => firestore
+        .collection('groups')
+        .doc('g1')
+        .collection('messages');
+
+    // Seeds a text message. [second] makes the timestamp deterministic so the
+    // descending-by-timestamp scan order is predictable.
+    Future<void> seedText(String text, {required int second}) =>
+        messagesRef().add({
+          'text': text,
+          'senderId': 'anon-1',
+          'senderNickname': 'CalmWolf42',
+          'timestamp': Timestamp.fromDate(DateTime(2026, 1, 1, 0, 0, second)),
+        });
+
+    test('matches case-insensitively and preserves original case in snippet',
+        () async {
+      await seedText('Hello World', second: 1);
+
+      final page = await service.searchMessages(groupId: 'g1', query: 'WORLD');
+
+      expect(page.results.length, 1);
+      final result = page.results.first;
+      expect(result.snippet, 'Hello World');
+      expect(
+        result.snippet.substring(result.matchStart, result.matchEnd),
+        'World',
+      );
+    });
+
+    test('returns no results when nothing matches', () async {
+      await seedText('Hello World', second: 1);
+
+      final page = await service.searchMessages(
+        groupId: 'g1',
+        query: 'absent',
+      );
+
+      expect(page.results, isEmpty);
+      expect(page.hasMore, isFalse);
+    });
+
+    test('returns empty page for a blank query without touching Firestore',
+        () async {
+      await seedText('Hello World', second: 1);
+
+      final page = await service.searchMessages(groupId: 'g1', query: '   ');
+
+      expect(page.results, isEmpty);
+      expect(page.hasMore, isFalse);
+      expect(page.lastDocument, isNull);
+    });
+
+    test('snippet truncation offsets still bracket the match', () async {
+      final text = '${'a' * 50}NEEDLE${'b' * 50}';
+      await seedText(text, second: 1);
+
+      final page = await service.searchMessages(groupId: 'g1', query: 'needle');
+
+      final result = page.results.single;
+      // Long message → snippet is windowed with ellipses on both sides.
+      expect(result.snippet.startsWith('...'), isTrue);
+      expect(result.snippet.endsWith('...'), isTrue);
+      expect(
+        result.snippet.substring(result.matchStart, result.matchEnd),
+        'NEEDLE',
+      );
+    });
+
+    test('skips non-text (poll) messages', () async {
+      await messagesRef().add({
+        'text': 'poll about pizza',
+        'senderId': 'anon-1',
+        'senderNickname': 'CalmWolf42',
+        'timestamp': Timestamp.fromDate(DateTime(2026, 1, 1, 0, 0, 1)),
+        'type': 'poll',
+        'pollId': 'p1',
+      });
+
+      final page = await service.searchMessages(groupId: 'g1', query: 'pizza');
+
+      expect(page.results, isEmpty);
+    });
+
+    test('a full fetched page signals hasMore', () async {
+      for (var i = 0; i < 5; i++) {
+        await seedText('match $i', second: i);
+      }
+
+      final page = await service.searchMessages(
+        groupId: 'g1',
+        query: 'match',
+        pageSize: 5,
+        maxResults: 20,
+      );
+
+      expect(page.results.length, 5);
+      expect(page.hasMore, isTrue);
+    });
+
+    test(
+      'dense matches hitting maxResults on a short page remain reachable via '
+      'load-more (regression)',
+      () async {
+        // 6 matching messages, fewer than pageSize. Hitting maxResults must
+        // still flag hasMore so the remaining matches can be paged in.
+        for (var i = 0; i < 6; i++) {
+          await seedText('term $i', second: i);
+        }
+
+        final first = await service.searchMessages(
+          groupId: 'g1',
+          query: 'term',
+          pageSize: 10,
+          maxResults: 4,
+        );
+
+        expect(first.results.length, 4);
+        expect(first.hasMore, isTrue);
+
+        final second = await service.searchMessages(
+          groupId: 'g1',
+          query: 'term',
+          pageSize: 10,
+          maxResults: 4,
+          startAfter: first.lastDocument,
+        );
+
+        expect(second.results.length, 2);
+        expect(second.hasMore, isFalse);
+
+        // All six matches are covered exactly once across the two pages.
+        final ids = [
+          ...first.results.map((r) => r.message.id),
+          ...second.results.map((r) => r.message.id),
+        ];
+        expect(ids.toSet().length, 6);
+      },
+    );
+  });
 }
