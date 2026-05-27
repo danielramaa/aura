@@ -421,5 +421,26 @@ void main() {
       );
       expect(err, isNull);
     });
+
+    test('also removes the pinned entry so no orphan banner remains', () async {
+      await seedMessage('m1');
+      await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('pinnedMessages')
+          .doc('m1')
+          .set({'text': 'hello'});
+
+      final err = await service.deleteMessage(groupId: 'g1', messageId: 'm1');
+
+      expect(err, isNull);
+      final pinned = await firestore
+          .collection('groups')
+          .doc('g1')
+          .collection('pinnedMessages')
+          .doc('m1')
+          .get();
+      expect(pinned.exists, isFalse);
+    });
   });
 }

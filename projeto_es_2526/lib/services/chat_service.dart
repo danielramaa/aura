@@ -157,7 +157,13 @@ class ChatService implements ChatServiceInterface {
     required String messageId,
   }) async {
     try {
-      await _messagesRef(groupId).doc(messageId).delete();
+      // Delete the message and any pinned entry for it atomically. The pinned
+      // doc shares the message id, so deleting it unconditionally is a no-op
+      // when the message wasn't pinned and prevents orphan pinned banners.
+      final batch = _firestore.batch();
+      batch.delete(_messagesRef(groupId).doc(messageId));
+      batch.delete(_pinnedRef(groupId).doc(messageId));
+      await batch.commit();
       return null;
     } catch (_) {
       return 'Failed to delete message. Please try again.';
