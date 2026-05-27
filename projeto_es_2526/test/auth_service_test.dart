@@ -58,6 +58,7 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        acceptedTerms: true,
       );
       expect(credential.user, isNotNull);
       expect(auth.currentUser, isNotNull);
@@ -72,6 +73,7 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        acceptedTerms: true,
       );
 
       final uid = credential.user!.uid;
@@ -110,7 +112,7 @@ void main() {
       final sub = service.authStateChanges.listen(
         (user) => states.add(user != null),
       );
-      await service.register('a@b.com', 'password123');
+      await service.register('a@b.com', 'password123', acceptedTerms: true);
       await Future.delayed(Duration.zero);
       await service.logout();
       await Future.delayed(Duration.zero);
@@ -148,25 +150,23 @@ void main() {
       expect(data['privacyPolicyVersion'], LegalDocuments.privacyPolicyVersion);
     });
 
-    test('records non-acceptance and omits version fields when not accepted',
-        () async {
+    test('rejects registration when terms are not accepted', () async {
       final auth = MockFirebaseAuth(
         mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
       );
       final service = AuthService(auth: auth, firestore: firestore);
 
-      final credential = await service.register(
-        'new@example.com',
-        'password123',
+      await expectLater(
+        service.register(
+          'new@example.com',
+          'password123',
+          acceptedTerms: false,
+        ),
+        throwsArgumentError,
       );
-
-      final data =
-          (await firestore.collection('users').doc(credential.user!.uid).get())
-              .data()!;
-      expect(data['termsAccepted'], isFalse);
-      expect(data.containsKey('termsAcceptedAt'), isFalse);
-      expect(data.containsKey('termsVersion'), isFalse);
-      expect(data.containsKey('privacyPolicyVersion'), isFalse);
+      expect(auth.currentUser, isNull);
+      final users = await firestore.collection('users').get();
+      expect(users.docs, isEmpty);
     });
 
     test('stores date of birth and verification timestamp when provided',
@@ -181,6 +181,7 @@ void main() {
         'new@example.com',
         'password123',
         dateOfBirth: dob,
+        acceptedTerms: true,
       );
 
       final data =
@@ -202,6 +203,7 @@ void main() {
           'new@example.com',
           'password123',
           dateOfBirth: ageInYears(13),
+          acceptedTerms: true,
         ),
         completes,
       );
@@ -219,6 +221,7 @@ void main() {
           'new@example.com',
           'password123',
           dateOfBirth: ageInYears(10),
+          acceptedTerms: true,
         ),
         throwsArgumentError,
       );
