@@ -204,6 +204,12 @@ class ChatController extends ChangeNotifier {
               _pinnedMessages = pinned;
               notifyListeners();
             },
+            onError: (e) {
+              if (_isDisposed) return;
+              _error = "Não foi possível carregar as mensagens fixadas.";
+              _pinnedMessages = [];
+              notifyListeners();
+            },
           );
     } catch (e) {
       if (_isDisposed) return;
