@@ -76,7 +76,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await _authService.register(
           _emailController.text.trim(),
           _passwordController.text,
-          dateOfBirth: _dateOfBirth,
+          // Guaranteed non-null: the form validator above requires it.
+          dateOfBirth: _dateOfBirth!,
           acceptedTerms: _acceptedTerms,
         );
       }

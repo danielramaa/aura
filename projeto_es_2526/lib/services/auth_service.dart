@@ -36,17 +36,18 @@ class AuthService {
   Future<UserCredential> register(
     String email,
     String password, {
-    DateTime? dateOfBirth,
+    required DateTime dateOfBirth,
     required bool acceptedTerms,
   }) async {
-    // Acceptance is a hard precondition, enforced here so it can't be bypassed
-    // by callers other than the registration screen.
+    // Acceptance and a verified minimum age are hard preconditions, enforced
+    // here so they can't be bypassed by callers other than the registration
+    // screen.
     if (!acceptedTerms) {
       throw ArgumentError(
         'Tem de aceitar os Termos e a Política de Privacidade para criar conta.',
       );
     }
-    if (dateOfBirth != null && !isAtLeastMinimumAge(dateOfBirth)) {
+    if (!isAtLeastMinimumAge(dateOfBirth)) {
       throw ArgumentError('Tem de ter pelo menos 13 anos para criar conta.');
     }
 
@@ -62,16 +63,11 @@ class AuthService {
         'termsAcceptedAt': FieldValue.serverTimestamp(),
         'termsVersion': LegalDocuments.termsVersion,
         'privacyPolicyVersion': LegalDocuments.privacyPolicyVersion,
+        'dateOfBirth': Timestamp.fromDate(
+          DateTime(dateOfBirth.year, dateOfBirth.month, dateOfBirth.day),
+        ),
+        'ageVerifiedAt': FieldValue.serverTimestamp(),
       };
-
-      if (dateOfBirth != null) {
-        userData.addAll({
-          'dateOfBirth': Timestamp.fromDate(
-            DateTime(dateOfBirth.year, dateOfBirth.month, dateOfBirth.day),
-          ),
-          'ageVerifiedAt': FieldValue.serverTimestamp(),
-        });
-      }
 
       await _firestore
           .collection('users')

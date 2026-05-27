@@ -7,6 +7,12 @@ import 'package:projeto_es_2526/models/user_role.dart';
 import 'package:projeto_es_2526/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// A date of birth for someone [years] old today.
+DateTime ageInYears(int years) {
+  final today = DateTime.now();
+  return DateTime(today.year - years, today.month, today.day);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -58,6 +64,7 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        dateOfBirth: ageInYears(20),
         acceptedTerms: true,
       );
       expect(credential.user, isNotNull);
@@ -73,6 +80,7 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        dateOfBirth: ageInYears(20),
         acceptedTerms: true,
       );
 
@@ -112,7 +120,12 @@ void main() {
       final sub = service.authStateChanges.listen(
         (user) => states.add(user != null),
       );
-      await service.register('a@b.com', 'password123', acceptedTerms: true);
+      await service.register(
+        'a@b.com',
+        'password123',
+        dateOfBirth: ageInYears(20),
+        acceptedTerms: true,
+      );
       await Future.delayed(Duration.zero);
       await service.logout();
       await Future.delayed(Duration.zero);
@@ -123,11 +136,6 @@ void main() {
   });
 
   group('AuthService — registration compliance', () {
-    DateTime ageInYears(int years) {
-      final today = DateTime.now();
-      return DateTime(today.year - years, today.month, today.day);
-    }
-
     test('stores acceptance timestamp and document versions when accepted',
         () async {
       final auth = MockFirebaseAuth(
@@ -138,6 +146,7 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        dateOfBirth: ageInYears(20),
         acceptedTerms: true,
       );
 
@@ -160,6 +169,7 @@ void main() {
         service.register(
           'new@example.com',
           'password123',
+          dateOfBirth: ageInYears(20),
           acceptedTerms: false,
         ),
         throwsArgumentError,
