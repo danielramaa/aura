@@ -5,9 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
 import '../models/message_search_result.dart';
+import '../models/pinned_message.dart';
 
 abstract class ChatServiceInterface {
   Stream<List<Message>> streamMessages(String groupId);
+  Stream<List<PinnedMessage>> streamPinnedMessages(String groupId);
 
   Future<MessageSearchPage> searchMessages({
     required String groupId,
@@ -44,6 +46,16 @@ abstract class ChatServiceInterface {
     required String groupId,
     required String messageId,
   });
+
+  Future<String?> pinMessage({
+    required String groupId,
+    required Message message,
+  });
+
+  Future<String?> unpinMessage({
+    required String groupId,
+    required String messageId,
+  });
 }
 
 class ChatService implements ChatServiceInterface {
@@ -56,6 +68,9 @@ class ChatService implements ChatServiceInterface {
 
   CollectionReference<Map<String, dynamic>> _messagesRef(String groupId) =>
       _firestore.collection('groups').doc(groupId).collection('messages');
+
+  CollectionReference<Map<String, dynamic>> _pinnedRef(String groupId) =>
+      _firestore.collection('groups').doc(groupId).collection('pinnedMessages');
 
   @override
   Stream<List<Message>> streamMessages(String groupId) => _messagesRef(groupId)
@@ -144,6 +159,13 @@ class ChatService implements ChatServiceInterface {
   }
 
   @override
+  Stream<List<PinnedMessage>> streamPinnedMessages(String groupId) =>
+      _pinnedRef(groupId)
+          .orderBy('pinnedAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(PinnedMessage.fromFirestore).toList());
+
+  @override
   Future<String?> sendMessage({
     required String groupId,
     required String text,
@@ -226,10 +248,48 @@ class ChatService implements ChatServiceInterface {
     required String messageId,
   }) async {
     try {
-      await _messagesRef(groupId).doc(messageId).delete();
+      // Delete the message and any pinned entry for it atomically. The pinned
+      // doc shares the message id, so deleting it unconditionally is a no-op
+      // when the message wasn't pinned and prevents orphan pinned banners.
+      final batch = _firestore.batch();
+      batch.delete(_messagesRef(groupId).doc(messageId));
+      batch.delete(_pinnedRef(groupId).doc(messageId));
+      await batch.commit();
       return null;
     } catch (_) {
       return 'Failed to delete message. Please try again.';
+    }
+  }
+
+  @override
+  Future<String?> pinMessage({
+    required String groupId,
+    required Message message,
+  }) async {
+    try {
+      await _pinnedRef(groupId).doc(message.id).set({
+        'text': message.text,
+        'senderNickname': message.senderNickname,
+        'senderAvatarIndex': message.senderAvatarIndex,
+        'timestamp': message.timestamp,
+        'pinnedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (_) {
+      return 'Failed to pin message. Please try again.';
+    }
+  }
+
+  @override
+  Future<String?> unpinMessage({
+    required String groupId,
+    required String messageId,
+  }) async {
+    try {
+      await _pinnedRef(groupId).doc(messageId).delete();
+      return null;
+    } catch (_) {
+      return 'Failed to unpin message. Please try again.';
     }
   }
 

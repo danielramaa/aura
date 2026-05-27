@@ -60,7 +60,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LoginScreen), findsOneWidget);
 
-    await authService.register('new@example.com', 'password123');
+    await authService.register(
+      'new@example.com',
+      'password123',
+      dateOfBirth: DateTime(2000, 1, 1),
+      acceptedTerms: true,
+    );
     await tester.pumpAndSettle();
     expect(find.byType(MainScreen), findsOneWidget);
 

@@ -49,11 +49,16 @@ class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
   final bool isSenderMedic;
+  final bool isPinned;
+  final bool isHighlighted;
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
-  final bool isHighlighted;
-  final VoidCallback onLongPress;
+
+  /// Opens the options/react menu. Wired to the double-tap gesture.
+  final VoidCallback onShowOptions;
+
+  /// Starts a reply. Wired to the long-press gesture.
   final VoidCallback onReply;
   final ValueChanged<String> onToggleReaction;
   final VoidCallback onRetryReaction;
@@ -63,11 +68,12 @@ class MessageBubble extends StatelessWidget {
     required this.message,
     required this.isOwn,
     required this.isSenderMedic,
+    this.isPinned = false,
+    this.isHighlighted = false,
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
-    this.isHighlighted = false,
-    required this.onLongPress,
+    required this.onShowOptions,
     required this.onReply,
     required this.onToggleReaction,
     required this.onRetryReaction,
@@ -170,7 +176,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onDoubleTap: onLongPress,
+      onDoubleTap: onShowOptions,
       onLongPress: onReply,
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
@@ -213,7 +219,7 @@ class MessageBubble extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!isOwn || isSenderMedic)
+                        if (!isOwn || isSenderMedic || isPinned)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4.0),
                             child: Row(
@@ -236,6 +242,15 @@ class MessageBubble extends StatelessWidget {
                                     child: const Icon(
                                       Icons.verified,
                                       size: 14,
+                                      color: Color(0xFF185FA5),
+                                    ),
+                                  ),
+                                if (isPinned)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    child: Icon(
+                                      Icons.push_pin,
+                                      size: 13,
                                       color: Color(0xFF185FA5),
                                     ),
                                   ),

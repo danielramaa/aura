@@ -8,6 +8,7 @@ This Software Development Report, tailored for LEIC-ES-2025-26, provides compreh
 
 It is organised by the following activities: 
 
+* [Getting Started](#Getting-Started)
 * [Business modeling](#Business-Modelling) 
   * [Product Vision](#Product-Vision)
   * [Features and Assumptions](#Features-and-Assumptions)
@@ -37,6 +38,68 @@ Thank you!
 * Daniel Morais Rama - up202409357@up.pt
 * Francisco Almeida Henriques dos Santos Poeira - up202406330@up.pt
 * Pedro Oliveira Soares Lopes - up202405618@up.pt
+
+---
+## Getting Started
+
+These instructions describe how to clone, set up, and run _Aura_ locally for development or testing.
+
+### Prerequisites
+
+- **Flutter SDK** ≥ 3.11 (Dart ≥ 3.11). Install from [flutter.dev/docs/get-started/install](https://flutter.dev/docs/get-started/install) and verify with `flutter --version`.
+- **Android toolchain** — Android Studio with the Android SDK and a configured emulator (Android 8.0+), or a physical Android device with USB debugging enabled.
+- **iOS toolchain** (macOS only, optional) — Xcode ≥ 15 and CocoaPods for running on the iOS simulator or a development-signed device.
+- **Git** to clone the repository.
+
+Run `flutter doctor` and resolve any reported issues before continuing.
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/LEIC-ES-2025-26-2LEIC14/T3.git
+cd T3/projeto_es_2526
+```
+
+### 2. Install dependencies
+
+```bash
+flutter pub get
+```
+
+
+### 3. Firebase configuration
+
+The Firebase project (`projeto-es-2526`) is already wired up in the repository — `lib/firebase_options.dart`, `android/app/google-services.json` and `firebase.json` are committed. **No additional Firebase setup is required to run the app against the existing backend.**
+
+### 4. Run the app
+
+Start an Android emulator (or plug in a device), then:
+
+```bash
+flutter run
+```
+
+To target a specific device, list available devices with `flutter devices` and run `flutter run -d <deviceId>`. The app blocks non-mobile platforms (web, desktop) at startup with a fallback screen, use an Android or iOS target.
+
+### 5. Run the tests
+
+```bash
+# Unit and widget tests
+flutter test
+
+# Integration tests (requires a connected device or running emulator)
+flutter test integration_test
+```
+
+Tests run against `fake_cloud_firestore` and `firebase_auth_mocks`, so no Firebase emulator or network connection is required for the unit/widget suite.
+
+### Building a release `.apk`
+
+```bash
+flutter build apk --release
+```
+
+The signed artifact is written to `build/app/outputs/flutter-apk/app-release.apk`.
 
 ---
 ## Business Modelling
@@ -751,6 +814,16 @@ Sprint 2 layered moderation, expert content and richer chat interaction on top o
 **Puzzles:**
 - Whether to expire polls server-side via Cloud Functions or keep the current client-side `isOpen` check (Sprint 3 candidate).
 - How to model multi-medic verification, a single license number is currently sufficient for the badge.
+
+#### Use of AI
+
+AI tools were used in three main moments of the sprint:
+
+- **Starting a user story** — we used Claude/ChatGPT to scaffold each user story (acceptance criteria, initial structure, first implementation pass) so we always had a clear starting point before writing code.
+- **Writing tests** — we used Claude/ChatGPT to draft unit and widget tests, suggest edge cases, which we then reviewed and adjusted to match the actual behaviour.
+- **Pull request review** — once a PR was open we ran a two-pass review: first we asked Claude to review the PR and applied its suggested changes, then we asked GitHub Copilot to review the same PR and applied its suggestions on top.
+
+Every AI-suggested change was read, tested, and approved by a team member before being merged.
 
 ### Sprint 3
 
