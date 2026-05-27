@@ -107,8 +107,12 @@ class ChatService implements ChatServiceInterface {
     final snap = await firestoreQuery.get();
     final results = <MessageSearchResult>[];
     DocumentSnapshot<Map<String, dynamic>>? lastScannedDocument;
+    // Whether we visited every fetched doc. False means we hit maxResults with
+    // unscanned docs still left in this page, which is itself a "more" signal.
+    var scannedWholePage = true;
 
-    for (final doc in snap.docs) {
+    for (var i = 0; i < snap.docs.length; i++) {
+      final doc = snap.docs[i];
       lastScannedDocument = doc;
       final message = Message.fromFirestore(doc);
       if (message.type != MessageType.text) continue;
@@ -133,13 +137,18 @@ class ChatService implements ChatServiceInterface {
         ),
       );
 
-      if (results.length >= maxResults) break;
+      if (results.length >= maxResults) {
+        scannedWholePage = i == snap.docs.length - 1;
+        break;
+      }
     }
 
     return MessageSearchPage(
       results: results,
       lastDocument: lastScannedDocument ?? startAfter,
-      hasMore: snap.docs.length == pageSize,
+      // More may remain either because docs in this page went unscanned, or
+      // because Firestore returned a full page that could be followed by more.
+      hasMore: !scannedWholePage || snap.docs.length == pageSize,
     );
   }
 
