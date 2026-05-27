@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:projeto_es_2526/models/anonymous_identity.dart';
+import 'package:projeto_es_2526/models/message.dart';
 import 'package:projeto_es_2526/services/chat_service.dart';
 
 AnonymousIdentity makeIdentity() => AnonymousIdentity(
@@ -441,6 +442,94 @@ void main() {
           .doc('m1')
           .get();
       expect(pinned.exists, isFalse);
+    });
+  });
+
+  group('ChatService — pinned messages', () {
+    late FakeFirebaseFirestore firestore;
+    late ChatService service;
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      service = ChatService(firestore: firestore);
+    });
+
+    Future<DocumentSnapshot<Map<String, dynamic>>> pinnedDoc(String id) =>
+        firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('pinnedMessages')
+            .doc(id)
+            .get();
+
+    Message makeMessage(String id) => Message(
+      id: id,
+      text: 'pinned text',
+      anonymousId: 'anon-1',
+      senderNickname: 'CalmWolf42',
+      senderAvatarIndex: 3,
+      timestamp: Timestamp.fromDate(DateTime(2026, 5, 1)),
+    );
+
+    test('pinMessage writes a pinned doc keyed by the message id', () async {
+      final err = await service.pinMessage(
+        groupId: 'g1',
+        message: makeMessage('m1'),
+      );
+
+      expect(err, isNull);
+      final doc = await pinnedDoc('m1');
+      expect(doc.exists, isTrue);
+      final data = doc.data()!;
+      expect(data['text'], 'pinned text');
+      expect(data['senderNickname'], 'CalmWolf42');
+      expect(data['senderAvatarIndex'], 3);
+      expect(data['timestamp'], isA<Timestamp>());
+      expect(data['pinnedAt'], isNotNull);
+    });
+
+    test('unpinMessage removes the pinned doc', () async {
+      await service.pinMessage(groupId: 'g1', message: makeMessage('m1'));
+
+      final err = await service.unpinMessage(groupId: 'g1', messageId: 'm1');
+
+      expect(err, isNull);
+      expect((await pinnedDoc('m1')).exists, isFalse);
+    });
+
+    test(
+      'streamPinnedMessages yields docs ordered by pinnedAt descending',
+      () async {
+        final pinnedRef = firestore
+            .collection('groups')
+            .doc('g1')
+            .collection('pinnedMessages');
+        await pinnedRef.doc('older').set({
+          'text': 'older',
+          'senderNickname': 'A',
+          'senderAvatarIndex': 0,
+          'timestamp': Timestamp.fromDate(DateTime(2026, 1, 1)),
+          'pinnedAt': Timestamp.fromDate(DateTime(2026, 5, 1)),
+        });
+        await pinnedRef.doc('newer').set({
+          'text': 'newer',
+          'senderNickname': 'B',
+          'senderAvatarIndex': 2,
+          'timestamp': Timestamp.fromDate(DateTime(2026, 1, 2)),
+          'pinnedAt': Timestamp.fromDate(DateTime(2026, 5, 2)),
+        });
+
+        final pinned = await service.streamPinnedMessages('g1').first;
+
+        expect(pinned.map((p) => p.messageId), ['newer', 'older']);
+        expect(pinned.first.text, 'newer');
+        expect(pinned.first.senderNickname, 'B');
+        expect(pinned.first.senderAvatarIndex, 2);
+      },
+    );
+
+    test('streamPinnedMessages emits empty list when none exist', () async {
+      expect(await service.streamPinnedMessages('g1').first, isEmpty);
     });
   });
 }
