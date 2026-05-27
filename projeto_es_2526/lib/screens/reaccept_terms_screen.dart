@@ -26,12 +26,24 @@ class _ReacceptTermsScreenState extends State<ReacceptTermsScreen> {
   static const _blue = Color(0xFF185FA5);
 
   bool _busy = false;
+  String? _error;
 
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       await action();
+    } catch (e) {
+      debugPrint('ReacceptTermsScreen action failed: $e');
+      if (mounted) {
+        setState(
+          () => _error =
+              'Não foi possível concluir. Verifique a sua ligação e tente novamente.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -88,6 +100,16 @@ class _ReacceptTermsScreenState extends State<ReacceptTermsScreen> {
                     icon: const Icon(Icons.privacy_tip_outlined),
                     label: const Text('Política de Privacidade'),
                   ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   FilledButton(
                     onPressed: _busy ? null : () => _run(widget.onAccept),
