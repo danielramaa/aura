@@ -263,33 +263,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /admin_notifications/{notificationId} {
-      allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly([
-          'type',
-          'reportId',
-          'groupId',
-          'groupName',
-          'description',
-          'isRead',
-          'timestamp',
-        ])
-        && request.resource.data.type == 'user_report'
-        && request.resource.data.reportId is string
-        && request.resource.data.groupId is string
-        && request.resource.data.groupName is string
-        && request.resource.data.description is string
-        && request.resource.data.isRead == false
-        && request.resource.data.timestamp == request.time
-        && existsAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId))
-        && getAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.groupId == request.resource.data.groupId
-        && getAfter(/databases/$(database)/documents/user_reports/$(request.resource.data.reportId)).data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId);
-      allow read: if isAdmin();
-      allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
-      allow delete: if false;
-    }
-
     // Reverse lookup for moderation (anonymousId → real userId). Never deleted
     // from the client so historical messages remain traceable after a user leaves.
     match /anonymousIdentities/{anonymousId} {

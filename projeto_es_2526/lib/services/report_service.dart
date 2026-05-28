@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -101,15 +99,6 @@ class ReportService implements ReportServiceInterface {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Best-effort: don't block the submit flow on the notification write,
-      // and don't surface its failures (the report itself is what matters).
-      unawaited(
-        _createAdminNotification(
-          reportId: reportRef.id,
-          groupId: groupId,
-          groupName: safeGroupName,
-        ),
-      );
       return null;
     } on FirebaseException catch (e) {
       debugPrint('Failed to submit user report: ${e.code} ${e.message}');
@@ -119,29 +108,6 @@ class ReportService implements ReportServiceInterface {
       return 'Não foi possível enviar a denúncia (${e.code}). Tenta novamente.';
     } catch (_) {
       return 'Não foi possível enviar a denúncia. Tenta novamente.';
-    }
-  }
-
-  Future<void> _createAdminNotification({
-    required String reportId,
-    required String groupId,
-    required String groupName,
-  }) async {
-    try {
-      // Doc ID == reportId so retries are idempotent: a second create attempt
-      // becomes an update, which the admin_notifications rule rejects unless
-      // only 'isRead' changes — so duplicate notifications can't accumulate.
-      await _firestore.collection('admin_notifications').doc(reportId).set({
-        'type': 'user_report',
-        'reportId': reportId,
-        'groupId': groupId,
-        'groupName': groupName,
-        'description': 'Nova denúncia de utilizador em "$groupName".',
-        'isRead': false,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint('Failed to create admin report notification: $e');
     }
   }
 }
