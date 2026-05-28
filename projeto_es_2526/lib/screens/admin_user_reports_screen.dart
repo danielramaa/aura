@@ -16,18 +16,20 @@ class AdminUserReportsScreen extends StatelessWidget {
     UserReport report,
     String status,
   ) async {
-    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final err = await _userService.updateUserReportStatus(report.id, status);
-    if (!navigator.mounted) return;
-    navigator.pop();
+    if (!context.mounted) return;
+    if (err != null) {
+      messenger.showSnackBar(SnackBar(content: Text(err)));
+      return;
+    }
+    Navigator.of(context).pop();
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          err ??
-              (status == 'reviewed'
-                  ? 'Denúncia marcada como revista.'
-                  : 'Denúncia ignorada.'),
+          status == 'reviewed'
+              ? 'Denúncia marcada como revista.'
+              : 'Denúncia ignorada.',
         ),
       ),
     );
@@ -108,7 +110,8 @@ class AdminUserReportsScreen extends StatelessWidget {
   String _formatTime(UserReport report) {
     final createdAt = report.createdAt;
     if (createdAt == null) return 'Agora';
-    final elapsed = DateTime.now().difference(createdAt.toDate());
+    final rawElapsed = DateTime.now().difference(createdAt.toDate());
+    final elapsed = rawElapsed.isNegative ? Duration.zero : rawElapsed;
     if (elapsed.inMinutes < 1) return 'Agora';
     if (elapsed.inMinutes < 60) return 'Há ${elapsed.inMinutes} min';
     if (elapsed.inHours < 24) return 'Há ${elapsed.inHours} h';

@@ -468,7 +468,7 @@ class ChatController extends ChangeNotifier {
 
     return _reportService.submitUserReport(
       groupId: groupId,
-      groupName: _groupName ?? 'Comunidade',
+      groupName: _groupName ?? 'Community',
       reporterIdentity: identity,
       reportedAnonymousId: reportedMessage.anonymousId,
       reportedNickname: reportedMessage.senderNickname,

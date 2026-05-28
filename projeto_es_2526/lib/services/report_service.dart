@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -99,10 +101,14 @@ class ReportService implements ReportServiceInterface {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _createAdminNotification(
-        reportId: reportRef.id,
-        groupId: groupId,
-        groupName: safeGroupName,
+      // Best-effort: don't block the submit flow on the notification write,
+      // and don't surface its failures (the report itself is what matters).
+      unawaited(
+        _createAdminNotification(
+          reportId: reportRef.id,
+          groupId: groupId,
+          groupName: safeGroupName,
+        ),
       );
       return null;
     } on FirebaseException catch (e) {
@@ -122,7 +128,10 @@ class ReportService implements ReportServiceInterface {
     required String groupName,
   }) async {
     try {
-      await _firestore.collection('admin_notifications').add({
+      // Doc ID == reportId so retries are idempotent: a second create attempt
+      // becomes an update, which the admin_notifications rule rejects unless
+      // only 'isRead' changes — so duplicate notifications can't accumulate.
+      await _firestore.collection('admin_notifications').doc(reportId).set({
         'type': 'user_report',
         'reportId': reportId,
         'groupId': groupId,

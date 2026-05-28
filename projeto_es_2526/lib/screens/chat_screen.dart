@@ -283,7 +283,17 @@ class _ChatScreenState extends State<ChatScreen> {
     final screenContext = context;
     final messenger = ScaffoldMessenger.of(screenContext);
 
-    final err = await showDialog<String?>(
+    // Guard before opening the form: if we no longer have a session-bound
+    // identity, fail fast with a snackbar instead of letting the user fill in
+    // a form whose submission is guaranteed to be rejected.
+    if (_controller.anonymousIdentity == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não está conectado à sala.')),
+      );
+      return;
+    }
+
+    final result = await showDialog<_ReportDialogResult>(
       context: screenContext,
       builder: (_) => _ReportUserDialog(
         reportedNickname: message.senderNickname,
@@ -303,12 +313,14 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
 
-    if (!mounted || err == null) return;
+    if (!mounted || result == null) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(err.isEmpty ? 'Denúncia enviada com sucesso.' : err),
+          content: Text(
+            result.error ?? 'Denúncia enviada com sucesso.',
+          ),
         ),
       );
     });
@@ -1057,6 +1069,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
+/// Outcome of the report dialog. `null` (no value passed to `Navigator.pop`)
+/// means the user cancelled; a non-null value means the user submitted, and
+/// `error` is null on success or the error message on failure. Using a typed
+/// result avoids the previous overloaded `null` / `''` / `String` convention.
+class _ReportDialogResult {
+  final String? error;
+  const _ReportDialogResult({this.error});
+}
+
 class _ReportUserDialog extends StatefulWidget {
   final String reportedNickname;
   final Future<String?> Function({
@@ -1101,7 +1122,7 @@ class _ReportUserDialogState extends State<_ReportUserDialog> {
     );
 
     if (!mounted) return;
-    Navigator.of(context).pop(err ?? '');
+    Navigator.of(context).pop(_ReportDialogResult(error: err));
   }
 
   @override
