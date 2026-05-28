@@ -240,5 +240,49 @@ void main() {
 
       expect(tapped, isTrue);
     });
+
+    testWidgets('double-tapping a message bubble triggers onShowOptions', (
+      tester,
+    ) async {
+      var optionsShown = false;
+      final message = Message(
+        id: 'm1',
+        text: 'hello',
+        anonymousId: 'anon-1',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 0,
+        timestamp: Timestamp.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubble(
+              message: message,
+              isOwn: false,
+              isSenderMedic: false,
+              currentAnonymousId: 'anon-current',
+              hasReactionError: false,
+              isRetryingReaction: false,
+              onShowOptions: () => optionsShown = true,
+              onReply: () {},
+              onSenderTap: () {},
+              onToggleReaction: (_) {},
+              onRetryReaction: () {},
+            ),
+          ),
+        ),
+      );
+
+      final center = tester.getCenter(find.byType(AnimatedContainer));
+      final firstTap = await tester.startGesture(center);
+      await firstTap.up();
+      await tester.pump(const Duration(milliseconds: 50));
+      final secondTap = await tester.startGesture(center);
+      await secondTap.up();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(optionsShown, isTrue);
+    });
   });
 }

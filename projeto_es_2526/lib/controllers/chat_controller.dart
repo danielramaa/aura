@@ -479,6 +479,28 @@ class ChatController extends ChangeNotifier {
     );
   }
 
+  Future<String?> reportMessage({
+    required Message message,
+    required String category,
+    String details = '',
+  }) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Não está conectado à sala.';
+
+    return _reportService.submitMessageReport(
+      groupId: groupId,
+      groupName: _groupName ?? 'Comunidade',
+      reporterIdentity: identity,
+      messageId: message.id,
+      messageText: message.text,
+      messageSenderAnonymousId: message.anonymousId,
+      messageSenderNickname: message.senderNickname,
+      messageSenderAvatarIndex: message.senderAvatarIndex,
+      category: category,
+      details: details,
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Reactions
   // ---------------------------------------------------------------------------

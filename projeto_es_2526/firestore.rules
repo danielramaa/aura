@@ -263,6 +263,54 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /message_reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'groupId',
+          'groupName',
+          'messageId',
+          'messageText',
+          'messageSenderAnonymousId',
+          'messageSenderNickname',
+          'messageSenderAvatarIndex',
+          'reporterAnonymousId',
+          'category',
+          'details',
+          'status',
+          'createdAt',
+        ])
+        && request.resource.data.groupId is string
+        && request.resource.data.groupName is string
+        && request.resource.data.messageId is string
+        && request.resource.data.messageId.size() > 0
+        && request.resource.data.messageText is string
+        && request.resource.data.messageText.size() > 0
+        && request.resource.data.messageText.size() <= 2000
+        && request.resource.data.messageSenderAnonymousId is string
+        && request.resource.data.messageSenderAnonymousId.size() > 0
+        && request.resource.data.messageSenderNickname is string
+        && request.resource.data.messageSenderAvatarIndex is int
+        && request.resource.data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId)
+        && request.resource.data.messageSenderAnonymousId != request.resource.data.reporterAnonymousId
+        && request.resource.data.category in [
+          'Spam',
+          'Misinformation',
+          'Bullying',
+          'LifeRisk',
+          'Other',
+        ]
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+        && request.resource.data.status in ['reviewed', 'dismissed']
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
     // Reverse lookup for moderation (anonymousId → real userId). Never deleted
     // from the client so historical messages remain traceable after a user leaves.
     match /anonymousIdentities/{anonymousId} {

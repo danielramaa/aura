@@ -196,6 +196,75 @@ void main() {
     });
   });
 
+  group('UserService.streamPendingMessageReports', () {
+    test('emits only pending message reports', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('message_reports').add({
+        'groupId': 'g1',
+        'groupName': 'Community',
+        'messageId': 'm1',
+        'messageText': 'texto denunciado',
+        'messageSenderAnonymousId': 'anon-1',
+        'messageSenderNickname': 'CalmWolf42',
+        'messageSenderAvatarIndex': 0,
+        'reporterAnonymousId': 'anon-2',
+        'category': 'Spam',
+        'details': '',
+        'status': 'pending',
+        'createdAt': Timestamp.now(),
+      });
+      await firestore.collection('message_reports').add({
+        'groupId': 'g1',
+        'groupName': 'Community',
+        'messageId': 'm2',
+        'messageText': 'texto já revisto',
+        'messageSenderAnonymousId': 'anon-3',
+        'messageSenderNickname': 'BraveOwl7',
+        'messageSenderAvatarIndex': 1,
+        'reporterAnonymousId': 'anon-2',
+        'category': 'Bullying',
+        'details': '',
+        'status': 'reviewed',
+        'createdAt': Timestamp.now(),
+      });
+      final service = UserService(firestore: firestore);
+
+      final reports = await service.streamPendingMessageReports().first;
+
+      expect(reports.length, 1);
+      expect(reports.first.messageId, 'm1');
+      expect(reports.first.status, 'pending');
+    });
+  });
+
+  group('UserService.updateMessageReportStatus', () {
+    test('sets message report status to dismissed', () async {
+      final firestore = FakeFirebaseFirestore();
+      final reportRef = await firestore.collection('message_reports').add({
+        'status': 'pending',
+      });
+      final service = UserService(firestore: firestore);
+
+      final err = await service.updateMessageReportStatus(
+        reportRef.id,
+        'dismissed',
+      );
+
+      expect(err, isNull);
+      final report = await reportRef.get();
+      expect(report.data()?['status'], 'dismissed');
+    });
+
+    test('rejects invalid message report statuses', () async {
+      final firestore = FakeFirebaseFirestore();
+      final service = UserService(firestore: firestore);
+
+      final err = await service.updateMessageReportStatus('r1', 'pending');
+
+      expect(err, contains('inválido'));
+    });
+  });
+
   group('UserService.approveApplication', () {
     test(
       'sets application status to approved and user role to medic',

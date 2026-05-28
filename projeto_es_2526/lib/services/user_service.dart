@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/message_report.dart';
 import '../models/moderator_application.dart';
 import '../models/user_report.dart';
 import '../models/user_role.dart';
@@ -51,6 +52,26 @@ class UserService {
         });
   }
 
+  Stream<List<MessageReport>> streamPendingMessageReports() {
+    return _firestore
+        .collection('message_reports')
+        .where('status', isEqualTo: 'pending')
+        .snapshots()
+        .map((snap) {
+          final reports = snap.docs.map(MessageReport.fromFirestore).toList();
+          // Treat unresolved serverTimestamps as "now" so a freshly created
+          // report sorts to the top while the timestamp round-trips, instead
+          // of getting buried at the bottom as epoch 0.
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
+          reports.sort((a, b) {
+            final aTime = a.createdAt?.millisecondsSinceEpoch ?? nowMs;
+            final bTime = b.createdAt?.millisecondsSinceEpoch ?? nowMs;
+            return bTime.compareTo(aTime);
+          });
+          return reports;
+        });
+  }
+
   Future<String?> updateUserReportStatus(String reportId, String status) async {
     if (!['reviewed', 'dismissed'].contains(status)) {
       return 'Estado da denúncia inválido.';
@@ -58,6 +79,25 @@ class UserService {
 
     try {
       await _firestore.collection('user_reports').doc(reportId).update({
+        'status': status,
+        'reviewedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (_) {
+      return 'Não foi possível atualizar a denúncia.';
+    }
+  }
+
+  Future<String?> updateMessageReportStatus(
+    String reportId,
+    String status,
+  ) async {
+    if (!['reviewed', 'dismissed'].contains(status)) {
+      return 'Estado da denúncia inválido.';
+    }
+
+    try {
+      await _firestore.collection('message_reports').doc(reportId).update({
         'status': status,
         'reviewedAt': FieldValue.serverTimestamp(),
       });

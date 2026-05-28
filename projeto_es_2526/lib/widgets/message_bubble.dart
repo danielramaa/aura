@@ -55,7 +55,7 @@ class MessageBubble extends StatelessWidget {
   final bool hasReactionError;
   final bool isRetryingReaction;
 
-  /// Opens the options/react menu. Wired to the double-tap gesture.
+  /// Opens the options/react/report menu. Wired to the double-tap gesture.
   final VoidCallback onShowOptions;
 
   /// Starts a reply. Wired to the long-press gesture.
@@ -178,6 +178,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onDoubleTap: onShowOptions,
       onLongPress: onReply,
       child: Align(

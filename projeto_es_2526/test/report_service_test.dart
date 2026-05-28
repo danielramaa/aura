@@ -96,4 +96,99 @@ void main() {
       expect(err, contains('motivo'));
     });
   });
+
+  group('ReportService.submitMessageReport', () {
+    late FakeFirebaseFirestore firestore;
+    late ReportService service;
+
+    setUp(() {
+      firestore = FakeFirebaseFirestore();
+      service = ReportService(firestore: firestore);
+    });
+
+    test('creates a pending message report', () async {
+      final err = await service.submitMessageReport(
+        groupId: 'g1',
+        groupName: 'Apoio',
+        reporterIdentity: makeReporter(),
+        messageId: 'm1',
+        messageText: 'conteúdo problemático',
+        messageSenderAnonymousId: 'anon-author',
+        messageSenderNickname: 'BraveOwl7',
+        messageSenderAvatarIndex: 2,
+        category: 'Bullying',
+        details: 'A mensagem atacava outro utilizador.',
+      );
+
+      expect(err, isNull);
+
+      final reports = await firestore.collection('message_reports').get();
+      expect(reports.docs.length, 1);
+      expect(reports.docs.first.data()['status'], 'pending');
+      expect(reports.docs.first.data()['category'], 'Bullying');
+      expect(reports.docs.first.data()['messageId'], 'm1');
+      expect(
+        reports.docs.first.data()['messageSenderAnonymousId'],
+        'anon-author',
+      );
+      expect(reports.docs.first.data()['reporterAnonymousId'], 'anon-reporter');
+      expect(reports.docs.first.data().containsKey('reporterUserId'), isFalse);
+    });
+
+    test('rejects unknown message categories', () async {
+      final err = await service.submitMessageReport(
+        groupId: 'g1',
+        groupName: 'Apoio',
+        reporterIdentity: makeReporter(),
+        messageId: 'm1',
+        messageText: 'conteúdo problemático',
+        messageSenderAnonymousId: 'anon-author',
+        messageSenderNickname: 'BraveOwl7',
+        messageSenderAvatarIndex: 2,
+        category: 'Perigoso',
+        details: '',
+      );
+
+      expect(err, contains('categoria válida'));
+      expect(
+        (await firestore.collection('message_reports').get()).docs,
+        isEmpty,
+      );
+    });
+
+    test('rejects reporting your own message', () async {
+      final err = await service.submitMessageReport(
+        groupId: 'g1',
+        groupName: 'Apoio',
+        reporterIdentity: makeReporter(),
+        messageId: 'm1',
+        messageText: 'conteúdo problemático',
+        messageSenderAnonymousId: 'anon-reporter',
+        messageSenderNickname: 'BraveOwl7',
+        messageSenderAvatarIndex: 2,
+        category: 'Spam',
+        details: '',
+      );
+
+      expect(err, contains('própria mensagem'));
+      expect(
+        (await firestore.collection('message_reports').get()).docs,
+        isEmpty,
+      );
+    });
+
+    test('suggests life risk for high-risk text', () {
+      expect(
+        ReportService.suggestedMessageCategory('Quero acabar com a vida'),
+        'LifeRisk',
+      );
+    });
+
+    test('suggests a neutral category for ordinary text', () {
+      expect(
+        ReportService.suggestedMessageCategory('olá tudo bem?'),
+        'Other',
+      );
+    });
+  });
 }
