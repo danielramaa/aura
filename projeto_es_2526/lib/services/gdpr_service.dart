@@ -214,14 +214,25 @@ class GDPRService {
     // 3. The profile document (email link, role, date of birth, FCM token, ...).
     await _firestore.collection('users').doc(uid).delete();
 
-    // 4. The Firebase Auth account, last. Recency was pre-checked above; if it
-    //    still fails for recency, surface it (data is already erased, so the
-    //    caller signs out and a fresh login retries the now-cheap remainder).
+    // 4. The Firebase Auth account, last. Recency was pre-checked above, so this
+    //    should succeed; the handling below covers the residual race where the
+    //    session aged past the recent-login window mid-cascade.
     if (user != null && user.uid == uid) {
       try {
         await user.delete();
       } on FirebaseAuthException catch (e) {
         if (e.code == 'requires-recent-login') {
+          // The delete failed, so we are still authenticated and can write.
+          // Restore a minimal, non-personal deletion marker (all personal data
+          // is already erased) with a past due-date, so the next *fresh* login
+          // re-runs the now-idempotent cascade and re-attempts this delete —
+          // rather than leaving an active Auth account with no profile.
+          await _firestore.collection('users').doc(uid).set({
+            'deletionScheduled': true,
+            'deletionDate': Timestamp.fromDate(
+              DateTime.now().subtract(const Duration(seconds: 1)),
+            ),
+          });
           throw const RecentLoginRequiredException();
         }
         // Other auth errors: personal data is already gone — best effort.
