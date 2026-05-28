@@ -1,7 +1,9 @@
-import 'dart:convert';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+// Conditional import: real filesystem write on mobile/desktop, no-op on web
+// (dart:io is unavailable there, so importing it unconditionally would break
+// `flutter build web`).
+import 'export_file_stub.dart' if (dart.library.io) 'export_file_io.dart';
 
 /// Thrown when account erasure cannot proceed because the user's sign-in is too
 /// old: deleting the Firebase Auth account is a sensitive operation that needs a
@@ -156,12 +158,10 @@ class GDPRService {
     };
   }
 
-  Future<String> writeExportFile(String uid, Map<String, dynamic> data) async {
-    final jsonStr = const JsonEncoder.withIndent('  ').convert(data);
-    final tempDir = Directory.systemTemp;
-    final file = File('${tempDir.path}/export_data_$uid.json');
-    await file.writeAsString(jsonStr, flush: true);
-    return file.path;
+  /// Writes the export to a local JSON file (mobile/desktop) and returns its
+  /// path; on web there is no filesystem, so this is a no-op returning ''.
+  Future<String> writeExportFile(String uid, Map<String, dynamic> data) {
+    return writeExportDataFile(uid, data);
   }
 
   /// Permanently erases the user's personal data and deletes their account.
