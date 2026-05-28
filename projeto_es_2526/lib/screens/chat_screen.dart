@@ -188,6 +188,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _showMessageOptions(BuildContext context, Message message) {
     final isPinned = _controller.isMessagePinned(message.id);
+    final isOwnMessage =
+        message.anonymousId == _controller.anonymousIdentity?.anonymousId;
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -202,21 +204,39 @@ class _ChatScreenState extends State<ChatScreen> {
                 _showEmojiPicker(context, message);
               },
             ),
-            ListTile(
-              leading: Icon(
-                isPinned ? Icons.push_pin_outlined : Icons.push_pin,
-                color: const Color(0xFF185FA5),
+            if (_isModerator)
+              ListTile(
+                leading: Icon(
+                  isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                  color: const Color(0xFF185FA5),
+                ),
+                title: Text(isPinned ? 'Unpin message' : 'Pin message'),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (isPinned) {
+                    _controller.unpinMessage(message.id);
+                  } else {
+                    _controller.pinMessage(message);
+                  }
+                },
               ),
-              title: Text(isPinned ? 'Unpin message' : 'Pin message'),
-              onTap: () {
-                Navigator.pop(context);
-                if (isPinned) {
-                  _controller.unpinMessage(message.id);
-                } else {
-                  _controller.pinMessage(message);
-                }
-              },
-            ),
+            if (!isOwnMessage)
+              ListTile(
+                leading: const Icon(
+                  Icons.report_gmailerrorred_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  'Denunciar mensagem',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!mounted) return;
+                  await _showReportMessageDialog(message);
+                },
+              ),
             if (_currentUserRole == UserRole.admin)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
@@ -324,48 +344,6 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     });
-  }
-
-  Future<void> _showMessageReportOptions(
-    BuildContext context,
-    Message message,
-  ) async {
-    final shouldReport = await showModalBottomSheet<bool>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.message_outlined),
-              title: const Text('Mensagem'),
-              subtitle: Text(
-                message.text,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(
-                Icons.report_gmailerrorred_outlined,
-                color: Colors.red,
-              ),
-              title: const Text(
-                'Denunciar mensagem',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () => Navigator.pop(sheetContext, true),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (!mounted || shouldReport != true) return;
-    await Future<void>.delayed(Duration.zero);
-    if (!mounted) return;
-    await _showReportMessageDialog(message);
   }
 
   Future<void> _showReportMessageDialog(Message message) async {
@@ -768,10 +746,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 _controller.anonymousIdentity?.anonymousId ?? '',
             hasReactionError: _controller.hasReactionError(message.id),
             isRetryingReaction: _controller.isRetryingReaction(message.id),
-            onTap: () => _showMessageReportOptions(context, message),
-            onShowOptions: () => _isModerator
-                ? _showMessageOptions(context, message)
-                : _showEmojiPicker(context, message),
+            onShowOptions: () => _showMessageOptions(context, message),
             onReply: () => _startReply(message),
             onSenderTap: () => _showUserOptions(context, message),
             onToggleReaction: (emoji) =>

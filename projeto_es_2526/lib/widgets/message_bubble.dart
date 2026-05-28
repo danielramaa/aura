@@ -55,10 +55,7 @@ class MessageBubble extends StatelessWidget {
   final bool hasReactionError;
   final bool isRetryingReaction;
 
-  /// Reports the message. Wired to the single-tap gesture.
-  final VoidCallback? onTap;
-
-  /// Opens the options/react menu. Wired to the double-tap gesture.
+  /// Opens the options/react/report menu. Wired to the double-tap gesture.
   final VoidCallback onShowOptions;
 
   /// Starts a reply. Wired to the long-press gesture.
@@ -77,7 +74,6 @@ class MessageBubble extends StatelessWidget {
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
-    this.onTap,
     required this.onShowOptions,
     required this.onReply,
     this.onSenderTap,
@@ -183,7 +179,6 @@ class MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onTap,
       onDoubleTap: onShowOptions,
       onLongPress: onReply,
       child: Align(

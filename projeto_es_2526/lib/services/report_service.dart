@@ -82,7 +82,7 @@ class ReportService implements ReportServiceInterface {
       'automutilação',
       'overdose',
     ];
-    return lifeRiskTerms.any(normalized.contains) ? 'LifeRisk' : 'Spam';
+    return lifeRiskTerms.any(normalized.contains) ? 'LifeRisk' : 'Other';
   }
 
   final FirebaseFirestore _firestore;
@@ -146,13 +146,6 @@ class ReportService implements ReportServiceInterface {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _createAdminNotification(
-        type: 'user_report',
-        reportId: reportRef.id,
-        groupId: groupId,
-        groupName: safeGroupName,
-        description: 'Nova denúncia de utilizador em "$safeGroupName".',
-      );
       return null;
     } on FirebaseException catch (e) {
       debugPrint('Failed to submit user report: ${e.code} ${e.message}');
@@ -190,6 +183,9 @@ class ReportService implements ReportServiceInterface {
     if (messageSenderAnonymousId.isEmpty) {
       return 'Não foi possível identificar o autor da mensagem.';
     }
+    if (messageSenderAnonymousId == reporterIdentity.anonymousId) {
+      return 'Não podes denunciar a tua própria mensagem.';
+    }
     if (trimmedDetails.length > maxDescriptionLength) {
       return 'Os detalhes não podem exceder $maxDescriptionLength caracteres.';
     }
@@ -216,13 +212,6 @@ class ReportService implements ReportServiceInterface {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      await _createAdminNotification(
-        type: 'message_report',
-        reportId: reportRef.id,
-        groupId: groupId,
-        groupName: safeGroupName,
-        description: 'Nova denúncia de mensagem em "$safeGroupName".',
-      );
       return null;
     } on FirebaseException catch (e) {
       debugPrint('Failed to submit message report: ${e.code} ${e.message}');
@@ -232,28 +221,6 @@ class ReportService implements ReportServiceInterface {
       return 'Não foi possível enviar a denúncia (${e.code}). Tenta novamente.';
     } catch (_) {
       return 'Não foi possível enviar a denúncia. Tenta novamente.';
-    }
-  }
-
-  Future<void> _createAdminNotification({
-    required String type,
-    required String reportId,
-    required String groupId,
-    required String groupName,
-    required String description,
-  }) async {
-    try {
-      await _firestore.collection('admin_notifications').add({
-        'type': type,
-        'reportId': reportId,
-        'groupId': groupId,
-        'groupName': groupName,
-        'description': description,
-        'isRead': false,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint('Failed to create admin report notification: $e');
     }
   }
 }

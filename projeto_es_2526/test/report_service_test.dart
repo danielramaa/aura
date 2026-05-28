@@ -106,7 +106,7 @@ void main() {
       service = ReportService(firestore: firestore);
     });
 
-    test('creates a pending message report and admin notification', () async {
+    test('creates a pending message report', () async {
       final err = await service.submitMessageReport(
         groupId: 'g1',
         groupName: 'Apoio',
@@ -133,16 +133,6 @@ void main() {
       );
       expect(reports.docs.first.data()['reporterAnonymousId'], 'anon-reporter');
       expect(reports.docs.first.data().containsKey('reporterUserId'), isFalse);
-
-      final notifications = await firestore
-          .collection('admin_notifications')
-          .get();
-      expect(notifications.docs.length, 1);
-      expect(notifications.docs.first.data()['type'], 'message_report');
-      expect(
-        notifications.docs.first.data()['reportId'],
-        reports.docs.first.id,
-      );
     });
 
     test('rejects unknown message categories', () async {
@@ -166,10 +156,38 @@ void main() {
       );
     });
 
+    test('rejects reporting your own message', () async {
+      final err = await service.submitMessageReport(
+        groupId: 'g1',
+        groupName: 'Apoio',
+        reporterIdentity: makeReporter(),
+        messageId: 'm1',
+        messageText: 'conteúdo problemático',
+        messageSenderAnonymousId: 'anon-reporter',
+        messageSenderNickname: 'BraveOwl7',
+        messageSenderAvatarIndex: 2,
+        category: 'Spam',
+        details: '',
+      );
+
+      expect(err, contains('própria mensagem'));
+      expect(
+        (await firestore.collection('message_reports').get()).docs,
+        isEmpty,
+      );
+    });
+
     test('suggests life risk for high-risk text', () {
       expect(
         ReportService.suggestedMessageCategory('Quero acabar com a vida'),
         'LifeRisk',
+      );
+    });
+
+    test('suggests a neutral category for ordinary text', () {
+      expect(
+        ReportService.suggestedMessageCategory('olá tudo bem?'),
+        'Other',
       );
     });
   });

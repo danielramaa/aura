@@ -204,7 +204,6 @@ void main() {
       tester,
     ) async {
       var tapped = false;
-      var reportTapped = false;
       final message = Message(
         id: 'm1',
         text: 'hello',
@@ -226,7 +225,6 @@ void main() {
               currentAnonymousId: 'anon-current',
               hasReactionError: false,
               isRetryingReaction: false,
-              onTap: () => reportTapped = true,
               onShowOptions: () {},
               onReply: () {},
               onSenderTap: () => tapped = true,
@@ -241,11 +239,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(tapped, isTrue);
-      expect(reportTapped, isFalse);
     });
 
-    testWidgets('tapping a message bubble triggers onTap', (tester) async {
-      var tapped = false;
+    testWidgets('double-tapping a message bubble triggers onShowOptions', (
+      tester,
+    ) async {
+      var optionsShown = false;
       final message = Message(
         id: 'm1',
         text: 'hello',
@@ -265,8 +264,7 @@ void main() {
               currentAnonymousId: 'anon-current',
               hasReactionError: false,
               isRetryingReaction: false,
-              onTap: () => tapped = true,
-              onShowOptions: () {},
+              onShowOptions: () => optionsShown = true,
               onReply: () {},
               onSenderTap: () {},
               onToggleReaction: (_) {},
@@ -276,10 +274,15 @@ void main() {
         ),
       );
 
-      await tester.tap(find.byType(AnimatedContainer));
+      final center = tester.getCenter(find.byType(AnimatedContainer));
+      final firstTap = await tester.startGesture(center);
+      await firstTap.up();
+      await tester.pump(const Duration(milliseconds: 50));
+      final secondTap = await tester.startGesture(center);
+      await secondTap.up();
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(tapped, isTrue);
+      expect(optionsShown, isTrue);
     });
   });
 }
