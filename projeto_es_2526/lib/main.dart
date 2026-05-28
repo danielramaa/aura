@@ -12,6 +12,8 @@ import 'screens/main_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/reaccept_terms_screen.dart';
 import 'services/auth_service.dart';
+import 'services/gdpr_service.dart';
+import 'widgets/deletion_grace_period_gate.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -67,6 +69,7 @@ class AuthGate extends StatefulWidget {
   final MainController? mainController;
   final HomeController? homeController;
   final AuthService? authService;
+  final GDPRService? gdprService;
 
   const AuthGate({
     super.key,
@@ -74,6 +77,7 @@ class AuthGate extends StatefulWidget {
     this.mainController,
     this.homeController,
     this.authService,
+    this.gdprService,
   });
 
   @override
@@ -178,12 +182,16 @@ class _AuthGateState extends State<AuthGate> {
             _homeController =
                 widget.homeController ?? HomeController(userId: uid);
           }
-          return LegalAcceptanceGate(
-            authService: _authService,
+          return DeletionGracePeriodGate(
             userId: uid,
-            child: MainScreen(
-              mainController: _mainController,
-              homeController: _homeController!,
+            gdprService: widget.gdprService,
+            child: LegalAcceptanceGate(
+              authService: _authService,
+              userId: uid,
+              child: MainScreen(
+                mainController: _mainController,
+                homeController: _homeController!,
+              ),
             ),
           );
         }

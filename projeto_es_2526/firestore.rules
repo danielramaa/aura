@@ -200,6 +200,11 @@ service cloud.firestore {
       }
     }
 
+    match /mail/{mailId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
     match /notifications/{notificationId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
