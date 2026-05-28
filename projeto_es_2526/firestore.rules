@@ -61,7 +61,12 @@ service cloud.firestore {
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
-      allow delete: if false;
+      // RGPD erasure: a user may delete their own profile, but only once their
+      // account is actually scheduled for deletion. This keeps the deletion
+      // confined to the grace-period flow (it can't be triggered casually).
+      allow delete: if request.auth != null
+        && request.auth.uid == userId
+        && resource.data.deletionScheduled == true;
 
       match /anonymousIdentities/{groupId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -200,11 +205,6 @@ service cloud.firestore {
       }
     }
 
-    match /mail/{mailId} {
-      allow create: if request.auth != null;
-      allow read, update, delete: if false;
-    }
-
     match /notifications/{notificationId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -253,7 +253,10 @@ service cloud.firestore {
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
-      allow delete: if false;
+      // RGPD erasure: a user may delete their own application (it holds their
+      // email and license number).
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid;
     }
 
     match /{document=**} {

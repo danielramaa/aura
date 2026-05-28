@@ -23,7 +23,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _isExporting = false;
   bool _isDeleting = false;
-  bool _hasSimulatedError = false;
 
   @override
   void initState() {
@@ -108,56 +107,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     setState(() => _isExporting = true);
 
-    // Simulate server network delay
-    await Future.delayed(const Duration(seconds: 1));
-
-    // B3: Simulated Server Error on first attempt
-    if (!_hasSimulatedError) {
-      if (mounted) {
-        setState(() {
-          _isExporting = false;
-          _hasSimulatedError = true;
-        });
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.red),
-                SizedBox(width: 8),
-                Text('Erro de Servidor'),
-              ],
-            ),
-            content: const Text(
-              'Ocorreu um erro interno de servidor ao gerar a exportação dos seus dados.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancelar'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _exportData(); // Retry directly without re-confirming
-                },
-                child: const Text('Tentar Novamente'),
-              ),
-            ],
-          ),
-        );
-      }
-      return;
-    }
-
     try {
       final data = await _gdprService.generateExportData(user.uid);
       final filePath = await _gdprService.writeExportFile(user.uid, data);
-      final email = user.email ?? 'utilizador@exemplo.com';
-      await _gdprService.sendExportConfirmationEmail(
-        email,
-        'https://firebasestorage.googleapis.com/v0/b/mock-download-rgpd',
-      );
 
       // Copy to Clipboard
       final prettyJson = const JsonEncoder.withIndent('  ').convert(data);
@@ -183,7 +135,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Ficheiro guardado localmente em:\n$filePath\n\nEnviámos também um link de descarregamento para o email:\n$email\n\nO conteúdo JSON foi copiado para a sua área de transferência.',
+                  'O conteúdo JSON com os seus dados foi copiado para a área de '
+                  'transferência.\n\nUma cópia foi também guardada no ficheiro:\n$filePath',
                   style: const TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 16),
@@ -204,7 +157,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: SingleChildScrollView(
                     child: Text(
                       prettyJson,
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                      ),
                     ),
                   ),
                 ),
@@ -239,72 +195,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final controller = TextEditingController();
     bool canSubmit = false;
 
-    await showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.red),
-              SizedBox(width: 8),
-              Text('Eliminar Conta'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'A sua conta será desativada e agendada para eliminação permanente em 30 dias. Durante este período, pode cancelar o processo fazendo login novamente.\n\nPara confirmar, escreva "CONFIRMAR" no campo abaixo:',
-                style: TextStyle(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  labelText: 'Confirmação',
-                  border: OutlineInputBorder(),
+    try {
+      await showDialog(
+        context: context,
+        builder: (ctx) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Eliminar Conta'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'A sua conta será desativada e agendada para eliminação permanente em 30 dias. Durante este período, pode cancelar o processo fazendo login novamente.\n\nPara confirmar, escreva "CONFIRMAR" no campo abaixo:',
+                  style: TextStyle(fontSize: 14),
                 ),
-                onChanged: (text) {
-                  setDialogState(() {
-                    canSubmit = text == 'CONFIRMAR';
-                  });
-                },
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirmação',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (text) {
+                    setDialogState(() {
+                      canSubmit = text == 'CONFIRMAR';
+                    });
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: !canSubmit
+                    ? null
+                    : () async {
+                        Navigator.pop(ctx);
+                        _executeDeletion(user);
+                      },
+                child: const Text('Eliminar Conta'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: !canSubmit
-                  ? null
-                  : () async {
-                      Navigator.pop(ctx);
-                      _executeDeletion(user);
-                    },
-              child: const Text('Eliminar Conta'),
-            ),
-          ],
         ),
-      ),
-    );
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 
   Future<void> _executeDeletion(User user) async {
     setState(() => _isDeleting = true);
     try {
-      final email = user.email ?? 'utilizador@exemplo.com';
-      await _gdprService.scheduleAccountDeletion(user.uid, email);
+      await _gdprService.scheduleAccountDeletion(user.uid);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -379,7 +338,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 }),
                 const Divider(height: 32),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
                   child: Text(
                     'Privacidade & RGPD',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -392,9 +354,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.download_rounded, color: Color(0xFF185FA5)),
+                      : const Icon(
+                          Icons.download_rounded,
+                          color: Color(0xFF185FA5),
+                        ),
                   title: const Text('Exportar Dados'),
-                  subtitle: const Text('Descarregar cópia dos seus dados e histórico em JSON'),
+                  subtitle: const Text(
+                    'Descarregar cópia dos seus dados e histórico em JSON',
+                  ),
                   onTap: _isExporting ? null : _exportData,
                 ),
                 ListTile(
@@ -404,9 +371,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.delete_forever_rounded, color: Colors.red),
+                      : const Icon(
+                          Icons.delete_forever_rounded,
+                          color: Colors.red,
+                        ),
                   title: const Text('Eliminar Conta'),
-                  subtitle: const Text('Solicitar a eliminação permanente da sua conta'),
+                  subtitle: const Text(
+                    'Solicitar a eliminação permanente da sua conta',
+                  ),
                   onTap: _isDeleting ? null : _deleteAccount,
                 ),
                 const Divider(height: 32),
