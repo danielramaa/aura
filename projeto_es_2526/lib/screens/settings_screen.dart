@@ -109,7 +109,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     try {
       final data = await _gdprService.generateExportData(user.uid);
-      final filePath = await _gdprService.writeExportFile(user.uid, data);
 
       // Copy to Clipboard
       final prettyJson = const JsonEncoder.withIndent('  ').convert(data);
@@ -134,10 +133,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'O conteúdo JSON com os seus dados foi copiado para a área de '
-                  'transferência.\n\nUma cópia foi também guardada no ficheiro:\n$filePath',
-                  style: const TextStyle(fontSize: 14),
+                const Text(
+                  'O conteúdo JSON com os seus dados e histórico foi copiado '
+                  'para a área de transferência. Pode colá-lo onde quiser para '
+                  'o guardar.',
+                  style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -387,7 +387,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                   title: const Text('Exportar Dados'),
                   subtitle: const Text(
-                    'Descarregar cópia dos seus dados e histórico em JSON',
+                    'Copiar os seus dados e histórico em formato JSON',
                   ),
                   onTap: _isExporting ? null : _exportData,
                 ),

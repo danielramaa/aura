@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -159,17 +158,6 @@ void main() {
         expect(messages.first['groupId'], 'group-abc');
       },
     );
-
-    test('writeExportFile writes JSON locally', () async {
-      final mockData = {'test': 'value'};
-      final path = await service.writeExportFile('user-123', mockData);
-
-      final file = File(path);
-      expect(await file.exists(), isTrue);
-      expect(await file.readAsString(), contains('"test": "value"'));
-
-      await file.delete();
-    });
 
     test('executeAccountDeletion erases profile, identities and apps, and '
         'anonymizes the reverse-lookup link', () async {
