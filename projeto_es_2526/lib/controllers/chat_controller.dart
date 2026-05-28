@@ -10,6 +10,7 @@ import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 import '../services/poll_service.dart';
+import '../services/content_filtering_service.dart';
 
 class ChatController extends ChangeNotifier {
   static const int maxMessageLength = 2000;
@@ -21,6 +22,7 @@ class ChatController extends ChangeNotifier {
 
   late final ChatServiceInterface _chatService;
   late final PollServiceInterface _pollService;
+  late final ContentFilteringService _filteringService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
   String? _groupName;
@@ -62,11 +64,13 @@ class ChatController extends ChangeNotifier {
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
     PollServiceInterface? pollService,
+    ContentFilteringService? filteringService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     _pollService = pollService ?? PollService(firestore: _firestore);
+    _filteringService = filteringService ?? ContentFilteringService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
         .doc(groupId)
@@ -118,6 +122,10 @@ class ChatController extends ChangeNotifier {
       _reactionErrors.containsKey(messageId);
   bool isRetryingReaction(String messageId) =>
       _reactionRetrying.contains(messageId);
+
+  FilteringResult checkMessage(String text) {
+    return _filteringService.filterContent(text);
+  }
 
   // ---------------------------------------------------------------------------
   // Typing

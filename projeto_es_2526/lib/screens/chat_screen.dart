@@ -16,6 +16,7 @@ import '../widgets/message_bubble.dart';
 import '../widgets/medications_dialog.dart';
 import '../widgets/pinned_messages_banner.dart';
 import '../widgets/poll_bubble.dart';
+import '../widgets/content_warning_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   final String groupId;
@@ -398,12 +399,28 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final text = _messageController.text;
-    if (text.trim().isEmpty) return;
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    final filterResult = _controller.checkMessage(text);
+    String textToSend = text;
+
+    if (filterResult.isFlagged) {
+      final shouldSendCensored = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => ContentWarningDialog(result: filterResult),
+      );
+
+      if (shouldSendCensored == true) {
+        textToSend = filterResult.filteredText;
+      } else {
+        return; // user chose to rewrite, do not clear text field
+      }
+    }
 
     try {
       await _controller.send(
-        text,
+        textToSend,
         replyToText: _replyingTo?.text,
         senderRole: _currentUserRole,
       );
