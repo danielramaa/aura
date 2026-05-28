@@ -52,8 +52,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSearchOpen = false;
   String? _highlightedMessageId;
 
-  // Per-message keys so scroll-to-message can use Scrollable.ensureVisible for
-  // precise, correctly-aligned positioning despite variable-height bubbles.
   final Map<String, GlobalKey> _messageKeys = {};
 
   GlobalKey _keyForMessage(String messageId) =>
@@ -143,12 +141,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final context = _messageKeys[messageId]?.currentContext;
     if (context != null) {
-      // Already built and laid out: position it precisely.
       _ensureMessageVisible(messageId);
     } else if (_scrollController.hasClients) {
-      // Off-screen in the lazy builder, so its context doesn't exist yet.
-      // Jump to an approximate offset to bring it into the build window, then
-      // refine on the next frame once the item has been laid out.
       final maxExtent = _scrollController.position.maxScrollExtent;
       final target = maxExtent * (index / messages.length);
       _scrollController
@@ -167,9 +161,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  /// Brings the message into view with correct alignment, using the per-item
-  /// key. No-op if the item still isn't built (target far outside the range
-  /// the approximate jump reached).
   void _ensureMessageVisible(String messageId) {
     if (!mounted) return;
     final context = _messageKeys[messageId]?.currentContext;
@@ -183,8 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool get _isModerator =>
-      _currentUserRole == UserRole.admin ||
-      _currentUserRole == UserRole.medic;
+      _currentUserRole == UserRole.admin || _currentUserRole == UserRole.medic;
 
   void _showMessageOptions(BuildContext context, Message message) {
     final isPinned = _controller.isMessagePinned(message.id);
@@ -198,7 +188,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.emoji_emotions_outlined),
-              title: const Text('React'),
+              title: const Text('Reagir'),
               onTap: () {
                 Navigator.pop(sheetContext);
                 _showEmojiPicker(context, message);
@@ -210,7 +200,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   isPinned ? Icons.push_pin_outlined : Icons.push_pin,
                   color: const Color(0xFF185FA5),
                 ),
-                title: Text(isPinned ? 'Unpin message' : 'Pin message'),
+                title: Text(isPinned ? 'Desfixar mensagem' : 'Fixar mensagem'),
                 onTap: () {
                   Navigator.pop(context);
                   if (isPinned) {
@@ -241,7 +231,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
-                  'Delete message',
+                  'Eliminar mensagem',
                   style: TextStyle(color: Colors.red),
                 ),
                 onTap: () {
@@ -272,7 +262,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 36,
               ),
               title: Text(message.senderNickname),
-              subtitle: Text(widget.groupName),
+              subtitle: FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('anonymousIdentities')
+                    .doc(message.anonymousId)
+                    .get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Text('${widget.groupName} • a carregar...');
+                  }
+                  int totalKudos = 0;
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data() as Map<String, dynamic>?;
+                    totalKudos = data?['totalKudos'] ?? 0;
+                  }
+                  return Text('${widget.groupName} • ⭐ $totalKudos Kudos');
+                },
+              ),
             ),
             const Divider(height: 1),
             ListTile(
@@ -303,9 +309,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final screenContext = context;
     final messenger = ScaffoldMessenger.of(screenContext);
 
-    // Guard before opening the form: if we no longer have a session-bound
-    // identity, fail fast with a snackbar instead of letting the user fill in
-    // a form whose submission is guaranteed to be rejected.
     if (_controller.anonymousIdentity == null) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Não está conectado à sala.')),
@@ -338,9 +341,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            result.error ?? 'Denúncia enviada com sucesso.',
-          ),
+          content: Text(result.error ?? 'Denúncia enviada com sucesso.'),
         ),
       );
     });
@@ -447,9 +448,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _closeSearch();
-    // Defer until the search panel is gone so the list has its final height
-    // before _scrollToMessage reads scroll offsets. It handles the precise
-    // key-based positioning and the highlight pulse.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _scrollToMessage(messageId);
     });
@@ -460,7 +458,6 @@ class _ChatScreenState extends State<ChatScreen> {
       await _controller.leaveGroup();
       return true;
     } catch (e) {
-      debugPrint('Error leaving group: $e');
       return false;
     }
   }
@@ -474,16 +471,16 @@ class _ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text(
-            'Leave Group',
+            'Sair do Grupo',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: const Text(
-            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            'Tem a certeza que deseja sair desta conversa? Deixará de receber notificações deste grupo.',
             style: TextStyle(color: Colors.black87),
           ),
           actions: [
             TextButton(
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
@@ -492,7 +489,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                'Leave',
+                'Sair',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -503,7 +500,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Leaving group...'),
+                    content: Text('A sair do grupo...'),
                     duration: Duration(seconds: 1),
                   ),
                 );
@@ -516,10 +513,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Failed to leave group.'),
+                      content: const Text('Não foi possível sair do grupo.'),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
-                        label: 'Try Again',
+                        label: 'Tentar Novamente',
                         textColor: Colors.white,
                         onPressed: () async {
                           final retry = await _processLeaveGroup();
@@ -590,7 +587,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             Text(
-              '${widget.memberCount} members',
+              '${widget.memberCount} membros',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
@@ -607,7 +604,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.medical_services_outlined),
-            tooltip: 'Medications',
+            tooltip: 'Medicação',
             onPressed: () {
               showDialog(
                 context: context,
@@ -633,13 +630,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         _showLeaveConfirmation(context);
                       },
                       child: const Text(
-                        'Leave Group',
+                        'Sair do Grupo',
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(infoContext),
-                      child: const Text('Close'),
+                      child: const Text('Fechar'),
                     ),
                   ],
                 ),
@@ -657,21 +654,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
           if (_controller.error != null &&
               _controller.anonymousIdentity == null) {
-            return Center(
+            return const Center(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(20.0),
                 child: Text(
                   'Não foi possível carregar o chat. Tente novamente mais tarde.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                  style: TextStyle(color: Colors.red, fontSize: 14),
                 ),
               ),
             );
           }
 
-          // While searching, the panel takes over the body so its result list
-          // is the only flexible child — stacking it above the message list
-          // overflowed once the keyboard shrank the available height.
           if (_isSearchOpen) {
             return Column(children: [Expanded(child: _buildSearchPanel())]);
           }
@@ -752,6 +746,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onToggleReaction: (emoji) =>
                 _controller.toggleReaction(message.id, emoji),
             onRetryReaction: () => _controller.retryReaction(message.id),
+            onToggleKudos: () => _controller.toggleKudos(message),
           ),
         );
       },
@@ -973,8 +968,8 @@ class _ChatScreenState extends State<ChatScreen> {
         final names = snapshot.data ?? [];
         if (names.isEmpty) return const SizedBox.shrink();
         final label = names.length == 1
-            ? '${names.first} is typing...'
-            : '${names.join(', ')} are typing...';
+            ? '${names.first} está a escrever...'
+            : '${names.join(', ')} estão a escrever...';
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
@@ -1082,7 +1077,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.poll_outlined),
             color: const Color(0xFF185FA5),
-            tooltip: 'Create poll',
+            tooltip: 'Criar sondagem',
             onPressed: isSending ? null : _showCreatePollSheet,
           ),
           Expanded(
@@ -1117,10 +1112,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-/// Outcome of the report dialog. `null` (no value passed to `Navigator.pop`)
-/// means the user cancelled; a non-null value means the user submitted, and
-/// `error` is null on success or the error message on failure. Using a typed
-/// result avoids the previous overloaded `null` / `''` / `String` convention.
 class _ReportDialogResult {
   final String? error;
   const _ReportDialogResult({this.error});
@@ -1215,7 +1206,7 @@ class _ReportUserDialogState extends State<_ReportUserDialog> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Escreve um motivo.';
+                  return 'Escreva um motivo.';
                 }
                 return null;
               },
