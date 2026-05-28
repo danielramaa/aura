@@ -263,15 +263,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _executeDeletion(User user) async {
     setState(() => _isDeleting = true);
     try {
-      await _gdprService.scheduleAccountDeletion(user.uid);
+      final deletionDate = await _gdprService.scheduleAccountDeletion(user.uid);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Conta agendada para eliminação (período de carência de 30 dias iniciado).',
+        final dateStr =
+            '${deletionDate.day.toString().padLeft(2, '0')}/'
+            '${deletionDate.month.toString().padLeft(2, '0')}/'
+            '${deletionDate.year}';
+        // In-app confirmation of the grace period and how to cancel (the free
+        // plan can't send a confirmation email). Modal so the user must
+        // acknowledge it before being signed out.
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            backgroundColor: Colors.orange,
+            title: const Row(
+              children: [
+                Icon(Icons.schedule_rounded, color: Colors.orange),
+                SizedBox(width: 8),
+                Expanded(child: Text('Eliminação Agendada')),
+              ],
+            ),
+            content: Text(
+              'A sua conta foi agendada para eliminação permanente em $dateStr '
+              '(período de carência de 30 dias).\n\n'
+              'Para cancelar, basta iniciar sessão novamente antes dessa data — '
+              'a sua conta será reativada automaticamente.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Compreendi'),
+              ),
+            ],
           ),
         );
         await AuthService().logout();

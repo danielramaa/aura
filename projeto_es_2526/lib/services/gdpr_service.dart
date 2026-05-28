@@ -43,9 +43,12 @@ class GDPRService {
   /// rejects it with `requires-recent-login`.
   static const Duration _recentLoginWindow = Duration(minutes: 5);
 
-  /// Marks the account for deletion and starts the 30-day grace period. The
-  /// account is not touched yet; erasure happens once the grace period expires.
-  Future<void> scheduleAccountDeletion(String uid) async {
+  /// Marks the account for deletion and starts the 30-day grace period, and
+  /// returns the date permanent deletion will occur. The account is not touched
+  /// yet; erasure happens once the grace period expires. The caller is expected
+  /// to confirm the date and cancellation steps to the user in-app (the free
+  /// plan can't send a confirmation email).
+  Future<DateTime> scheduleAccountDeletion(String uid) async {
     final deletionDate = DateTime.now().add(gracePeriod);
 
     await _firestore.collection('users').doc(uid).update({
@@ -53,6 +56,8 @@ class GDPRService {
       'deletionScheduledAt': FieldValue.serverTimestamp(),
       'deletionDate': Timestamp.fromDate(deletionDate),
     });
+
+    return deletionDate;
   }
 
   /// Cancels a pending deletion, reactivating the account.

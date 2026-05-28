@@ -40,7 +40,13 @@ void main() {
           'role': 'user',
         });
 
-        await service.scheduleAccountDeletion('user-123');
+        final returnedDate = await service.scheduleAccountDeletion('user-123');
+
+        // Returns the deletion date ~30 days out, for in-app confirmation.
+        expect(
+          returnedDate.isAfter(DateTime.now().add(const Duration(days: 29))),
+          isTrue,
+        );
 
         final userDoc = await firestore
             .collection('users')
