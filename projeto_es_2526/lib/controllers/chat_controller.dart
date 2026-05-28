@@ -10,6 +10,7 @@ import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 import '../services/poll_service.dart';
+import '../services/report_service.dart';
 
 class ChatController extends ChangeNotifier {
   static const int maxMessageLength = 2000;
@@ -21,6 +22,7 @@ class ChatController extends ChangeNotifier {
 
   late final ChatServiceInterface _chatService;
   late final PollServiceInterface _pollService;
+  late final ReportServiceInterface _reportService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
   String? _groupName;
@@ -62,11 +64,13 @@ class ChatController extends ChangeNotifier {
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
     PollServiceInterface? pollService,
+    ReportServiceInterface? reportService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     _pollService = pollService ?? PollService(firestore: _firestore);
+    _reportService = reportService ?? ReportService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
         .doc(groupId)
@@ -446,6 +450,32 @@ class ChatController extends ChangeNotifier {
       question: question,
       optionTexts: options,
       identity: identity,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reports
+  // ---------------------------------------------------------------------------
+
+  Future<String?> reportUser({
+    required Message reportedMessage,
+    required String category,
+    required String reason,
+    String description = '',
+  }) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Não está conectado à sala.';
+
+    return _reportService.submitUserReport(
+      groupId: groupId,
+      groupName: _groupName ?? 'Community',
+      reporterIdentity: identity,
+      reportedAnonymousId: reportedMessage.anonymousId,
+      reportedNickname: reportedMessage.senderNickname,
+      reportedAvatarIndex: reportedMessage.senderAvatarIndex,
+      category: category,
+      reason: reason,
+      description: description,
     );
   }
 

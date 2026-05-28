@@ -8,6 +8,7 @@ import '../controllers/chat_controller.dart';
 import '../models/message.dart';
 import '../models/message_search_result.dart';
 import '../models/user_role.dart';
+import '../services/report_service.dart';
 import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
 import '../widgets/create_poll_sheet.dart';
@@ -189,7 +190,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final isPinned = _controller.isMessagePinned(message.id);
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -197,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> {
               leading: const Icon(Icons.emoji_emotions_outlined),
               title: const Text('React'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 _showEmojiPicker(context, message);
               },
             ),
@@ -232,6 +233,97 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showUserOptions(BuildContext context, Message message) async {
+    if (message.anonymousId == _controller.anonymousIdentity?.anonymousId) {
+      return;
+    }
+
+    final shouldReport = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: AvatarUtils.buildAvatarFromAsset(
+                message.senderAvatarAssetPath,
+                36,
+              ),
+              title: Text(message.senderNickname),
+              subtitle: Text(widget.groupName),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(
+                Icons.report_gmailerrorred_outlined,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Denunciar utilizador',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext, true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || shouldReport != true) return;
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _showReportUserDialog(message);
+  }
+
+  Future<void> _showReportUserDialog(Message message) async {
+    final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
+
+    // Guard before opening the form: if we no longer have a session-bound
+    // identity, fail fast with a snackbar instead of letting the user fill in
+    // a form whose submission is guaranteed to be rejected.
+    if (_controller.anonymousIdentity == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não está conectado à sala.')),
+      );
+      return;
+    }
+
+    final result = await showDialog<_ReportDialogResult>(
+      context: screenContext,
+      builder: (_) => _ReportUserDialog(
+        reportedNickname: message.senderNickname,
+        onSubmit:
+            ({
+              required String category,
+              required String reason,
+              required String description,
+            }) {
+              return _controller.reportUser(
+                reportedMessage: message,
+                category: category,
+                reason: reason,
+                description: description,
+              );
+            },
+      ),
+    );
+
+    if (!mounted || result == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.error ?? 'Denúncia enviada com sucesso.',
+          ),
+        ),
+      );
+    });
   }
 
   void _showEmojiPicker(BuildContext context, Message message) {
@@ -608,6 +700,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ? _showMessageOptions(context, message)
                 : _showEmojiPicker(context, message),
             onReply: () => _startReply(message),
+            onSenderTap: () => _showUserOptions(context, message),
             onToggleReaction: (emoji) =>
                 _controller.toggleReaction(message.id, emoji),
             onRetryReaction: () => _controller.retryReaction(message.id),
@@ -972,6 +1065,149 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Outcome of the report dialog. `null` (no value passed to `Navigator.pop`)
+/// means the user cancelled; a non-null value means the user submitted, and
+/// `error` is null on success or the error message on failure. Using a typed
+/// result avoids the previous overloaded `null` / `''` / `String` convention.
+class _ReportDialogResult {
+  final String? error;
+  const _ReportDialogResult({this.error});
+}
+
+class _ReportUserDialog extends StatefulWidget {
+  final String reportedNickname;
+  final Future<String?> Function({
+    required String category,
+    required String reason,
+    required String description,
+  })
+  onSubmit;
+
+  const _ReportUserDialog({
+    required this.reportedNickname,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportUserDialog> createState() => _ReportUserDialogState();
+}
+
+class _ReportUserDialogState extends State<_ReportUserDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _reasonController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  String _selectedCategory = ReportService.userReportCategories.first;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final err = await widget.onSubmit(
+      category: _selectedCategory,
+      reason: _reasonController.text,
+      description: _descriptionController.text,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).pop(_ReportDialogResult(error: err));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Denunciar ${widget.reportedNickname}'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              decoration: const InputDecoration(
+                labelText: 'Categoria',
+                border: OutlineInputBorder(),
+              ),
+              items: ReportService.userReportCategories
+                  .map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(ReportService.labelForCategory(category)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => _selectedCategory = value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _reasonController,
+              enabled: !_isSubmitting,
+              maxLength: ReportService.maxReasonLength,
+              decoration: const InputDecoration(
+                labelText: 'Motivo',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Escreve um motivo.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descriptionController,
+              enabled: !_isSubmitting,
+              minLines: 3,
+              maxLines: 5,
+              maxLength: ReportService.maxDescriptionLength,
+              decoration: const InputDecoration(
+                labelText: 'Descrição ou evidência',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[50],
+            foregroundColor: Colors.red,
+            elevation: 0,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Enviar denúncia'),
+        ),
+      ],
     );
   }
 }
