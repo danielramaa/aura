@@ -190,7 +190,17 @@ class GDPRService {
     }
 
     final userSnap = await _firestore.collection('users').doc(uid).get();
-    final isMedic = userSnap.data()?['role'] == 'medic';
+    final userData = userSnap.data();
+    // Guard: never start irreversible cleanup unless the account is actually
+    // scheduled for deletion. The caller (the gate) already ensures this, but
+    // the permissive identity/artifact rules would let a mistaken early call
+    // shred group membership before the profile delete is rejected.
+    if (userData?['deletionScheduled'] != true) {
+      throw StateError(
+        'Account deletion must be scheduled before it can be executed.',
+      );
+    }
+    final isMedic = userData?['role'] == 'medic';
 
     // 1. Per-group cleanup. Groups are independent, so process them in
     //    parallel; the steps *within* a group stay ordered.

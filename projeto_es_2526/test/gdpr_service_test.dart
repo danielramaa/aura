@@ -331,6 +331,38 @@ void main() {
       },
     );
 
+    test('executeAccountDeletion aborts and erases nothing when the account is '
+        'not scheduled for deletion', () async {
+      await firestore.collection('users').doc('user-123').set({'role': 'user'});
+      await firestore
+          .collection('users')
+          .doc('user-123')
+          .collection('anonymousIdentities')
+          .doc('group-abc')
+          .set({'anonymousId': 'anon-456'});
+
+      await expectLater(
+        service.executeAccountDeletion('user-123'),
+        throwsA(isA<StateError>()),
+      );
+
+      // Profile and identity untouched.
+      expect(
+        (await firestore.collection('users').doc('user-123').get()).exists,
+        isTrue,
+      );
+      expect(
+        (await firestore
+                .collection('users')
+                .doc('user-123')
+                .collection('anonymousIdentities')
+                .doc('group-abc')
+                .get())
+            .exists,
+        isTrue,
+      );
+    });
+
     test('getScheduledDeletionDate falls back to a future date when the stored '
         'date is missing', () async {
       await firestore.collection('users').doc('user-123').set({
