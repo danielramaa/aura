@@ -150,9 +150,16 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _clearDeviceToken(String uid) async {
-    await FirebaseFirestore.instance.collection('users').doc(uid).set({
-      'fcmToken': FieldValue.delete(),
-    }, SetOptions(merge: true));
+    // Use update (not set-merge) so this can never recreate the user document:
+    // on sign-out right after RGPD account deletion the doc is already gone, and
+    // a set-merge would resurrect it as an empty ghost record.
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).update({
+        'fcmToken': FieldValue.delete(),
+      });
+    } on FirebaseException catch (e) {
+      if (e.code != 'not-found') rethrow;
+    }
   }
 
   @override
