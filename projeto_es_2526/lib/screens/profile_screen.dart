@@ -4,6 +4,7 @@ import '../models/user_role.dart';
 import '../widgets/edit_profile_dialog.dart';
 import '../widgets/role_badge.dart';
 import 'admin_applications_screen.dart';
+import 'admin_reports_screen.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -215,6 +216,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AdminApplicationsScreen()),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF185FA5),
+              foregroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton.icon(
+            icon: const Icon(Icons.report_gmailerrorred_outlined),
+            label: const Text('Denúncias'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => AdminReportsScreen()),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF185FA5),

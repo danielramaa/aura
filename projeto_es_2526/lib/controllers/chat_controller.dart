@@ -4,10 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/message_search_result.dart';
+import '../models/pinned_message.dart';
 import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 import '../services/poll_service.dart';
+import '../services/report_service.dart';
 
 class ChatController extends ChangeNotifier {
   static const int maxMessageLength = 2000;
@@ -19,20 +22,32 @@ class ChatController extends ChangeNotifier {
 
   late final ChatServiceInterface _chatService;
   late final PollServiceInterface _pollService;
+  late final ReportServiceInterface _reportService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
   String? _groupName;
 
   List<Message> _messages = [];
+  List<MessageSearchResult> _searchResults = [];
+  List<PinnedMessage> _pinnedMessages = [];
+  // Mirror of the pinned message ids for O(1) isMessagePinned lookups, which
+  // run once per bubble on every list rebuild.
+  Set<String> _pinnedMessageIds = {};
   List<String> _roomNicknames = [];
   Set<String> _medicAnonymousIds = {};
   StreamSubscription? _messagesSubscription;
+  StreamSubscription? _pinnedMessagesSubscription;
   StreamSubscription? _medicSub;
 
   bool _isDisposed = false;
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isSearchingMessages = false;
+  bool _hasMoreSearchResults = false;
   String? _error;
+  String? _searchError;
+  String _messageSearchQuery = '';
+  DocumentSnapshot<Map<String, dynamic>>? _lastSearchDocument;
 
   Timer? _typingTimer;
   bool _isTyping = false;
@@ -48,11 +63,13 @@ class ChatController extends ChangeNotifier {
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
     PollServiceInterface? pollService,
+    ReportServiceInterface? reportService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     _pollService = pollService ?? PollService(firestore: _firestore);
+    _reportService = reportService ?? ReportService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
         .doc(groupId)
@@ -84,11 +101,17 @@ class ChatController extends ChangeNotifier {
 
   
   List<Message> get messages => _messages;
+  List<MessageSearchResult> get searchResults => _searchResults;
+  List<PinnedMessage> get pinnedMessages => _pinnedMessages;
   List<String> get roomNicknames => _roomNicknames;
   Set<String> get medicAnonymousIds => _medicAnonymousIds;
   bool get isLoading => _isLoading;
   bool get isSending => _isSending;
+  bool get isSearchingMessages => _isSearchingMessages;
+  bool get hasMoreSearchResults => _hasMoreSearchResults;
   String? get error => _error;
+  String? get searchError => _searchError;
+  String get messageSearchQuery => _messageSearchQuery;
   AnonymousIdentity? get anonymousIdentity => _anonymousIdentity;
 
   bool hasReactionError(String messageId) =>
@@ -180,6 +203,24 @@ class ChatController extends ChangeNotifier {
               notifyListeners();
             },
           );
+
+      _pinnedMessagesSubscription = _chatService
+          .streamPinnedMessages(groupId)
+          .listen(
+            (pinned) {
+              if (_isDisposed) return;
+              _pinnedMessages = pinned;
+              _pinnedMessageIds = pinned.map((p) => p.messageId).toSet();
+              notifyListeners();
+            },
+            onError: (e) {
+              if (_isDisposed) return;
+              _error = "Não foi possível carregar as mensagens fixadas.";
+              _pinnedMessages = [];
+              _pinnedMessageIds = {};
+              notifyListeners();
+            },
+          );
     } catch (e) {
       if (_isDisposed) return;
       _error = "Não foi possível inicializar o chat.";
@@ -227,7 +268,105 @@ class ChatController extends ChangeNotifier {
     await _identityService.leaveGroup(userId, groupId);
   }
 
+  // ---------------------------------------------------------------------------
+  // Message search
+  // ---------------------------------------------------------------------------
 
+  Future<void> searchMessages(String query) async {
+    final trimmed = query.trim();
+    _messageSearchQuery = trimmed;
+    _searchResults = [];
+    _lastSearchDocument = null;
+    _hasMoreSearchResults = false;
+    _searchError = null;
+
+    if (trimmed.isEmpty) {
+      _isSearchingMessages = false;
+      notifyListeners();
+      return;
+    }
+
+    _isSearchingMessages = true;
+    notifyListeners();
+
+    try {
+      final page = await _chatService.searchMessages(
+        groupId: groupId,
+        query: trimmed,
+      );
+      if (_isDisposed) return;
+      if (_messageSearchQuery != trimmed) return;
+
+      _searchResults = page.results;
+      _lastSearchDocument = page.lastDocument;
+      _hasMoreSearchResults = page.hasMore;
+    } catch (_) {
+      if (_isDisposed) return;
+      if (_messageSearchQuery != trimmed) return;
+      _searchError = 'Não foi possível pesquisar mensagens.';
+    } finally {
+      if (!_isDisposed && _messageSearchQuery == trimmed) {
+        _isSearchingMessages = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  Future<void> loadMoreSearchResults() async {
+    if (_messageSearchQuery.isEmpty ||
+        _isSearchingMessages ||
+        !_hasMoreSearchResults) {
+      return;
+    }
+
+    final query = _messageSearchQuery;
+    final startAfter = _lastSearchDocument;
+
+    _isSearchingMessages = true;
+    _searchError = null;
+    notifyListeners();
+
+    try {
+      final page = await _chatService.searchMessages(
+        groupId: groupId,
+        query: query,
+        startAfter: startAfter,
+      );
+      if (_isDisposed) return;
+      if (_messageSearchQuery != query || _messageSearchQuery.isEmpty) return;
+
+      _searchResults = [..._searchResults, ...page.results];
+      _lastSearchDocument = page.lastDocument;
+      _hasMoreSearchResults = page.hasMore;
+    } catch (_) {
+      if (_isDisposed) return;
+      if (_messageSearchQuery != query) return;
+      _searchError = 'Não foi possível carregar mensagens antigas.';
+    } finally {
+      if (!_isDisposed && _messageSearchQuery == query) {
+        _isSearchingMessages = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void clearMessageSearch() {
+    _messageSearchQuery = '';
+    _searchResults = [];
+    _lastSearchDocument = null;
+    _hasMoreSearchResults = false;
+    _searchError = null;
+    _isSearchingMessages = false;
+    notifyListeners();
+  }
+
+  int indexOfMessage(String messageId) {
+    return _messages.indexWhere((message) => message.id == messageId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Send
+  // ---------------------------------------------------------------------------
 
   Future<void> send(
     String text, {
@@ -299,7 +438,57 @@ class ChatController extends ChangeNotifier {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Reports
+  // ---------------------------------------------------------------------------
 
+  Future<String?> reportUser({
+    required Message reportedMessage,
+    required String category,
+    required String reason,
+    String description = '',
+  }) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Não está conectado à sala.';
+
+    return _reportService.submitUserReport(
+      groupId: groupId,
+      groupName: _groupName ?? 'Community',
+      reporterIdentity: identity,
+      reportedAnonymousId: reportedMessage.anonymousId,
+      reportedNickname: reportedMessage.senderNickname,
+      reportedAvatarIndex: reportedMessage.senderAvatarIndex,
+      category: category,
+      reason: reason,
+      description: description,
+    );
+  }
+
+  Future<String?> reportMessage({
+    required Message message,
+    required String category,
+    String details = '',
+  }) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Não está conectado à sala.';
+
+    return _reportService.submitMessageReport(
+      groupId: groupId,
+      groupName: _groupName ?? 'Comunidade',
+      reporterIdentity: identity,
+      messageId: message.id,
+      messageText: message.text,
+      messageSenderAnonymousId: message.anonymousId,
+      messageSenderNickname: message.senderNickname,
+      messageSenderAvatarIndex: message.senderAvatarIndex,
+      category: category,
+      details: details,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reactions
+  // ---------------------------------------------------------------------------
 
   Future<void> toggleReaction(String messageId, String emoji) async {
     final identity = _anonymousIdentity;
@@ -342,6 +531,31 @@ class ChatController extends ChangeNotifier {
 
   Future<void> deleteMessage(String messageId) async {
     final err = await _chatService.deleteMessage(
+      groupId: groupId,
+      messageId: messageId,
+    );
+    if (err != null && !_isDisposed) {
+      _error = err;
+      notifyListeners();
+    }
+  }
+
+  bool isMessagePinned(String messageId) =>
+      _pinnedMessageIds.contains(messageId);
+
+  Future<void> pinMessage(Message message) async {
+    final err = await _chatService.pinMessage(
+      groupId: groupId,
+      message: message,
+    );
+    if (err != null && !_isDisposed) {
+      _error = err;
+      notifyListeners();
+    }
+  }
+
+  Future<void> unpinMessage(String messageId) async {
+    final err = await _chatService.unpinMessage(
       groupId: groupId,
       messageId: messageId,
     );
@@ -418,6 +632,7 @@ class ChatController extends ChangeNotifier {
     _typingTimer?.cancel();
     _clearTypingStatus();
     _messagesSubscription?.cancel();
+    _pinnedMessagesSubscription?.cancel();
     _medicSub?.cancel();
     super.dispose();
   }

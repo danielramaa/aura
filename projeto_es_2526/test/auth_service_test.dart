@@ -1,9 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:projeto_es_2526/models/legal_document.dart';
 import 'package:projeto_es_2526/models/user_role.dart';
 import 'package:projeto_es_2526/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// A date of birth for someone [years] old today.
+DateTime ageInYears(int years) {
+  final today = DateTime.now();
+  return DateTime(today.year - years, today.month, today.day);
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +64,8 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        dateOfBirth: ageInYears(20),
+        acceptedTerms: true,
       );
       expect(credential.user, isNotNull);
       expect(auth.currentUser, isNotNull);
@@ -70,6 +80,8 @@ void main() {
       final credential = await service.register(
         'new@example.com',
         'password123',
+        dateOfBirth: ageInYears(20),
+        acceptedTerms: true,
       );
 
       final uid = credential.user!.uid;
@@ -108,13 +120,194 @@ void main() {
       final sub = service.authStateChanges.listen(
         (user) => states.add(user != null),
       );
-      await service.register('a@b.com', 'password123');
+      await service.register(
+        'a@b.com',
+        'password123',
+        dateOfBirth: ageInYears(20),
+        acceptedTerms: true,
+      );
       await Future.delayed(Duration.zero);
       await service.logout();
       await Future.delayed(Duration.zero);
       await sub.cancel();
       expect(states, contains(true));
       expect(states, contains(false));
+    });
+  });
+
+  group('AuthService — registration compliance', () {
+    test('stores acceptance timestamp and document versions when accepted',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+        dateOfBirth: ageInYears(20),
+        acceptedTerms: true,
+      );
+
+      final data =
+          (await firestore.collection('users').doc(credential.user!.uid).get())
+              .data()!;
+      expect(data['termsAccepted'], isTrue);
+      expect(data['termsAcceptedAt'], isNotNull);
+      expect(data['termsVersion'], LegalDocuments.termsVersion);
+      expect(data['privacyPolicyVersion'], LegalDocuments.privacyPolicyVersion);
+    });
+
+    test('rejects registration when terms are not accepted', () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      await expectLater(
+        service.register(
+          'new@example.com',
+          'password123',
+          dateOfBirth: ageInYears(20),
+          acceptedTerms: false,
+        ),
+        throwsArgumentError,
+      );
+      expect(auth.currentUser, isNull);
+      final users = await firestore.collection('users').get();
+      expect(users.docs, isEmpty);
+    });
+
+    test('stores date of birth and verification timestamp when provided',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+      final dob = ageInYears(20);
+
+      final credential = await service.register(
+        'new@example.com',
+        'password123',
+        dateOfBirth: dob,
+        acceptedTerms: true,
+      );
+
+      final data =
+          (await firestore.collection('users').doc(credential.user!.uid).get())
+              .data()!;
+      expect((data['dateOfBirth'] as Timestamp).toDate(), dob);
+      expect(data['ageVerifiedAt'], isNotNull);
+    });
+
+    test('allows registration for someone exactly at the minimum age',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      await expectLater(
+        service.register(
+          'new@example.com',
+          'password123',
+          dateOfBirth: ageInYears(13),
+          acceptedTerms: true,
+        ),
+        completes,
+      );
+    });
+
+    test('rejects an under-age date of birth without creating an account',
+        () async {
+      final auth = MockFirebaseAuth(
+        mockUser: MockUser(uid: 'u1', email: 'new@example.com'),
+      );
+      final service = AuthService(auth: auth, firestore: firestore);
+
+      await expectLater(
+        service.register(
+          'new@example.com',
+          'password123',
+          dateOfBirth: ageInYears(10),
+          acceptedTerms: true,
+        ),
+        throwsArgumentError,
+      );
+      expect(auth.currentUser, isNull);
+      final users = await firestore.collection('users').get();
+      expect(users.docs, isEmpty);
+    });
+  });
+
+  group('AuthService — legal re-acceptance', () {
+    AuthService serviceFor(FakeFirebaseFirestore store) =>
+        AuthService(auth: MockFirebaseAuth(), firestore: store);
+
+    Future<void> seedUser(
+      FakeFirebaseFirestore store, {
+      Object? termsVersion,
+      Object? privacyVersion,
+    }) async {
+      await store.collection('users').doc('u1').set({
+        'termsVersion': ?termsVersion,
+        'privacyPolicyVersion': ?privacyVersion,
+      });
+    }
+
+    test('returns false when stored versions match the current ones', () async {
+      await seedUser(
+        firestore,
+        termsVersion: LegalDocuments.termsVersion,
+        privacyVersion: LegalDocuments.privacyPolicyVersion,
+      );
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isFalse);
+    });
+
+    test('returns true when the terms version is outdated', () async {
+      await seedUser(
+        firestore,
+        termsVersion: '0.0',
+        privacyVersion: LegalDocuments.privacyPolicyVersion,
+      );
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isTrue);
+    });
+
+    test('returns true when the privacy policy version is outdated', () async {
+      await seedUser(
+        firestore,
+        termsVersion: LegalDocuments.termsVersion,
+        privacyVersion: '0.0',
+      );
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isTrue);
+    });
+
+    test('returns true for a legacy user missing the version fields', () async {
+      await seedUser(firestore);
+      expect(await serviceFor(firestore).needsLegalReacceptance('u1'), isTrue);
+    });
+
+    test('returns false when the user document does not exist', () async {
+      expect(
+        await serviceFor(firestore).needsLegalReacceptance('missing'),
+        isFalse,
+      );
+    });
+
+    test('acceptCurrentLegalDocuments records the current versions', () async {
+      await seedUser(firestore, termsVersion: '0.0', privacyVersion: '0.0');
+      final service = serviceFor(firestore);
+
+      await service.acceptCurrentLegalDocuments('u1');
+
+      final data =
+          (await firestore.collection('users').doc('u1').get()).data()!;
+      expect(data['termsAccepted'], isTrue);
+      expect(data['termsAcceptedAt'], isNotNull);
+      expect(data['termsVersion'], LegalDocuments.termsVersion);
+      expect(data['privacyPolicyVersion'], LegalDocuments.privacyPolicyVersion);
+      expect(await service.needsLegalReacceptance('u1'), isFalse);
     });
   });
 

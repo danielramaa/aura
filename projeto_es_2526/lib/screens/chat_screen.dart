@@ -1,17 +1,21 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../controllers/chat_controller.dart';
 import '../models/message.dart';
+import '../models/message_search_result.dart';
 import '../models/user_role.dart';
+import '../services/report_service.dart';
 import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
 import '../widgets/create_poll_sheet.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/medications_dialog.dart';
+import '../widgets/pinned_messages_banner.dart';
 import '../widgets/poll_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -35,12 +39,25 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   late final ChatController _controller;
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   Message? _replyingTo;
+  Timer? _searchDebounce;
+  Timer? _highlightTimer;
   List<String> _mentionSuggestions = [];
   UserRole _currentUserRole = UserRole.user;
   StreamSubscription<UserRole>? _roleSub;
+  bool _isSearchOpen = false;
+  String? _highlightedMessageId;
+
+  // Per-message keys so scroll-to-message can use Scrollable.ensureVisible for
+  // precise, correctly-aligned positioning despite variable-height bubbles.
+  final Map<String, GlobalKey> _messageKeys = {};
+
+  GlobalKey _keyForMessage(String messageId) =>
+      _messageKeys.putIfAbsent(messageId, () => GlobalKey());
 
   @override
   void initState() {
@@ -59,11 +76,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _roleSub?.cancel();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
+    _searchDebounce?.cancel();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -115,10 +136,63 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
+  void _scrollToMessage(String messageId) {
+    final messages = _controller.messages;
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final context = _messageKeys[messageId]?.currentContext;
+    if (context != null) {
+      // Already built and laid out: position it precisely.
+      _ensureMessageVisible(messageId);
+    } else if (_scrollController.hasClients) {
+      // Off-screen in the lazy builder, so its context doesn't exist yet.
+      // Jump to an approximate offset to bring it into the build window, then
+      // refine on the next frame once the item has been laid out.
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final target = maxExtent * (index / messages.length);
+      _scrollController
+          .animateTo(
+            target,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOut,
+          )
+          .then((_) => _ensureMessageVisible(messageId));
+    }
+
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
+  }
+
+  /// Brings the message into view with correct alignment, using the per-item
+  /// key. No-op if the item still isn't built (target far outside the range
+  /// the approximate jump reached).
+  void _ensureMessageVisible(String messageId) {
+    if (!mounted) return;
+    final context = _messageKeys[messageId]?.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      alignment: 0.4,
+    );
+  }
+
+  bool get _isModerator =>
+      _currentUserRole == UserRole.admin ||
+      _currentUserRole == UserRole.medic;
+
   void _showMessageOptions(BuildContext context, Message message) {
+    final isPinned = _controller.isMessagePinned(message.id);
+    final isOwnMessage =
+        message.anonymousId == _controller.anonymousIdentity?.anonymousId;
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -126,25 +200,180 @@ class _ChatScreenState extends State<ChatScreen> {
               leading: const Icon(Icons.emoji_emotions_outlined),
               title: const Text('Reagir'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 _showEmojiPicker(context, message);
               },
             ),
+            if (_isModerator)
+              ListTile(
+                leading: Icon(
+                  isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                  color: const Color(0xFF185FA5),
+                ),
+                title: Text(isPinned ? 'Unpin message' : 'Pin message'),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (isPinned) {
+                    _controller.unpinMessage(message.id);
+                  } else {
+                    _controller.pinMessage(message);
+                  }
+                },
+              ),
+            if (!isOwnMessage)
+              ListTile(
+                leading: const Icon(
+                  Icons.report_gmailerrorred_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  'Denunciar mensagem',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!mounted) return;
+                  await _showReportMessageDialog(message);
+                },
+              ),
+            if (_currentUserRole == UserRole.admin)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete message',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _controller.deleteMessage(message.id);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showUserOptions(BuildContext context, Message message) async {
+    if (message.anonymousId == _controller.anonymousIdentity?.anonymousId) {
+      return;
+    }
+
+    final shouldReport = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              leading: AvatarUtils.buildAvatarFromAsset(
+                message.senderAvatarAssetPath,
+                36,
+              ),
+              title: Text(message.senderNickname),
+              subtitle: Text(widget.groupName),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(
+                Icons.report_gmailerrorred_outlined,
+                color: Colors.red,
+              ),
               title: const Text(
-                'Apagar mensagem',
+                'Denunciar utilizador',
                 style: TextStyle(color: Colors.red),
               ),
               onTap: () {
-                Navigator.pop(context);
-                _controller.deleteMessage(message.id);
+                Navigator.pop(sheetContext, true);
               },
             ),
           ],
         ),
       ),
     );
+
+    if (!mounted || shouldReport != true) return;
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _showReportUserDialog(message);
+  }
+
+  Future<void> _showReportUserDialog(Message message) async {
+    final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
+
+    // Guard before opening the form: if we no longer have a session-bound
+    // identity, fail fast with a snackbar instead of letting the user fill in
+    // a form whose submission is guaranteed to be rejected.
+    if (_controller.anonymousIdentity == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não está conectado à sala.')),
+      );
+      return;
+    }
+
+    final result = await showDialog<_ReportDialogResult>(
+      context: screenContext,
+      builder: (_) => _ReportUserDialog(
+        reportedNickname: message.senderNickname,
+        onSubmit:
+            ({
+              required String category,
+              required String reason,
+              required String description,
+            }) {
+              return _controller.reportUser(
+                reportedMessage: message,
+                category: category,
+                reason: reason,
+                description: description,
+              );
+            },
+      ),
+    );
+
+    if (!mounted || result == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            result.error ?? 'Denúncia enviada com sucesso.',
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _showReportMessageDialog(Message message) async {
+    final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
+
+    final err = await showDialog<String?>(
+      context: screenContext,
+      builder: (_) => _ReportMessageDialog(
+        messageText: message.text,
+        initialCategory: ReportService.suggestedMessageCategory(message.text),
+        onSubmit: ({required String category, required String details}) {
+          return _controller.reportMessage(
+            message: message,
+            category: category,
+            details: details,
+          );
+        },
+      ),
+    );
+
+    if (!mounted || err == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(err.isEmpty ? 'Denúncia enviada com sucesso.' : err),
+        ),
+      );
+    });
   }
 
   void _showEmojiPicker(BuildContext context, Message message) {
@@ -185,6 +414,45 @@ class _ChatScreenState extends State<ChatScreen> {
             _controller.createPoll(question, options),
       ),
     );
+  }
+
+  void _openSearch() {
+    setState(() => _isSearchOpen = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  void _closeSearch() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    _controller.clearMessageSearch();
+    setState(() => _isSearchOpen = false);
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
+      _controller.searchMessages(query);
+    });
+  }
+
+  void _jumpToSearchResult(MessageSearchResult result) {
+    final messageId = result.message.id;
+    if (_controller.indexOfMessage(messageId) == -1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mensagem não encontrada no chat.')),
+      );
+      return;
+    }
+
+    _closeSearch();
+    // Defer until the search panel is gone so the list has its final height
+    // before _scrollToMessage reads scroll offsets. It handles the precise
+    // key-based positioning and the highlight pulse.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToMessage(messageId);
+    });
   }
 
   Future<bool> _processLeaveGroup() async {
@@ -333,6 +601,11 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         actions: [
           IconButton(
+            icon: Icon(_isSearchOpen ? Icons.close : Icons.search),
+            tooltip: _isSearchOpen ? 'Fechar pesquisa' : 'Pesquisar mensagens',
+            onPressed: _isSearchOpen ? _closeSearch : _openSearch,
+          ),
+          IconButton(
             icon: const Icon(Icons.medical_services_outlined),
             tooltip: 'Medicações',
             onPressed: () {
@@ -396,8 +669,21 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           }
 
+          // While searching, the panel takes over the body so its result list
+          // is the only flexible child — stacking it above the message list
+          // overflowed once the keyboard shrank the available height.
+          if (_isSearchOpen) {
+            return Column(children: [Expanded(child: _buildSearchPanel())]);
+          }
+
           return Column(
             children: [
+              PinnedMessagesBanner(
+                pinnedMessages: _controller.pinnedMessages,
+                canUnpin: _isModerator,
+                onUnpin: _controller.unpinMessage,
+                onNavigate: _scrollToMessage,
+              ),
               Expanded(child: _buildBody()),
               _buildTypingIndicator(),
               _buildReplyPreview(),
@@ -430,37 +716,254 @@ class _ChatScreenState extends State<ChatScreen> {
         final message = messages[index];
         final isOwn =
             message.anonymousId == _controller.anonymousIdentity?.anonymousId;
+        final messageKey = _keyForMessage(message.id);
 
         if (message.type == MessageType.poll && message.pollId != null) {
-          return PollBubble(
-            message: message,
-            isOwn: isOwn,
-            currentAnonymousId:
-                _controller.anonymousIdentity?.anonymousId ?? '',
-            pollService: _controller.pollService,
-            groupId: widget.groupId,
+          return KeyedSubtree(
+            key: messageKey,
+            child: PollBubble(
+              message: message,
+              isOwn: isOwn,
+              currentAnonymousId:
+                  _controller.anonymousIdentity?.anonymousId ?? '',
+              pollService: _controller.pollService,
+              groupId: widget.groupId,
+            ),
           );
         }
 
-        return MessageBubble(
-          message: message,
-          isOwn: isOwn,
-          isSenderMedic: _controller.medicAnonymousIds.contains(
-            message.anonymousId,
+        return KeyedSubtree(
+          key: messageKey,
+          child: MessageBubble(
+            message: message,
+            isOwn: isOwn,
+            isSenderMedic: _controller.medicAnonymousIds.contains(
+              message.anonymousId,
+            ),
+            isPinned: _controller.isMessagePinned(message.id),
+            isHighlighted: _highlightedMessageId == message.id,
+            currentAnonymousId:
+                _controller.anonymousIdentity?.anonymousId ?? '',
+            hasReactionError: _controller.hasReactionError(message.id),
+            isRetryingReaction: _controller.isRetryingReaction(message.id),
+            onShowOptions: () => _showMessageOptions(context, message),
+            onReply: () => _startReply(message),
+            onSenderTap: () => _showUserOptions(context, message),
+            onToggleReaction: (emoji) =>
+                _controller.toggleReaction(message.id, emoji),
+            onRetryReaction: () => _controller.retryReaction(message.id),
           ),
-          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
-          hasReactionError: _controller.hasReactionError(message.id),
-          isRetryingReaction: _controller.isRetryingReaction(message.id),
-          onLongPress: () => _currentUserRole == UserRole.admin
-              ? _showMessageOptions(context, message)
-              : _showEmojiPicker(context, message),
-          onReply: () => _startReply(message),
-          onToggleReaction: (emoji) =>
-              _controller.toggleReaction(message.id, emoji),
-          onRetryReaction: () => _controller.retryReaction(message.id),
         );
       },
     );
+  }
+
+  Widget _buildSearchPanel() {
+    final query = _controller.messageSearchQuery;
+    final results = _controller.searchResults;
+    final hasQuery = query.isNotEmpty;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchController,
+                focusNode: _searchFocusNode,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Pesquisar mensagens...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchDebounce?.cancel();
+                            _searchController.clear();
+                            _controller.clearMessageSearch();
+                            setState(() {});
+                          },
+                        ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
+                onChanged: (value) {
+                  setState(() {});
+                  _onSearchChanged(value);
+                },
+                onSubmitted: _controller.searchMessages,
+              ),
+              if (_controller.searchError != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _controller.searchError!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+              if (hasQuery) ...[
+                const SizedBox(height: 8),
+                Expanded(child: _buildSearchResultsList(results, query)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSearchResultsList(
+    List<MessageSearchResult> results,
+    String query,
+  ) {
+    if (_controller.isSearchingMessages && results.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(18),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (results.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _controller.hasMoreSearchResults
+                  ? 'Sem resultados nas mensagens recentes.'
+                  : 'Sem resultados para "$query".',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            if (_controller.hasMoreSearchResults) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _controller.isSearchingMessages
+                    ? null
+                    : _controller.loadMoreSearchResults,
+                icon: const Icon(Icons.expand_more),
+                label: const Text('Pesquisar mensagens antigas'),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
+    final itemCount =
+        results.length + (_controller.hasMoreSearchResults ? 1 : 0);
+
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: itemCount,
+      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey[200]),
+      itemBuilder: (context, index) {
+        if (index >= results.length) {
+          return TextButton.icon(
+            onPressed: _controller.isSearchingMessages
+                ? null
+                : _controller.loadMoreSearchResults,
+            icon: _controller.isSearchingMessages
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.expand_more),
+            label: const Text('Carregar mensagens antigas'),
+          );
+        }
+
+        final result = results[index];
+        return ListTile(
+          dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+          title: Text(
+            result.message.senderNickname,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  children: _buildSearchSnippetSpans(result),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                _formatSearchTimestamp(result.message.timestamp),
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+          trailing: const Icon(Icons.subdirectory_arrow_left, size: 18),
+          onTap: () => _jumpToSearchResult(result),
+        );
+      },
+    );
+  }
+
+  List<TextSpan> _buildSearchSnippetSpans(MessageSearchResult result) {
+    final spans = <TextSpan>[];
+    final start = result.matchStart.clamp(0, result.snippet.length).toInt();
+    final end = result.matchEnd.clamp(start, result.snippet.length).toInt();
+
+    if (start > 0) {
+      spans.add(TextSpan(text: result.snippet.substring(0, start)));
+    }
+    spans.add(
+      TextSpan(
+        text: result.snippet.substring(start, end),
+        style: const TextStyle(
+          backgroundColor: Color(0xFFFFE08A),
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+    if (end < result.snippet.length) {
+      spans.add(TextSpan(text: result.snippet.substring(end)));
+    }
+
+    return spans;
+  }
+
+  String _formatSearchTimestamp(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$day/$month/${date.year} $hour:$minute';
   }
 
   Widget _buildTypingIndicator() {
@@ -610,6 +1113,286 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Outcome of the report dialog. `null` (no value passed to `Navigator.pop`)
+/// means the user cancelled; a non-null value means the user submitted, and
+/// `error` is null on success or the error message on failure. Using a typed
+/// result avoids the previous overloaded `null` / `''` / `String` convention.
+class _ReportDialogResult {
+  final String? error;
+  const _ReportDialogResult({this.error});
+}
+
+class _ReportUserDialog extends StatefulWidget {
+  final String reportedNickname;
+  final Future<String?> Function({
+    required String category,
+    required String reason,
+    required String description,
+  })
+  onSubmit;
+
+  const _ReportUserDialog({
+    required this.reportedNickname,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportUserDialog> createState() => _ReportUserDialogState();
+}
+
+class _ReportUserDialogState extends State<_ReportUserDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _reasonController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  String _selectedCategory = ReportService.userReportCategories.first;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final err = await widget.onSubmit(
+      category: _selectedCategory,
+      reason: _reasonController.text,
+      description: _descriptionController.text,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).pop(_ReportDialogResult(error: err));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Denunciar ${widget.reportedNickname}'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              decoration: const InputDecoration(
+                labelText: 'Categoria',
+                border: OutlineInputBorder(),
+              ),
+              items: ReportService.userReportCategories
+                  .map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(ReportService.labelForCategory(category)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => _selectedCategory = value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _reasonController,
+              enabled: !_isSubmitting,
+              maxLength: ReportService.maxReasonLength,
+              decoration: const InputDecoration(
+                labelText: 'Motivo',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Escreve um motivo.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descriptionController,
+              enabled: !_isSubmitting,
+              minLines: 3,
+              maxLines: 5,
+              maxLength: ReportService.maxDescriptionLength,
+              decoration: const InputDecoration(
+                labelText: 'Descrição ou evidência',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[50],
+            foregroundColor: Colors.red,
+            elevation: 0,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Enviar denúncia'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportMessageDialog extends StatefulWidget {
+  final String messageText;
+  final String initialCategory;
+  final Future<String?> Function({
+    required String category,
+    required String details,
+  })
+  onSubmit;
+
+  const _ReportMessageDialog({
+    required this.messageText,
+    required this.initialCategory,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportMessageDialog> createState() => _ReportMessageDialogState();
+}
+
+class _ReportMessageDialogState extends State<_ReportMessageDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _detailsController = TextEditingController();
+
+  late String _selectedCategory;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory =
+        ReportService.messageReportCategories.contains(widget.initialCategory)
+        ? widget.initialCategory
+        : ReportService.messageReportCategories.first;
+  }
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final err = await widget.onSubmit(
+      category: _selectedCategory,
+      details: _detailsController.text,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).pop(err ?? '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Denunciar mensagem'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.messageText,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Categoria',
+                  border: OutlineInputBorder(),
+                ),
+                items: ReportService.messageReportCategories
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(
+                          ReportService.labelForMessageCategory(category),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isSubmitting
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _selectedCategory = value);
+                        }
+                      },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _detailsController,
+                enabled: !_isSubmitting,
+                minLines: 3,
+                maxLines: 5,
+                maxLength: ReportService.maxDescriptionLength,
+                decoration: const InputDecoration(
+                  labelText: 'Detalhes adicionais',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[50],
+            foregroundColor: Colors.red,
+            elevation: 0,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Enviar denúncia'),
+        ),
+      ],
     );
   }
 }

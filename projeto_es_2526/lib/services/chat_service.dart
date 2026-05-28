@@ -1,10 +1,23 @@
+import 'dart:math' as math;
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
+import '../models/message_search_result.dart';
+import '../models/pinned_message.dart';
 
 abstract class ChatServiceInterface {
   Stream<List<Message>> streamMessages(String groupId);
+  Stream<List<PinnedMessage>> streamPinnedMessages(String groupId);
+
+  Future<MessageSearchPage> searchMessages({
+    required String groupId,
+    required String query,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int pageSize = 40,
+    int maxResults = 20,
+  });
 
   Future<String?> sendMessage({
     required String groupId,
@@ -33,6 +46,16 @@ abstract class ChatServiceInterface {
     required String groupId,
     required String messageId,
   });
+
+  Future<String?> pinMessage({
+    required String groupId,
+    required Message message,
+  });
+
+  Future<String?> unpinMessage({
+    required String groupId,
+    required String messageId,
+  });
 }
 
 class ChatService implements ChatServiceInterface {
@@ -46,11 +69,111 @@ class ChatService implements ChatServiceInterface {
   CollectionReference<Map<String, dynamic>> _messagesRef(String groupId) =>
       _firestore.collection('groups').doc(groupId).collection('messages');
 
+  CollectionReference<Map<String, dynamic>> _pinnedRef(String groupId) =>
+      _firestore.collection('groups').doc(groupId).collection('pinnedMessages');
+
   @override
   Stream<List<Message>> streamMessages(String groupId) => _messagesRef(groupId)
       .orderBy('timestamp', descending: true)
       .snapshots()
       .map((snap) => snap.docs.map(Message.fromFirestore).toList());
+
+  @override
+  Future<MessageSearchPage> searchMessages({
+    required String groupId,
+    required String query,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int pageSize = 40,
+    int maxResults = 20,
+  }) async {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return const MessageSearchPage(
+        results: [],
+        lastDocument: null,
+        hasMore: false,
+      );
+    }
+
+    final baseQuery = _messagesRef(groupId).orderBy(
+      'timestamp',
+      descending: true,
+    );
+    var firestoreQuery = baseQuery.limit(pageSize);
+    if (startAfter != null) {
+      firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
+    }
+
+    final snap = await firestoreQuery.get();
+    final results = <MessageSearchResult>[];
+    DocumentSnapshot<Map<String, dynamic>>? lastScannedDocument;
+    // Whether we visited every fetched doc. False means we hit maxResults with
+    // unscanned docs still left in this page, which is itself a "more" signal.
+    var scannedWholePage = true;
+
+    for (var i = 0; i < snap.docs.length; i++) {
+      final doc = snap.docs[i];
+      lastScannedDocument = doc;
+      final message = Message.fromFirestore(doc);
+      if (message.type != MessageType.text) continue;
+
+      final text = message.text;
+      final matchStart = text.toLowerCase().indexOf(normalizedQuery);
+      if (matchStart == -1) continue;
+
+      final snippetMatchStart = _snippetMatchStart(text, matchStart);
+      results.add(
+        MessageSearchResult(
+          message: message,
+          query: query.trim(),
+          snippet: _buildSearchSnippet(
+            text,
+            matchStart,
+            normalizedQuery.length,
+          ),
+          matchStart: snippetMatchStart,
+          matchEnd: snippetMatchStart + normalizedQuery.length,
+          snapshot: doc,
+        ),
+      );
+
+      if (results.length >= maxResults) {
+        scannedWholePage = i == snap.docs.length - 1;
+        break;
+      }
+    }
+
+    return MessageSearchPage(
+      results: results,
+      lastDocument: lastScannedDocument ?? startAfter,
+      // More may remain either because docs in this page went unscanned, or
+      // because Firestore returned a full page that could be followed by more.
+      hasMore: !scannedWholePage || snap.docs.length == pageSize,
+    );
+  }
+
+  int _snippetMatchStart(String text, int matchStart) {
+    const contextLength = 35;
+    final start = math.max(0, matchStart - contextLength);
+    final prefixLength = start > 0 ? 3 : 0;
+    return prefixLength + matchStart - start;
+  }
+
+  String _buildSearchSnippet(String text, int matchStart, int queryLength) {
+    const contextLength = 35;
+    final start = math.max(0, matchStart - contextLength);
+    final end = math.min(text.length, matchStart + queryLength + contextLength);
+    final prefix = start > 0 ? '...' : '';
+    final suffix = end < text.length ? '...' : '';
+    return '$prefix${text.substring(start, end)}$suffix';
+  }
+
+  @override
+  Stream<List<PinnedMessage>> streamPinnedMessages(String groupId) =>
+      _pinnedRef(groupId)
+          .orderBy('pinnedAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(PinnedMessage.fromFirestore).toList());
 
   @override
   Future<String?> sendMessage({
@@ -129,14 +252,53 @@ class ChatService implements ChatServiceInterface {
     required String messageId,
   }) async {
     try {
-      await _messagesRef(groupId).doc(messageId).delete();
+      // Delete the message and any pinned entry for it atomically. The pinned
+      // doc shares the message id, so deleting it unconditionally is a no-op
+      // when the message wasn't pinned and prevents orphan pinned banners.
+      final batch = _firestore.batch();
+      batch.delete(_messagesRef(groupId).doc(messageId));
+      batch.delete(_pinnedRef(groupId).doc(messageId));
+      await batch.commit();
       return null;
     } catch (_) {
       return 'Não foi possível excluir a mensagem. Por favor tente novamente.';
     }
   }
 
+  @override
+  Future<String?> pinMessage({
+    required String groupId,
+    required Message message,
+  }) async {
+    try {
+      await _pinnedRef(groupId).doc(message.id).set({
+        'text': message.text,
+        'senderNickname': message.senderNickname,
+        'senderAvatarIndex': message.senderAvatarIndex,
+        'timestamp': message.timestamp,
+        'pinnedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (_) {
+      return 'Failed to pin message. Please try again.';
+    }
+  }
 
+  @override
+  Future<String?> unpinMessage({
+    required String groupId,
+    required String messageId,
+  }) async {
+    try {
+      await _pinnedRef(groupId).doc(messageId).delete();
+      return null;
+    } catch (_) {
+      return 'Failed to unpin message. Please try again.';
+    }
+  }
+
+  /// Removes [emoji] reaction from [anonymousId].
+  /// Returns null on success, or an error string on failure.
   @override
   Future<String?> removeReaction({
     required String groupId,

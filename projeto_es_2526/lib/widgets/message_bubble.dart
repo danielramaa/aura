@@ -47,11 +47,18 @@ class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
   final bool isSenderMedic;
+  final bool isPinned;
+  final bool isHighlighted;
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
-  final VoidCallback onLongPress;
+
+  /// Opens the options/react/report menu. Wired to the double-tap gesture.
+  final VoidCallback onShowOptions;
+
+  /// Starts a reply. Wired to the long-press gesture.
   final VoidCallback onReply;
+  final VoidCallback? onSenderTap;
   final ValueChanged<String> onToggleReaction;
   final VoidCallback onRetryReaction;
 
@@ -60,11 +67,14 @@ class MessageBubble extends StatelessWidget {
     required this.message,
     required this.isOwn,
     required this.isSenderMedic,
+    this.isPinned = false,
+    this.isHighlighted = false,
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
-    required this.onLongPress,
+    required this.onShowOptions,
     required this.onReply,
+    this.onSenderTap,
     required this.onToggleReaction,
     required this.onRetryReaction,
   });
@@ -166,94 +176,133 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onDoubleTap: onLongPress,
+      behavior: HitTestBehavior.opaque,
+      onDoubleTap: onShowOptions,
       onLongPress: onReply,
       child: Align(
         alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (!isOwn) _buildAvatar(),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.75,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!isOwn || isSenderMedic)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4.0),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (!isOwn)
-                                Text(
-                                  message.senderNickname,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                    color: Color(0xFF185FA5),
+        child: AnimatedScale(
+          scale: isHighlighted ? 1.04 : 1,
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (!isOwn) _buildAvatar(),
+                Flexible(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.all(12),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.75,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isOwn ? const Color(0xFFDCE9F7) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: isHighlighted
+                          ? Border.all(color: const Color(0xFF185FA5), width: 2)
+                          : null,
+                      boxShadow: isHighlighted
+                          ? [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF185FA5,
+                                ).withValues(alpha: 0.22),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!isOwn || isSenderMedic || isPinned)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!isOwn)
+                                  InkWell(
+                                    onTap: onSenderTap,
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 2,
+                                      ),
+                                      child: Text(
+                                        message.senderNickname,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Color(0xFF185FA5),
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              if (isSenderMedic)
-                                Padding(
-                                  padding: EdgeInsets.only(
-                                    left: isOwn ? 0 : 4.0,
+                                if (isSenderMedic)
+                                  Padding(
+                                    padding: EdgeInsets.only(
+                                      left: isOwn ? 0 : 4.0,
+                                    ),
+                                    child: const Icon(
+                                      Icons.verified,
+                                      size: 14,
+                                      color: Color(0xFF185FA5),
+                                    ),
                                   ),
-                                  child: const Icon(
-                                    Icons.verified,
-                                    size: 14,
-                                    color: Color(0xFF185FA5),
+                                if (isPinned)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    child: Icon(
+                                      Icons.push_pin,
+                                      size: 13,
+                                      color: Color(0xFF185FA5),
+                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      if (message.replyToText != null)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 6),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border(
-                              left: BorderSide(
-                                color: Colors.grey[400]!,
-                                width: 3,
+                        if (message.replyToText != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border(
+                                left: BorderSide(
+                                  color: Colors.grey[400]!,
+                                  width: 3,
+                                ),
                               ),
                             ),
-                          ),
-                          child: Text(
-                            message.replyToText!,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.black87,
+                            child: Text(
+                              message.replyToText!,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black87,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      _buildMessageText(message.text, message.mentions),
-                      _buildReactionBar(context),
-                    ],
+                        _buildMessageText(message.text, message.mentions),
+                        _buildReactionBar(context),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              if (isOwn) _buildAvatar(),
-            ],
+                if (isOwn) _buildAvatar(),
+              ],
+            ),
           ),
         ),
       ),
