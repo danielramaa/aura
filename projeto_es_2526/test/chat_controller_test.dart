@@ -522,4 +522,78 @@ void main() {
       controller.dispose();
     });
   });
+
+  group('ChatController — pinned messages', () {
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
+    late ChatController controller;
+
+    CollectionReference<Map<String, dynamic>> pinnedRef(
+      FakeFirebaseFirestore fs,
+    ) => fs.collection('groups').doc('g1').collection('pinnedMessages');
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'g1');
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'user-1'),
+      );
+      controller = makeController(firestore, auth);
+      await waitForInit(controller);
+    });
+
+    tearDown(() => controller.dispose());
+
+    Message makeMessage(String id) => Message(
+      id: id,
+      text: 'pin me',
+      anonymousId: controller.anonymousIdentity!.anonymousId,
+      senderNickname: controller.anonymousIdentity!.nickname,
+      senderAvatarIndex: 0,
+      timestamp: Timestamp.now(),
+    );
+
+    test('pinned stream is reflected in controller state', () async {
+      expect(controller.isMessagePinned('m1'), isFalse);
+
+      await pinnedRef(firestore).doc('m1').set({
+        'text': 'pin me',
+        'senderNickname': 'BraveOwl7',
+        'senderAvatarIndex': 0,
+        'timestamp': Timestamp.now(),
+        'pinnedAt': Timestamp.now(),
+      });
+      await Future.delayed(Duration.zero);
+      await Future.delayed(Duration.zero);
+
+      expect(controller.isMessagePinned('m1'), isTrue);
+      expect(controller.pinnedMessages.any((p) => p.messageId == 'm1'), isTrue);
+    });
+
+    test('pinMessage writes to Firestore and updates state', () async {
+      await controller.pinMessage(makeMessage('m1'));
+      await Future.delayed(Duration.zero);
+      await Future.delayed(Duration.zero);
+
+      expect((await pinnedRef(firestore).doc('m1').get()).exists, isTrue);
+      expect(controller.isMessagePinned('m1'), isTrue);
+      expect(controller.error, isNull);
+    });
+
+    test('unpinMessage removes from Firestore and updates state', () async {
+      await controller.pinMessage(makeMessage('m1'));
+      await Future.delayed(Duration.zero);
+      await Future.delayed(Duration.zero);
+      expect(controller.isMessagePinned('m1'), isTrue);
+
+      await controller.unpinMessage('m1');
+      await Future.delayed(Duration.zero);
+      await Future.delayed(Duration.zero);
+
+      expect((await pinnedRef(firestore).doc('m1').get()).exists, isFalse);
+      expect(controller.isMessagePinned('m1'), isFalse);
+      expect(controller.error, isNull);
+    });
+  });
 }

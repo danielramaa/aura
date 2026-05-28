@@ -39,9 +39,13 @@ class UserService {
         .snapshots()
         .map((snap) {
           final reports = snap.docs.map(UserReport.fromFirestore).toList();
+          // Treat unresolved serverTimestamps as "now" so a freshly created
+          // report sorts to the top while the timestamp round-trips, instead
+          // of getting buried at the bottom as epoch 0.
+          final nowMs = DateTime.now().millisecondsSinceEpoch;
           reports.sort((a, b) {
-            final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
-            final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+            final aTime = a.createdAt?.millisecondsSinceEpoch ?? nowMs;
+            final bTime = b.createdAt?.millisecondsSinceEpoch ?? nowMs;
             return bTime.compareTo(aTime);
           });
           return reports;

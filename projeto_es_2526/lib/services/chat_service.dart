@@ -5,9 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/anonymous_identity.dart';
 import '../models/message.dart';
 import '../models/message_search_result.dart';
+import '../models/pinned_message.dart';
 
 abstract class ChatServiceInterface {
   Stream<List<Message>> streamMessages(String groupId);
+  Stream<List<PinnedMessage>> streamPinnedMessages(String groupId);
 
   Future<MessageSearchPage> searchMessages({
     required String groupId,
@@ -44,6 +46,16 @@ abstract class ChatServiceInterface {
     required String groupId,
     required String messageId,
   });
+
+  Future<String?> pinMessage({
+    required String groupId,
+    required Message message,
+  });
+
+  Future<String?> unpinMessage({
+    required String groupId,
+    required String messageId,
+  });
 }
 
 class ChatService implements ChatServiceInterface {
@@ -56,6 +68,9 @@ class ChatService implements ChatServiceInterface {
 
   CollectionReference<Map<String, dynamic>> _messagesRef(String groupId) =>
       _firestore.collection('groups').doc(groupId).collection('messages');
+
+  CollectionReference<Map<String, dynamic>> _pinnedRef(String groupId) =>
+      _firestore.collection('groups').doc(groupId).collection('pinnedMessages');
 
   @override
   Stream<List<Message>> streamMessages(String groupId) => _messagesRef(groupId)
@@ -92,8 +107,12 @@ class ChatService implements ChatServiceInterface {
     final snap = await firestoreQuery.get();
     final results = <MessageSearchResult>[];
     DocumentSnapshot<Map<String, dynamic>>? lastScannedDocument;
+    // Whether we visited every fetched doc. False means we hit maxResults with
+    // unscanned docs still left in this page, which is itself a "more" signal.
+    var scannedWholePage = true;
 
-    for (final doc in snap.docs) {
+    for (var i = 0; i < snap.docs.length; i++) {
+      final doc = snap.docs[i];
       lastScannedDocument = doc;
       final message = Message.fromFirestore(doc);
       if (message.type != MessageType.text) continue;
@@ -102,6 +121,7 @@ class ChatService implements ChatServiceInterface {
       final matchStart = text.toLowerCase().indexOf(normalizedQuery);
       if (matchStart == -1) continue;
 
+      final snippetMatchStart = _snippetMatchStart(text, matchStart);
       results.add(
         MessageSearchResult(
           message: message,
@@ -111,19 +131,24 @@ class ChatService implements ChatServiceInterface {
             matchStart,
             normalizedQuery.length,
           ),
-          matchStart: _snippetMatchStart(text, matchStart),
-          matchEnd: _snippetMatchStart(text, matchStart) + query.trim().length,
+          matchStart: snippetMatchStart,
+          matchEnd: snippetMatchStart + normalizedQuery.length,
           snapshot: doc,
         ),
       );
 
-      if (results.length >= maxResults) break;
+      if (results.length >= maxResults) {
+        scannedWholePage = i == snap.docs.length - 1;
+        break;
+      }
     }
 
     return MessageSearchPage(
       results: results,
       lastDocument: lastScannedDocument ?? startAfter,
-      hasMore: snap.docs.length == pageSize,
+      // More may remain either because docs in this page went unscanned, or
+      // because Firestore returned a full page that could be followed by more.
+      hasMore: !scannedWholePage || snap.docs.length == pageSize,
     );
   }
 
@@ -142,6 +167,13 @@ class ChatService implements ChatServiceInterface {
     final suffix = end < text.length ? '...' : '';
     return '$prefix${text.substring(start, end)}$suffix';
   }
+
+  @override
+  Stream<List<PinnedMessage>> streamPinnedMessages(String groupId) =>
+      _pinnedRef(groupId)
+          .orderBy('pinnedAt', descending: true)
+          .snapshots()
+          .map((snap) => snap.docs.map(PinnedMessage.fromFirestore).toList());
 
   @override
   Future<String?> sendMessage({
@@ -226,10 +258,48 @@ class ChatService implements ChatServiceInterface {
     required String messageId,
   }) async {
     try {
-      await _messagesRef(groupId).doc(messageId).delete();
+      // Delete the message and any pinned entry for it atomically. The pinned
+      // doc shares the message id, so deleting it unconditionally is a no-op
+      // when the message wasn't pinned and prevents orphan pinned banners.
+      final batch = _firestore.batch();
+      batch.delete(_messagesRef(groupId).doc(messageId));
+      batch.delete(_pinnedRef(groupId).doc(messageId));
+      await batch.commit();
       return null;
     } catch (_) {
       return 'Failed to delete message. Please try again.';
+    }
+  }
+
+  @override
+  Future<String?> pinMessage({
+    required String groupId,
+    required Message message,
+  }) async {
+    try {
+      await _pinnedRef(groupId).doc(message.id).set({
+        'text': message.text,
+        'senderNickname': message.senderNickname,
+        'senderAvatarIndex': message.senderAvatarIndex,
+        'timestamp': message.timestamp,
+        'pinnedAt': FieldValue.serverTimestamp(),
+      });
+      return null;
+    } catch (_) {
+      return 'Failed to pin message. Please try again.';
+    }
+  }
+
+  @override
+  Future<String?> unpinMessage({
+    required String groupId,
+    required String messageId,
+  }) async {
+    try {
+      await _pinnedRef(groupId).doc(messageId).delete();
+      return null;
+    } catch (_) {
+      return 'Failed to unpin message. Please try again.';
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../models/legal_document.dart';
 import '../services/auth_service.dart';
@@ -21,6 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _dateOfBirthController = TextEditingController();
   late final _authService = widget.authService ?? AuthService();
+  late final _termsRecognizer = TapGestureRecognizer()
+    ..onTap = () => _openLegalDocument(LegalDocuments.terms);
+  late final _privacyRecognizer = TapGestureRecognizer()
+    ..onTap = () => _openLegalDocument(LegalDocuments.privacyPolicy);
 
   bool _isLogin = true;
   bool _stayLoggedIn = true;
@@ -43,6 +48,8 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _dateOfBirthController.dispose();
+    _termsRecognizer.dispose();
+    _privacyRecognizer.dispose();
     super.dispose();
   }
 
@@ -76,7 +83,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await _authService.register(
           _emailController.text.trim(),
           _passwordController.text,
-          dateOfBirth: _dateOfBirth,
+          // Guaranteed non-null: the form validator above requires it.
+          dateOfBirth: _dateOfBirth!,
           acceptedTerms: _acceptedTerms,
         );
       }
@@ -136,16 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final day = date.day.toString().padLeft(2, '0');
     final month = date.month.toString().padLeft(2, '0');
     return '$day/$month/${date.year}';
-  }
-
-  bool _isAtLeast13(DateTime dateOfBirth) {
-    final today = DateTime.now();
-    final minimumDateOfBirth = DateTime(
-      today.year - 13,
-      today.month,
-      today.day,
-    );
-    return !dateOfBirth.isAfter(minimumDateOfBirth);
   }
 
   @override
@@ -235,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           if (_dateOfBirth == null) {
                             return 'Indique a sua data de nascimento';
                           }
-                          if (!_isAtLeast13(_dateOfBirth!)) {
+                          if (!isAtLeastMinimumAge(_dateOfBirth!)) {
                             return 'Tem de ter pelo menos 13 anos para criar conta';
                           }
                           return null;
@@ -261,39 +259,45 @@ class _LoginScreenState extends State<LoginScreen> {
                     ],
                     if (!_isLogin) ...[
                       const SizedBox(height: 12),
-                      CheckboxListTile(
-                        value: _acceptedTerms,
-                        onChanged: _loading
-                            ? null
-                            : (value) => setState(
-                                () => _acceptedTerms = value ?? false,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: _acceptedTerms,
+                            onChanged: _loading
+                                ? null
+                                : (value) => setState(
+                                    () => _acceptedTerms = value ?? false,
+                                  ),
+                          ),
+                          Expanded(
+                            child: Text.rich(
+                              TextSpan(
+                                children: [
+                                  const TextSpan(text: 'Eu li e aceito os '),
+                                  TextSpan(
+                                    text: 'Termos e Condições',
+                                    style: const TextStyle(
+                                      color: _blue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    recognizer: _termsRecognizer,
+                                  ),
+                                  const TextSpan(text: ' e a '),
+                                  TextSpan(
+                                    text: 'Política de Privacidade',
+                                    style: const TextStyle(
+                                      color: _blue,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    recognizer: _privacyRecognizer,
+                                  ),
+                                  const TextSpan(text: '.'),
+                                ],
                               ),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                        title: Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          children: [
-                            const Text('Eu li e aceito os '),
-                            TextButton(
-                              onPressed: _loading
-                                  ? null
-                                  : () => _openLegalDocument(
-                                      LegalDocuments.terms,
-                                    ),
-                              child: const Text('Termos e Condições'),
                             ),
-                            const Text(' e a '),
-                            TextButton(
-                              onPressed: _loading
-                                  ? null
-                                  : () => _openLegalDocument(
-                                      LegalDocuments.privacyPolicy,
-                                    ),
-                              child: const Text('Política de Privacidade'),
-                            ),
-                            const Text('.'),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 8),

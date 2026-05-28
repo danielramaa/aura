@@ -68,6 +68,22 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
     setState(() => _groupsStream = _groupService.streamGroups());
   }
 
+  String _friendlyJoinError(Object error) {
+    if (error is FirebaseException) {
+      switch (error.code) {
+        case 'unavailable':
+        case 'deadline-exceeded':
+        case 'cancelled':
+          return 'Sem ligação. Tenta novamente.';
+        case 'permission-denied':
+          return 'Sem permissão para entrar nesta comunidade.';
+        case 'unauthenticated':
+          return 'Sessão expirada. Inicia sessão novamente.';
+      }
+    }
+    return 'Não foi possível entrar na comunidade. Tenta novamente.';
+  }
+
   void _showCommunityPreview(Group group) {
     final scaffoldContext = context;
     final isJoined = _joinedIds.contains(group.id);
@@ -193,7 +209,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                       scaffoldContext,
                                     ).showSnackBar(
                                       SnackBar(
-                                        content: Text('$e'),
+                                        content: Text(_friendlyJoinError(e)),
                                         duration: const Duration(seconds: 6),
                                       ),
                                     );

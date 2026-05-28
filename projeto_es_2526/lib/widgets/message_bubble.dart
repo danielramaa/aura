@@ -49,12 +49,19 @@ class MessageBubble extends StatelessWidget {
   final Message message;
   final bool isOwn;
   final bool isSenderMedic;
+  final bool isPinned;
+  final bool isHighlighted;
   final String currentAnonymousId;
   final bool hasReactionError;
   final bool isRetryingReaction;
-  final bool isHighlighted;
+
+  /// Reports the message. Wired to the single-tap gesture.
   final VoidCallback? onTap;
-  final VoidCallback onLongPress;
+
+  /// Opens the options/react menu. Wired to the double-tap gesture.
+  final VoidCallback onShowOptions;
+
+  /// Starts a reply. Wired to the long-press gesture.
   final VoidCallback onReply;
   final VoidCallback? onSenderTap;
   final ValueChanged<String> onToggleReaction;
@@ -65,12 +72,13 @@ class MessageBubble extends StatelessWidget {
     required this.message,
     required this.isOwn,
     required this.isSenderMedic,
+    this.isPinned = false,
+    this.isHighlighted = false,
     required this.currentAnonymousId,
     required this.hasReactionError,
     required this.isRetryingReaction,
-    this.isHighlighted = false,
     this.onTap,
-    required this.onLongPress,
+    required this.onShowOptions,
     required this.onReply,
     this.onSenderTap,
     required this.onToggleReaction,
@@ -173,13 +181,13 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        onDoubleTap: onLongPress,
-        onLongPress: onReply,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      onDoubleTap: onShowOptions,
+      onLongPress: onReply,
+      child: Align(
+        alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
         child: AnimatedScale(
           scale: isHighlighted ? 1.04 : 1,
           duration: const Duration(milliseconds: 180),
@@ -219,7 +227,7 @@ class MessageBubble extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (!isOwn || isSenderMedic)
+                        if (!isOwn || isSenderMedic || isPinned)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4.0),
                             child: Row(
@@ -251,6 +259,15 @@ class MessageBubble extends StatelessWidget {
                                     child: const Icon(
                                       Icons.verified,
                                       size: 14,
+                                      color: Color(0xFF185FA5),
+                                    ),
+                                  ),
+                                if (isPinned)
+                                  const Padding(
+                                    padding: EdgeInsets.only(left: 4.0),
+                                    child: Icon(
+                                      Icons.push_pin,
+                                      size: 13,
                                       color: Color(0xFF185FA5),
                                     ),
                                   ),
