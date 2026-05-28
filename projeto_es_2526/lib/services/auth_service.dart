@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/legal_document.dart';
 import '../models/user_role.dart';
+import '../utils/validators.dart';
 
 class AuthService {
   static const _stayLoggedInKey = 'stay_logged_in';
@@ -35,10 +36,18 @@ class AuthService {
   Future<UserCredential> register(
     String email,
     String password, {
-    DateTime? dateOfBirth,
-    bool acceptedTerms = false,
+    required DateTime dateOfBirth,
+    required bool acceptedTerms,
   }) async {
-    if (dateOfBirth != null && !_isAtLeast13(dateOfBirth)) {
+    // Acceptance and a verified minimum age are hard preconditions, enforced
+    // here so they can't be bypassed by callers other than the registration
+    // screen.
+    if (!acceptedTerms) {
+      throw ArgumentError(
+        'Tem de aceitar os Termos e a Política de Privacidade para criar conta.',
+      );
+    }
+    if (!isAtLeastMinimumAge(dateOfBirth)) {
       throw ArgumentError('Tem de ter pelo menos 13 anos para criar conta.');
     }
 
@@ -50,50 +59,48 @@ class AuthService {
       final userData = <String, Object?>{
         'role': UserRole.user.firestoreValue,
         'createdAt': FieldValue.serverTimestamp(),
-        'termsAccepted': acceptedTerms,
+        'termsAccepted': true,
+        'termsAcceptedAt': FieldValue.serverTimestamp(),
+        'termsVersion': LegalDocuments.termsVersion,
+        'privacyPolicyVersion': LegalDocuments.privacyPolicyVersion,
+        'dateOfBirth': Timestamp.fromDate(
+          DateTime(dateOfBirth.year, dateOfBirth.month, dateOfBirth.day),
+        ),
+        'ageVerifiedAt': FieldValue.serverTimestamp(),
       };
-
-      if (dateOfBirth != null) {
-        userData.addAll({
-          'dateOfBirth': Timestamp.fromDate(
-            DateTime(dateOfBirth.year, dateOfBirth.month, dateOfBirth.day),
-          ),
-          'ageVerifiedAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      if (acceptedTerms) {
-        userData.addAll({
-          'termsAcceptedAt': FieldValue.serverTimestamp(),
-          'termsVersion': LegalDocuments.termsVersion,
-          'privacyPolicyVersion': LegalDocuments.privacyPolicyVersion,
-        });
-      }
 
       await _firestore
           .collection('users')
           .doc(credential.user!.uid)
           .set(userData);
     } catch (_) {
+      // Roll back the Auth account so there's no dangling user without a profile.
       await credential.user!.delete();
       rethrow;
     }
     return credential;
   }
 
-  bool _isAtLeast13(DateTime dateOfBirth) {
-    final today = DateTime.now();
-    final minimumDateOfBirth = DateTime(
-      today.year - 13,
-      today.month,
-      today.day,
-    );
-    final normalizedDateOfBirth = DateTime(
-      dateOfBirth.year,
-      dateOfBirth.month,
-      dateOfBirth.day,
-    );
-    return !normalizedDateOfBirth.isAfter(minimumDateOfBirth);
+  /// Whether [uid]'s stored legal acceptance is missing or predates the current
+  /// published document versions, so the user must re-accept before continuing.
+  Future<bool> needsLegalReacceptance(String uid) async {
+    final snapshot = await _firestore.collection('users').doc(uid).get();
+    final data = snapshot.data();
+    if (data == null) return false;
+    return data['termsVersion'] != LegalDocuments.termsVersion ||
+        data['privacyPolicyVersion'] != LegalDocuments.privacyPolicyVersion;
+  }
+
+  /// Records that [uid] accepted the current document versions. The acceptance
+  /// timestamp is server-set so it can't be backdated, matching the Firestore
+  /// rule that guards re-acceptance writes.
+  Future<void> acceptCurrentLegalDocuments(String uid) async {
+    await _firestore.collection('users').doc(uid).update({
+      'termsAccepted': true,
+      'termsAcceptedAt': FieldValue.serverTimestamp(),
+      'termsVersion': LegalDocuments.termsVersion,
+      'privacyPolicyVersion': LegalDocuments.privacyPolicyVersion,
+    });
   }
 
   Future<void> logout() async {

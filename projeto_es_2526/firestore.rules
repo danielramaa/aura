@@ -36,11 +36,36 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId;
-      // Users can update their own doc but cannot touch the 'role' field,
-      // preventing self-promotion.
+      // Users can update their own doc but cannot touch the 'role' field
+      // (preventing self-promotion) nor the immutable compliance/audit fields
+      // written at registration (terms acceptance and age verification), so the
+      // audit record can't be altered or forged by the client afterwards.
       allow update: if request.auth != null
         && request.auth.uid == userId
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'role',
+          'termsAccepted',
+          'termsAcceptedAt',
+          'termsVersion',
+          'privacyPolicyVersion',
+          'dateOfBirth',
+          'ageVerifiedAt',
+        ]);
+      // Re-acceptance: an existing user may refresh their own acceptance record
+      // when the documents are updated, but only these fields together and with
+      // a server-set timestamp, so the audit trail can't be backdated or forged.
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'termsAccepted',
+          'termsAcceptedAt',
+          'termsVersion',
+          'privacyPolicyVersion',
+        ])
+        && request.resource.data.termsAccepted == true
+        && request.resource.data.termsAcceptedAt == request.time
+        && request.resource.data.termsVersion is string
+        && request.resource.data.privacyPolicyVersion is string;
       // Admins can update the role field exclusively.
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
@@ -117,6 +142,22 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
         allow delete: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      }
+
+      // Pinned messages mirror a snapshot of a chat message for the pinned
+      // banner. Readable by all members; only moderators (admin/medic) may pin
+      // or unpin, and pinned docs are restricted to the expected fields.
+      match /pinnedMessages/{messageId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'medic']
+          && request.resource.data.keys().hasOnly(
+               ['text', 'senderNickname', 'senderAvatarIndex', 'timestamp', 'pinnedAt'])
+          && request.resource.data.text is string
+          && request.resource.data.pinnedAt == request.time;
+        allow update: if false;
+        allow delete: if request.auth != null
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'medic'];
       }
 
       match /polls/{pollId} {

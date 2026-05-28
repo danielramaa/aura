@@ -15,6 +15,7 @@ import '../widgets/create_poll_sheet.dart';
 import '../widgets/emoji_picker_sheet.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/medications_dialog.dart';
+import '../widgets/pinned_messages_banner.dart';
 import '../widgets/poll_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -51,6 +52,13 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSearchOpen = false;
   String? _highlightedMessageId;
 
+  // Per-message keys so scroll-to-message can use Scrollable.ensureVisible for
+  // precise, correctly-aligned positioning despite variable-height bubbles.
+  final Map<String, GlobalKey> _messageKeys = {};
+
+  GlobalKey _keyForMessage(String messageId) =>
+      _messageKeys.putIfAbsent(messageId, () => GlobalKey());
+
   @override
   void initState() {
     super.initState();
@@ -68,13 +76,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _roleSub?.cancel();
     _controller.removeListener(_handleControllerChanges);
     _controller.dispose();
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _searchDebounce?.cancel();
-    _highlightTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _scrollController.dispose();
@@ -128,7 +136,58 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _mentionSuggestions = []);
   }
 
+  void _scrollToMessage(String messageId) {
+    final messages = _controller.messages;
+    final index = messages.indexWhere((m) => m.id == messageId);
+    if (index == -1) return;
+
+    final context = _messageKeys[messageId]?.currentContext;
+    if (context != null) {
+      // Already built and laid out: position it precisely.
+      _ensureMessageVisible(messageId);
+    } else if (_scrollController.hasClients) {
+      // Off-screen in the lazy builder, so its context doesn't exist yet.
+      // Jump to an approximate offset to bring it into the build window, then
+      // refine on the next frame once the item has been laid out.
+      final maxExtent = _scrollController.position.maxScrollExtent;
+      final target = maxExtent * (index / messages.length);
+      _scrollController
+          .animateTo(
+            target,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOut,
+          )
+          .then((_) => _ensureMessageVisible(messageId));
+    }
+
+    _highlightTimer?.cancel();
+    setState(() => _highlightedMessageId = messageId);
+    _highlightTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _highlightedMessageId = null);
+    });
+  }
+
+  /// Brings the message into view with correct alignment, using the per-item
+  /// key. No-op if the item still isn't built (target far outside the range
+  /// the approximate jump reached).
+  void _ensureMessageVisible(String messageId) {
+    if (!mounted) return;
+    final context = _messageKeys[messageId]?.currentContext;
+    if (context == null) return;
+    Scrollable.ensureVisible(
+      context,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      alignment: 0.4,
+    );
+  }
+
+  bool get _isModerator =>
+      _currentUserRole == UserRole.admin ||
+      _currentUserRole == UserRole.medic;
+
   void _showMessageOptions(BuildContext context, Message message) {
+    final isPinned = _controller.isMessagePinned(message.id);
     showModalBottomSheet<void>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -144,16 +203,32 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: const Text(
-                'Delete message',
-                style: TextStyle(color: Colors.red),
+              leading: Icon(
+                isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                color: const Color(0xFF185FA5),
               ),
+              title: Text(isPinned ? 'Unpin message' : 'Pin message'),
               onTap: () {
-                Navigator.pop(sheetContext);
-                _controller.deleteMessage(message.id);
+                Navigator.pop(context);
+                if (isPinned) {
+                  _controller.unpinMessage(message.id);
+                } else {
+                  _controller.pinMessage(message);
+                }
               },
             ),
+            if (_currentUserRole == UserRole.admin)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete message',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _controller.deleteMessage(message.id);
+                },
+              ),
           ],
         ),
       ),
@@ -300,9 +375,9 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  Future<void> _jumpToSearchResult(MessageSearchResult result) async {
-    final index = _controller.indexOfMessage(result.message.id);
-    if (index == -1) {
+  void _jumpToSearchResult(MessageSearchResult result) {
+    final messageId = result.message.id;
+    if (_controller.indexOfMessage(messageId) == -1) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Mensagem não encontrada no chat.')),
       );
@@ -310,22 +385,11 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _closeSearch();
-    setState(() => _highlightedMessageId = result.message.id);
-
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!_scrollController.hasClients) return;
-      final maxOffset = _scrollController.position.maxScrollExtent;
-      final targetOffset = (index * 92.0).clamp(0.0, maxOffset).toDouble();
-      await _scrollController.animateTo(
-        targetOffset,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOutCubic,
-      );
-    });
-
-    _highlightTimer?.cancel();
-    _highlightTimer = Timer(const Duration(milliseconds: 1400), () {
-      if (mounted) setState(() => _highlightedMessageId = null);
+    // Defer until the search panel is gone so the list has its final height
+    // before _scrollToMessage reads scroll offsets. It handles the precise
+    // key-based positioning and the highlight pulse.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _scrollToMessage(messageId);
     });
   }
 
@@ -543,9 +607,21 @@ class _ChatScreenState extends State<ChatScreen> {
             );
           }
 
+          // While searching, the panel takes over the body so its result list
+          // is the only flexible child — stacking it above the message list
+          // overflowed once the keyboard shrank the available height.
+          if (_isSearchOpen) {
+            return Column(children: [Expanded(child: _buildSearchPanel())]);
+          }
+
           return Column(
             children: [
-              if (_isSearchOpen) _buildSearchPanel(),
+              PinnedMessagesBanner(
+                pinnedMessages: _controller.pinnedMessages,
+                canUnpin: _isModerator,
+                onUnpin: _controller.unpinMessage,
+                onNavigate: _scrollToMessage,
+              ),
               Expanded(child: _buildBody()),
               _buildTypingIndicator(),
               _buildReplyPreview(),
@@ -578,36 +654,45 @@ class _ChatScreenState extends State<ChatScreen> {
         final message = messages[index];
         final isOwn =
             message.anonymousId == _controller.anonymousIdentity?.anonymousId;
+        final messageKey = _keyForMessage(message.id);
 
         if (message.type == MessageType.poll && message.pollId != null) {
-          return PollBubble(
-            message: message,
-            isOwn: isOwn,
-            currentAnonymousId:
-                _controller.anonymousIdentity?.anonymousId ?? '',
-            pollService: _controller.pollService,
-            groupId: widget.groupId,
+          return KeyedSubtree(
+            key: messageKey,
+            child: PollBubble(
+              message: message,
+              isOwn: isOwn,
+              currentAnonymousId:
+                  _controller.anonymousIdentity?.anonymousId ?? '',
+              pollService: _controller.pollService,
+              groupId: widget.groupId,
+            ),
           );
         }
 
-        return MessageBubble(
-          message: message,
-          isOwn: isOwn,
-          isSenderMedic: _controller.medicAnonymousIds.contains(
-            message.anonymousId,
+        return KeyedSubtree(
+          key: messageKey,
+          child: MessageBubble(
+            message: message,
+            isOwn: isOwn,
+            isSenderMedic: _controller.medicAnonymousIds.contains(
+              message.anonymousId,
+            ),
+            isPinned: _controller.isMessagePinned(message.id),
+            isHighlighted: _highlightedMessageId == message.id,
+            currentAnonymousId:
+                _controller.anonymousIdentity?.anonymousId ?? '',
+            hasReactionError: _controller.hasReactionError(message.id),
+            isRetryingReaction: _controller.isRetryingReaction(message.id),
+            onShowOptions: () => _isModerator
+                ? _showMessageOptions(context, message)
+                : _showEmojiPicker(context, message),
+            onReply: () => _startReply(message),
+            onSenderTap: () => _showUserOptions(context, message),
+            onToggleReaction: (emoji) =>
+                _controller.toggleReaction(message.id, emoji),
+            onRetryReaction: () => _controller.retryReaction(message.id),
           ),
-          currentAnonymousId: _controller.anonymousIdentity?.anonymousId ?? '',
-          hasReactionError: _controller.hasReactionError(message.id),
-          isRetryingReaction: _controller.isRetryingReaction(message.id),
-          isHighlighted: _highlightedMessageId == message.id,
-          onLongPress: () => _currentUserRole == UserRole.admin
-              ? _showMessageOptions(context, message)
-              : _showEmojiPicker(context, message),
-          onReply: () => _startReply(message),
-          onSenderTap: () => _showUserOptions(context, message),
-          onToggleReaction: (emoji) =>
-              _controller.toggleReaction(message.id, emoji),
-          onRetryReaction: () => _controller.retryReaction(message.id),
         );
       },
     );
@@ -632,11 +717,9 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: SafeArea(
         top: false,
-        bottom: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: _searchController,
@@ -682,10 +765,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
               if (hasQuery) ...[
                 const SizedBox(height: 8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 280),
-                  child: _buildSearchResultsList(results, query),
-                ),
+                Expanded(child: _buildSearchResultsList(results, query)),
               ],
             ],
           ),
@@ -739,7 +819,6 @@ class _ChatScreenState extends State<ChatScreen> {
         results.length + (_controller.hasMoreSearchResults ? 1 : 0);
 
     return ListView.separated(
-      shrinkWrap: true,
       padding: EdgeInsets.zero,
       itemCount: itemCount,
       separatorBuilder: (_, _) => Divider(height: 1, color: Colors.grey[200]),
