@@ -42,7 +42,6 @@ class AuthService {
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (_) {
-      // Roll back the Auth account so there's no dangling user without a profile.
       await credential.user!.delete();
       rethrow;
     }

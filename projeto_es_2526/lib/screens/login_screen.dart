@@ -84,17 +84,17 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Incorrect email or password.';
+        return 'E-mail ou password incorretos.';
       case 'email-already-in-use':
-        return 'An account with this email already exists.';
+        return 'Já existe uma conta com este endereço de e-mail.';
       case 'weak-password':
-        return 'Password must be at least 8 characters.';
+        return 'A password deve ter no mínimo 8 caracteres.';
       case 'invalid-email':
-        return 'Please enter a valid email address.';
+        return 'Por favor, insira um endereço de e-mail válido.';
       case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        return 'Muitas tentativas foram feitas. Por favor, tente novamente mais tarde.';
       default:
-        return 'Something went wrong. Please try again.';
+        return 'Algo deu errado. Por favor, tente novamente.';
     }
   }
 
@@ -118,7 +118,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const SizedBox(height: 48),
                     Text(
-                      _isLogin ? 'Welcome back' : 'Create account',
+                      _isLogin ? 'Bem vindo de volta' : 'Criar conta',
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: const InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'E-mail',
                         border: OutlineInputBorder(),
                       ),
                       validator: validateEmail,
@@ -144,10 +144,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) {
-                          return 'Enter your password';
+                          return 'Insira a password';
                         }
                         if (!_isLogin && v.length < 8) {
-                          return 'Password must be at least 8 characters';
+                          return 'A password deve ter pelo menos 8 caracteres.';
                         }
                         return null;
                       },
@@ -185,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                                 ),
-                          child: const Text('Forgot password?'),
+                          child: const Text('Esqueceu a password?'),
                         ),
                       ),
                     ],
@@ -197,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onChanged: (v) =>
                               setState(() => _stayLoggedIn = v ?? true),
                         ),
-                        const Text('Stay logged in'),
+                        const Text('Permaneça online'),
                       ],
                     ),
                     if (_errorMessage != null) ...[
@@ -219,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_isLogin ? 'Login' : 'Register'),
+                          : Text(_isLogin ? 'Login' : 'Registro'),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
@@ -231,8 +231,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             }),
                       child: Text(
                         _isLogin
-                            ? "Don't have an account? Register"
-                            : 'Already have an account? Login',
+                            ? "Não tem uma conta? Cadastre-se"
+                            : 'Já tem uma conta? Login',
                       ),
                     ),
                     const SizedBox(height: 48),

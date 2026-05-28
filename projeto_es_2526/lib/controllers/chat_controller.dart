@@ -38,7 +38,6 @@ class ChatController extends ChangeNotifier {
   bool _isTyping = false;
   late final Stream<List<String>> typingNamesStream;
 
-  // Maps messageId → the emoji that failed, so retry knows what to re-send.
   final Map<String, String> _reactionErrors = {};
   final Set<String> _reactionRetrying = {};
 
@@ -83,10 +82,7 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Getters
-  // ---------------------------------------------------------------------------
-
+  
   List<Message> get messages => _messages;
   List<String> get roomNicknames => _roomNicknames;
   Set<String> get medicAnonymousIds => _medicAnonymousIds;
@@ -100,9 +96,6 @@ class ChatController extends ChangeNotifier {
   bool isRetryingReaction(String messageId) =>
       _reactionRetrying.contains(messageId);
 
-  // ---------------------------------------------------------------------------
-  // Typing
-  // ---------------------------------------------------------------------------
 
   List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
     final cutoff = Timestamp.fromDate(
@@ -153,10 +146,7 @@ class ChatController extends ChangeNotifier {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Init
-  // ---------------------------------------------------------------------------
-
+  
   Future<void> _initialize() async {
     try {
       _anonymousIdentity = await _identityService.getOrCreateIdentity(
@@ -171,8 +161,7 @@ class ChatController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      // Fire-and-forget: nicknames are refreshed lazily on each @ trigger,
-      // so there's no need to block the message stream on this read.
+
       unawaited(_loadRoomNicknames());
 
       _messagesSubscription = _chatService
@@ -199,8 +188,7 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  /// Reloads the nickname list from Firestore so recently joined members
-  /// appear in autocomplete suggestions.
+
   Future<void> refreshRoomNicknames() async {
     await _loadRoomNicknames();
     if (!_isDisposed) notifyListeners();
@@ -219,7 +207,7 @@ class ChatController extends ChangeNotifier {
           .where((n) => n != _anonymousIdentity?.nickname)
           .toList();
     } catch (e) {
-      debugPrint('Failed to load room nicknames: $e');
+      debugPrint('Falha ao carregar os apelidos das salas.: $e');
       _roomNicknames = [];
     }
   }
@@ -239,9 +227,7 @@ class ChatController extends ChangeNotifier {
     await _identityService.leaveGroup(userId, groupId);
   }
 
-  // ---------------------------------------------------------------------------
-  // Send
-  // ---------------------------------------------------------------------------
+
 
   Future<void> send(
     String text, {
@@ -286,7 +272,7 @@ class ChatController extends ChangeNotifier {
                 .set({'isMedic': true})
                 .catchError(
                   (Object e) =>
-                      debugPrint('Failed to mark anonymousId as medic: $e'),
+                      debugPrint('Falha ao marcar anonymousId como médico: $e'),
                 ),
           );
         }
@@ -299,15 +285,12 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Polls
-  // ---------------------------------------------------------------------------
 
   PollServiceInterface get pollService => _pollService;
 
   Future<String?> createPoll(String question, List<String> options) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Not connected to the room.';
+    if (identity == null) return 'Não está conectado ao chat';
     return _pollService.createPoll(
       groupId: groupId,
       question: question,
@@ -316,9 +299,7 @@ class ChatController extends ChangeNotifier {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Reactions
-  // ---------------------------------------------------------------------------
+
 
   Future<void> toggleReaction(String messageId, String emoji) async {
     final identity = _anonymousIdentity;
@@ -384,9 +365,7 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------------------------------------------------------------------------
-  // Notifications
-  // ---------------------------------------------------------------------------
+
 
   Future<void> _createNotification({List<String> mentions = const []}) async {
     try {
@@ -395,7 +374,7 @@ class ChatController extends ChangeNotifier {
       await _firestore.collection('notifications').add({
         'groupId': groupId,
         'groupName': groupName,
-        'description': 'Nova mensagem no grupo "$groupName".',
+        'description': 'Nova mensagem na comunidade "$groupName".',
         'senderId': _userId,
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'message',
@@ -429,7 +408,7 @@ class ChatController extends ChangeNotifier {
         });
       }
     } catch (e) {
-      debugPrint('Failed to create notification for group "$groupId": $e');
+      debugPrint('Falha ao criar notificação para a comunidade "$groupId": $e');
     }
   }
 

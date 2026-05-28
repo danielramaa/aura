@@ -42,7 +42,7 @@ class _MedicationsDialogState extends State<MedicationsDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Medications',
+                  'Medicações',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
@@ -66,7 +66,7 @@ class _MedicationsDialogState extends State<MedicationsDialog> {
                   if (meds.isEmpty) {
                     return const Center(
                       child: Text(
-                        'No approved medications yet.',
+                        'Ainda não existem medicamentos aprovados.',
                         style: TextStyle(color: Colors.grey),
                       ),
                     );
@@ -98,7 +98,7 @@ class _MedicationsDialogState extends State<MedicationsDialog> {
                 child: ElevatedButton.icon(
                   onPressed: _showSubmitDialog,
                   icon: const Icon(Icons.add),
-                  label: const Text('Add Medication'),
+                  label: const Text('Adicionar medicação'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF185FA5),
                     foregroundColor: Colors.white,
@@ -138,7 +138,7 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add Medication'),
+      title: const Text('Adicionar medicação'),
       content: Form(
         key: _formKey,
         child: Column(
@@ -147,11 +147,11 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Medication Name',
+                labelText: 'Nome da medicação',
                 border: OutlineInputBorder(),
               ),
               validator: (v) =>
-                  v == null || v.trim().isEmpty ? 'Name is required' : null,
+                  v == null || v.trim().isEmpty ? 'O nome é obrigatório' : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -159,11 +159,11 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
               keyboardType: TextInputType.multiline,
               maxLines: 3,
               decoration: const InputDecoration(
-                labelText: 'Description / Usage',
+                labelText: 'Descrição / Uso',
                 border: OutlineInputBorder(),
               ),
               validator: (v) => v == null || v.trim().isEmpty
-                  ? 'Description is required'
+                  ? 'A descrição é obrigatória'
                   : null,
             ),
           ],
@@ -172,7 +172,7 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text('Cancelar'),
         ),
         ElevatedButton(
           onPressed: _isSubmitting
@@ -192,7 +192,7 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
                     Navigator.pop(context);
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(err ?? 'Medication added successfully!'),
+                        content: Text(err ?? 'Medicação adicionada com sucesso!'),
                       ),
                     );
                   }
@@ -203,7 +203,7 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Submit'),
+              : const Text('Submeter'),
         ),
       ],
     );

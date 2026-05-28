@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 class CreatePollSheet extends StatefulWidget {
-  /// Called with (question, optionTexts) when the user taps Publish.
-  /// Return an error string to show a snackbar, or null on success.
   final Future<String?> Function(String question, List<String> options)
   onPublish;
 
@@ -58,12 +56,12 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
     final question = _questionCtrl.text.trim();
 
     setState(() {
-      _questionError = question.isEmpty ? 'Question cannot be empty.' : null;
+      _questionError = question.isEmpty ? 'A pergunta não pode estar vazia.' : null;
       if (_questionError != null) valid = false;
 
       for (int i = 0; i < _optionCtrls.length; i++) {
         if (_optionCtrls[i].text.trim().isEmpty) {
-          _optionErrors[i] = 'Option cannot be empty.';
+          _optionErrors[i] = 'A opção não pode estar vazia.';
           valid = false;
         } else {
           _optionErrors[i] = null;
@@ -118,7 +116,7 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
               child: Row(
                 children: [
                   Text(
-                    'Create Poll',
+                    'Criar sondagem',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -143,8 +141,8 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                     maxLines: 2,
                     textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
-                      labelText: 'Question',
-                      hintText: 'Ask something…',
+                      labelText: 'Pergunta',
+                      hintText: 'Pergunte algo…',
                       errorText: _questionError,
                       border: const OutlineInputBorder(),
                     ),
@@ -176,7 +174,7 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                                   ? TextInputAction.next
                                   : TextInputAction.done,
                               decoration: InputDecoration(
-                                labelText: 'Option ${i + 1}',
+                                labelText: 'Opção ${i + 1}',
                                 errorText: _optionErrors[i],
                                 border: const OutlineInputBorder(),
                                 counterText: '',
@@ -193,7 +191,7 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                             IconButton(
                               icon: const Icon(Icons.remove_circle_outline),
                               color: theme.colorScheme.error,
-                              tooltip: 'Remove option',
+                              tooltip: 'Apagar opção',
                               onPressed: () => _removeOption(i),
                             ),
                           ],
@@ -206,7 +204,7 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                       onPressed: _addOption,
                       icon: const Icon(Icons.add),
                       label: Text(
-                        'Add option (${_optionCtrls.length}/$_maxOptions)',
+                        'Adicionar opção (${_optionCtrls.length}/$_maxOptions)',
                       ),
                     ),
                   const SizedBox(height: 16),
@@ -222,7 +220,7 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                       onPressed: _isPublishing
                           ? null
                           : () => Navigator.pop(context),
-                      child: const Text('Cancel'),
+                      child: const Text('Cancelar'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -238,7 +236,7 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text('Publish Poll'),
+                          : const Text('Enviar Sondagem'),
                     ),
                   ),
                 ],

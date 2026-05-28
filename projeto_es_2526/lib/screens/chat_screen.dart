@@ -124,7 +124,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.emoji_emotions_outlined),
-              title: const Text('React'),
+              title: const Text('Reagir'),
               onTap: () {
                 Navigator.pop(context);
                 _showEmojiPicker(context, message);
@@ -133,7 +133,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ListTile(
               leading: const Icon(Icons.delete_outline, color: Colors.red),
               title: const Text(
-                'Delete message',
+                'Apagar mensagem',
                 style: TextStyle(color: Colors.red),
               ),
               onTap: () {
@@ -192,7 +192,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _controller.leaveGroup();
       return true;
     } catch (e) {
-      debugPrint('Error leaving group: $e');
+      debugPrint('Erro ao sair da comunidade: $e');
       return false;
     }
   }
@@ -206,16 +206,16 @@ class _ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text(
-            'Leave Group',
+            'Sair da comunidade',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: const Text(
-            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            'Tem certeza de que deseja sair desta conversa? Você não receberá mais notificações desta comunidade.',
             style: TextStyle(color: Colors.black87),
           ),
           actions: [
             TextButton(
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              child: Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
@@ -224,7 +224,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                'Leave',
+                'Sair',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -235,7 +235,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Leaving group...'),
+                    content: Text('Saindo da comunidade...'),
                     duration: Duration(seconds: 1),
                   ),
                 );
@@ -248,10 +248,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Failed to leave group.'),
+                      content: const Text('Falha ao sair da comunidade'),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
-                        label: 'Try Again',
+                        label: 'Tente Novamente',
                         textColor: Colors.white,
                         onPressed: () async {
                           final retry = await _processLeaveGroup();
@@ -322,7 +322,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             Text(
-              '${widget.memberCount} members',
+              '${widget.memberCount} membros',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
@@ -334,7 +334,7 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.medical_services_outlined),
-            tooltip: 'Medications',
+            tooltip: 'Medicações',
             onPressed: () {
               showDialog(
                 context: context,
@@ -360,13 +360,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         _showLeaveConfirmation(context);
                       },
                       child: const Text(
-                        'Leave Group',
+                        'Sair da comunidade',
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(infoContext),
-                      child: const Text('Close'),
+                      child: const Text('Fechar'),
                     ),
                   ],
                 ),
@@ -470,8 +470,8 @@ class _ChatScreenState extends State<ChatScreen> {
         final names = snapshot.data ?? [];
         if (names.isEmpty) return const SizedBox.shrink();
         final label = names.length == 1
-            ? '${names.first} is typing...'
-            : '${names.join(', ')} are typing...';
+            ? '${names.first} está a escrever...'
+            : '${names.join(', ')} estão a escrever...';
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
@@ -579,7 +579,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.poll_outlined),
             color: const Color(0xFF185FA5),
-            tooltip: 'Create poll',
+            tooltip: 'Criar uma sondagem',
             onPressed: isSending ? null : _showCreatePollSheet,
           ),
           Expanded(

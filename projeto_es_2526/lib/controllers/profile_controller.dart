@@ -55,7 +55,6 @@ class ProfileController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-      // whereIn is limited to 30 values; users in >30 groups see their first 30.
       final groupIds = identitiesSnap.docs.map((d) => d.id).take(30).toList();
 
       if (groupIds.isEmpty) {
@@ -73,7 +72,7 @@ class ProfileController extends ChangeNotifier {
       _joinedCommunities = groupsSnap.docs.map(Group.fromFirestore).toList();
     } catch (_) {
       if (_isDisposed) return;
-      _communityError = 'Failed to load communities.';
+      _communityError = 'Falha ao carregar as comunidades.';
     } finally {
       if (!_isDisposed) {
         _isLoadingCommunities = false;
@@ -82,8 +81,7 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
-  /// Returns null on success, or a human-readable error message on failure.
-  /// Re-authenticates when email or password are being changed.
+
   Future<String?> updateProfile({
     required String displayName,
     required String photoURL,
@@ -91,21 +89,21 @@ class ProfileController extends ChangeNotifier {
     required String newPassword,
     required String currentPassword,
   }) async {
-    if (currentUser == null) return 'Not logged in.';
+    if (currentUser == null) return 'Não está conectado.';
 
     final emailChanged = email.isNotEmpty && email != currentUser!.email;
     final passwordChanged = newPassword.isNotEmpty;
 
     if (passwordChanged && newPassword.length < 8) {
-      return 'Password must be at least 8 characters.';
+      return 'A password deve ter no mínimo 8 caracteres.';
     }
 
     if ((emailChanged || passwordChanged) && currentPassword.isEmpty) {
-      return 'Current password is required to change email or password.';
+      return 'A password atual é necessária para alterar o e-mail ou a password.';
     }
 
     if ((emailChanged || passwordChanged) && currentUser!.email == null) {
-      return 'Re-authentication is not supported for this account type.';
+      return 'A reautenticação não é suportada para este tipo de conta.';
     }
 
     try {
@@ -131,12 +129,12 @@ class ProfileController extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       return _authErrorMessage(e.code);
     } catch (_) {
-      return 'Failed to update profile. Please try again.';
+      return 'Falha ao atualizar o perfil. Por favor, tente novamente.';
     }
   }
 
   Future<String?> submitModeratorApplication(String licenseNumber) async {
-    if (currentUser == null) return 'Not logged in.';
+    if (currentUser == null) return 'Não está conectado.';
     try {
       final existing = await _firestore
           .collection('moderator_applications')
@@ -145,7 +143,7 @@ class ProfileController extends ChangeNotifier {
           .limit(1)
           .get();
       if (existing.docs.isNotEmpty) {
-        return 'You already have a pending application.';
+        return 'Você já possui uma candidatura pendente.';
       }
       await _firestore.collection('moderator_applications').add({
         'userId': currentUser!.uid,
@@ -156,7 +154,7 @@ class ProfileController extends ChangeNotifier {
       });
       return null;
     } catch (e) {
-      return 'Failed to submit application.';
+      return 'A candidatura não foi submetida.';
     }
   }
 
@@ -175,17 +173,17 @@ class ProfileController extends ChangeNotifier {
     switch (code) {
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Current password is incorrect.';
+        return 'A password está incorreta.';
       case 'email-already-in-use':
-        return 'This email is already in use.';
+        return 'Este endereço de e-mail já está em uso.';
       case 'weak-password':
-        return 'Password must be at least 8 characters.';
+        return 'A password deve ter no mínimo 8 caracteres.';
       case 'requires-recent-login':
-        return 'Please sign in again before making this change.';
+        return 'Por favor, faça login novamente antes de efetuar essa alteração.';
       case 'invalid-email':
-        return 'Please enter a valid email address.';
+        return 'Por favor, insira um endereço de e-mail válido.';
       default:
-        return 'An error occurred. Please try again.';
+        return 'Ocorreu um erro. Por favor, tente novamente.';
     }
   }
 }

@@ -98,8 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               SizedBox(height: 16),
                               Text(
                                 _isSearching
-                                    ? 'No groups match your search'
-                                    : 'No communities yet',
+                                    ? 'Nenhuma comunidade corresponde à sua pesquisa.'
+                                    : 'Nenhuma comunidade ainda.',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w500,
@@ -109,8 +109,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               SizedBox(height: 8),
                               Text(
                                 _isSearching
-                                    ? 'Try a different search term.'
-                                    : 'Join a community to connect with people who understand what you are going through.',
+                                    ? 'Tente usar um termo de pesquisa diferente.'
+                                    : 'Junte-se a uma comunidade para se conectar com pessoas que entendem o que você está passando.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,
@@ -132,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ),
                                   ),
                                   child: const Text(
-                                    'Find a community',
+                                    'Encontre uma comunidade',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: Colors.white,
@@ -191,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'My Groups',
+              'Minhas comunidades',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w500,
@@ -201,8 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(height: 4),
             Text(
               groups.isEmpty
-                  ? 'No active groups'
-                  : '${groups.length} active group${groups.length == 1 ? '' : 's'}',
+                  ? 'Nenhuma comunidade ativo'
+                  : '${groups.length} comunidades ativa${groups.length == 1 ? '' : 's'}',
               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
           ],
@@ -232,7 +232,7 @@ class _HomeScreenState extends State<HomeScreen> {
             controller: _searchController,
             autofocus: true,
             decoration: InputDecoration(
-              hintText: 'Search groups...',
+              hintText: 'Encontre comunidades...',
               hintStyle: TextStyle(color: Colors.grey[400]),
               prefixIcon: Icon(Icons.search, color: Colors.grey[500], size: 20),
               contentPadding: const EdgeInsets.symmetric(vertical: 10),

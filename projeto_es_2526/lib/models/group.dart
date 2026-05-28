@@ -12,7 +12,6 @@ class Group {
   final Color color;
   final String category;
 
-  /// True when [memberCount] is a seed estimate, not a live Firestore value.
   final bool isEstimate;
 
   const Group({
@@ -35,7 +34,7 @@ class Group {
       color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
       category: groupCategories.contains(data['category'])
           ? data['category'] as String
-          : 'General',
+          : 'Geral',
     );
   }
 }

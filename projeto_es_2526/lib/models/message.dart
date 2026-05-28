@@ -15,7 +15,6 @@ class Message {
   final Timestamp timestamp;
   final String? replyToText;
   final List<String> mentions;
-  // reactions: { emoji: [anonymousId, ...] }
   final Map<String, List<String>> reactions;
   final MessageType type;
   final String? pollId;
@@ -49,7 +48,6 @@ class Message {
       });
     }
 
-    // Fall back to hash-based index for messages sent before this field existed.
     final nickname = data['senderNickname'] as String? ?? '';
     final fallbackIndex =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
@@ -81,7 +79,6 @@ class Message {
     );
   }
 
-  /// Emoji reacted by [anonymousId], or null if none.
   String? userReaction(String anonymousId) {
     for (final entry in reactions.entries) {
       if (entry.value.contains(anonymousId)) return entry.key;
@@ -89,7 +86,6 @@ class Message {
     return null;
   }
 
-  /// Sorted list of (emoji, count) for display, excluding empty entries.
   List<MapEntry<String, int>> get reactionSummary {
     return reactions.entries
         .where((e) => e.value.isNotEmpty)

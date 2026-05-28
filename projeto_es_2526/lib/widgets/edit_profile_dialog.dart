@@ -63,7 +63,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     if (newPassword.isNotEmpty && newPassword != confirmPassword) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Passwords do not match.')));
+      ).showSnackBar(const SnackBar(content: Text('As passwords não são iguais.')));
       return;
     }
 
@@ -92,32 +92,32 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Edit Profile'),
+      title: const Text('Editar Perfil'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Name'),
+              decoration: const InputDecoration(labelText: 'Nome'),
             ),
             TextField(
               controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'E-mail'),
               keyboardType: TextInputType.emailAddress,
             ),
             TextField(
               controller: _newPasswordCtrl,
               decoration: const InputDecoration(
-                labelText: 'New Password',
-                hintText: 'Leave blank to keep current',
+                labelText: 'Nova Password',
+                hintText: 'Deixe em branco para manter a mesma.',
               ),
               obscureText: true,
             ),
             TextField(
               controller: _confirmPasswordCtrl,
               decoration: const InputDecoration(
-                labelText: 'Confirm New Password',
+                labelText: 'Confirme a nova Password',
               ),
               obscureText: true,
             ),
@@ -125,8 +125,8 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
               TextField(
                 controller: _currentPasswordCtrl,
                 decoration: const InputDecoration(
-                  labelText: 'Current Password',
-                  helperText: 'Required to change email or password.',
+                  labelText: 'Password atual',
+                  helperText: 'É necessário alterar o e-mail ou a password.',
                 ),
                 obscureText: true,
               ),
@@ -136,7 +136,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text('Cancelar'),
         ),
         FilledButton(
           onPressed: _isSaving ? null : _save,
@@ -146,7 +146,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Save'),
+              : const Text('Guardar'),
         ),
       ],
     );

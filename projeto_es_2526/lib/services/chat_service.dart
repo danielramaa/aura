@@ -62,9 +62,9 @@ class ChatService implements ChatServiceInterface {
     required String senderRole,
   }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return 'Message cannot be empty.';
+    if (trimmed.isEmpty) return 'A mensagem não pode estar vazia.';
     if (trimmed.length > maxMessageLength) {
-      return 'Message cannot exceed $maxMessageLength characters.';
+      return 'A mensagem não pode exceder $maxMessageLength caracteres.';
     }
 
     try {
@@ -81,13 +81,11 @@ class ChatService implements ChatServiceInterface {
       });
       return null;
     } catch (_) {
-      return 'Failed to send message. Please try again.';
+      return 'Falha ao enviar a mensagem. Tente novamente.';
     }
   }
 
-  /// Adds [emoji] reaction from [anonymousId] to a message.
-  /// Enforces one reaction per user: removes any existing reaction first.
-  /// Returns null on success, or an error string on failure.
+
   @override
   Future<String?> addReaction({
     required String groupId,
@@ -100,32 +98,28 @@ class ChatService implements ChatServiceInterface {
     try {
       await _firestore.runTransaction((transaction) async {
         final snap = await transaction.get(docRef);
-        if (!snap.exists) throw Exception('Message not found.');
+        if (!snap.exists) throw Exception('Mensagem não encontrada.');
 
         final data = snap.data() ?? {};
         final raw = data['reactions'] != null
             ? Map<String, dynamic>.from(data['reactions'] as Map)
             : <String, dynamic>{};
 
-        // Remove user from any existing reaction (one reaction per user rule)
         final updated = raw.map(
           (e, users) => MapEntry(e, List<String>.from(users as List)),
         );
         updated.forEach((e, users) => users.remove(anonymousId));
 
-        // Add to the chosen emoji list
         updated[emoji] = (updated[emoji] ?? [])..add(anonymousId);
 
-        // Clean up empty entries
         updated.removeWhere((_, users) => users.isEmpty);
 
-        // Use set (not update) so the reactions field is fully replaced,
-        // not deep-merged with the existing map.
+
         transaction.set(docRef, {...data, 'reactions': updated});
       });
       return null;
     } catch (_) {
-      return 'Não foi possível adicionar a reação. Tente novamente.';
+      return 'Não foi possível adicionar a reação. Por favor tente novamente.';
     }
   }
 
@@ -138,12 +132,11 @@ class ChatService implements ChatServiceInterface {
       await _messagesRef(groupId).doc(messageId).delete();
       return null;
     } catch (_) {
-      return 'Failed to delete message. Please try again.';
+      return 'Não foi possível excluir a mensagem. Por favor tente novamente.';
     }
   }
 
-  /// Removes [emoji] reaction from [anonymousId].
-  /// Returns null on success, or an error string on failure.
+
   @override
   Future<String?> removeReaction({
     required String groupId,
@@ -156,7 +149,7 @@ class ChatService implements ChatServiceInterface {
     try {
       await _firestore.runTransaction((transaction) async {
         final snap = await transaction.get(docRef);
-        if (!snap.exists) throw Exception('Message not found.');
+        if (!snap.exists) throw Exception('Mensagem não encontrada.');
 
         final data = snap.data() ?? {};
         final raw = data['reactions'] != null
