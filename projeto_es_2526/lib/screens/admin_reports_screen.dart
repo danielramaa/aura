@@ -15,7 +15,10 @@ class AdminReportsScreen extends StatelessWidget {
 
   String _formatTime(Timestamp? createdAt) {
     if (createdAt == null) return 'Agora';
-    final elapsed = DateTime.now().difference(createdAt.toDate());
+    // Clamp negative durations (device clock ahead of the serverTimestamp) to
+    // zero so a just-created report never renders an invalid "Há -1 min".
+    final rawElapsed = DateTime.now().difference(createdAt.toDate());
+    final elapsed = rawElapsed.isNegative ? Duration.zero : rawElapsed;
     if (elapsed.inMinutes < 1) return 'Agora';
     if (elapsed.inMinutes < 60) return 'Há ${elapsed.inMinutes} min';
     if (elapsed.inHours < 24) return 'Há ${elapsed.inHours} h';
