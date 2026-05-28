@@ -28,6 +28,8 @@ class _DeletionGracePeriodGateState extends State<DeletionGracePeriodGate> {
   late Future<DateTime?> _deletionDateFuture;
   bool _isReactivating = false;
   bool _deletionStarted = false;
+  bool _needsRecentLogin = false;
+  bool _deletionFailed = false;
 
   @override
   void initState() {
@@ -40,6 +42,8 @@ class _DeletionGracePeriodGateState extends State<DeletionGracePeriodGate> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.userId != widget.userId) {
       _deletionStarted = false;
+      _needsRecentLogin = false;
+      _deletionFailed = false;
       setState(() {
         _deletionDateFuture = _gdprService.getScheduledDeletionDate(
           widget.userId,
@@ -85,18 +89,39 @@ class _DeletionGracePeriodGateState extends State<DeletionGracePeriodGate> {
     await _authService.logout();
   }
 
-  /// Runs the permanent erasure once, after the grace period has expired. The
-  /// resulting Auth account deletion makes the auth stream emit null, which
+  void _retryDeletion() {
+    setState(() {
+      _deletionFailed = false;
+      _deletionStarted = false;
+    });
+  }
+
+  /// Runs the permanent erasure once, after the grace period has expired. On
+  /// success the Auth account deletion makes the auth stream emit null, which
   /// returns the user to the login screen.
+  ///
+  /// Two recoverable outcomes are handled explicitly instead of being swallowed
+  /// into an endless spinner:
+  ///   * [RecentLoginRequiredException] — the session is too old to delete the
+  ///     Auth account; no data was touched, so we ask the user to sign in again.
+  ///   * any other error — erasure failed partway; we surface a retry option.
   void _runDeletionIfNeeded() {
     if (_deletionStarted) return;
     _deletionStarted = true;
     () async {
       try {
         await _gdprService.executeAccountDeletion(widget.userId);
-      } finally {
         // Ensure the session ends even if the Auth deletion was deferred.
         await _authService.logout();
+      } on RecentLoginRequiredException {
+        if (mounted) setState(() => _needsRecentLogin = true);
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _deletionFailed = true;
+            _deletionStarted = false; // allow a retry
+          });
+        }
       }
     }();
   }
@@ -122,6 +147,9 @@ class _DeletionGracePeriodGateState extends State<DeletionGracePeriodGate> {
 
         // Grace period elapsed: erase the account now.
         if (!DateTime.now().isBefore(deletionDate)) {
+          if (_needsRecentLogin) return _buildRecentLoginScreen();
+          if (_deletionFailed) return _buildErrorScreen();
+
           WidgetsBinding.instance.addPostFrameCallback(
             (_) => _runDeletionIfNeeded(),
           );
@@ -146,6 +174,118 @@ class _DeletionGracePeriodGateState extends State<DeletionGracePeriodGate> {
         // Still within the grace period: offer reactivation.
         return _buildReactivationScreen(deletionDate);
       },
+    );
+  }
+
+  /// Full-screen prompt + action button, shared by the recoverable states.
+  Widget _buildMessageScreen({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String message,
+    required String buttonLabel,
+    required VoidCallback onPressed,
+    Widget? secondaryAction,
+  }) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Icon(icon, size: 80, color: iconColor),
+                const SizedBox(height: 24),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey[600],
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF185FA5),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                  onPressed: onPressed,
+                  child: Text(
+                    buttonLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (secondaryAction != null) ...[
+                  const SizedBox(height: 12),
+                  secondaryAction,
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Shown when the session is too old to delete the Auth account. No data has
+  /// been erased yet; signing in again returns to this gate and completes it.
+  Widget _buildRecentLoginScreen() {
+    return _buildMessageScreen(
+      icon: Icons.lock_clock_rounded,
+      iconColor: const Color(0xFF185FA5),
+      title: 'Confirmação Necessária',
+      message:
+          'Por motivos de segurança, inicie sessão novamente para concluir '
+          'a eliminação definitiva da sua conta.',
+      buttonLabel: 'Iniciar Sessão Novamente',
+      onPressed: _logout,
+    );
+  }
+
+  /// Shown when the erasure failed partway. Offers a retry and a logout.
+  Widget _buildErrorScreen() {
+    return _buildMessageScreen(
+      icon: Icons.error_outline_rounded,
+      iconColor: Colors.red,
+      title: 'Erro ao Eliminar',
+      message:
+          'Ocorreu um erro ao eliminar a sua conta. Pode tentar novamente.',
+      buttonLabel: 'Tentar Novamente',
+      onPressed: _retryDeletion,
+      secondaryAction: TextButton(
+        onPressed: _logout,
+        child: Text(
+          'Sair (Logout)',
+          style: TextStyle(
+            color: Colors.red[600],
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 
