@@ -200,7 +200,9 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                     ),
                                   );
                                 } catch (e) {
-                                  debugPrint('Erro ao juntar-se a comunidade: $e');
+                                  debugPrint(
+                                    'Erro ao juntar-se a comunidade: $e',
+                                  );
                                   if (dialogContext.mounted) {
                                     setDialogState(() => isJoining = false);
                                   }
@@ -237,9 +239,7 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                                 ),
                               )
                             : Text(
-                                isJoined
-                                    ? 'Membro'
-                                    : 'Entrar na comunidade',
+                                isJoined ? 'Membro' : 'Entrar na comunidade',
                                 style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

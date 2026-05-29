@@ -146,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           body: user == null
-              ? const Center(child: Text('Usuário não conectado.'))
+              ? const Center(child: Text('Utilizador sem sessão iniciada.'))
               : _buildBody(context, user),
         );
       },
@@ -188,7 +188,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 8),
         Center(child: RoleBadge(uid: user.uid)),
         const SizedBox(height: 32),
-        Text('Minhas Comunidades', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          'Minhas Comunidades',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 16),
         if (_controller.isLoadingCommunities)
           const Center(child: CircularProgressIndicator())
@@ -198,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           )
         else if (_controller.joinedCommunities.isEmpty)
-          const Text('Você ainda não pertence a nenhuma comunidade.')
+          const Text('Ainda não pertence a nenhuma comunidade.')
         else
           ..._controller.joinedCommunities.map(
             (community) => Card(

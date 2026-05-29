@@ -55,6 +55,7 @@ class ProfileController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
+      // whereIn is limited to 30 values; users in >30 groups see their first 30.
       final groupIds = identitiesSnap.docs.map((d) => d.id).take(30).toList();
 
       if (groupIds.isEmpty) {
@@ -81,7 +82,8 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
-
+  /// Returns null on success, or a human-readable error message on failure.
+  /// Re-authenticates when email or password are being changed.
   Future<String?> updateProfile({
     required String displayName,
     required String photoURL,
@@ -89,7 +91,7 @@ class ProfileController extends ChangeNotifier {
     required String newPassword,
     required String currentPassword,
   }) async {
-    if (currentUser == null) return 'Não está conectado.';
+    if (currentUser == null) return 'Não tem sessão iniciada.';
 
     final emailChanged = email.isNotEmpty && email != currentUser!.email;
     final passwordChanged = newPassword.isNotEmpty;
@@ -134,7 +136,7 @@ class ProfileController extends ChangeNotifier {
   }
 
   Future<String?> submitModeratorApplication(String licenseNumber) async {
-    if (currentUser == null) return 'Não está conectado.';
+    if (currentUser == null) return 'Não tem sessão iniciada.';
     try {
       final existing = await _firestore
           .collection('moderator_applications')
@@ -143,7 +145,7 @@ class ProfileController extends ChangeNotifier {
           .limit(1)
           .get();
       if (existing.docs.isNotEmpty) {
-        return 'Você já possui uma candidatura pendente.';
+        return 'Já tem uma candidatura pendente.';
       }
       await _firestore.collection('moderator_applications').add({
         'userId': currentUser!.uid,
@@ -179,7 +181,7 @@ class ProfileController extends ChangeNotifier {
       case 'weak-password':
         return 'A password deve ter no mínimo 8 caracteres.';
       case 'requires-recent-login':
-        return 'Por favor, faça login novamente antes de efetuar essa alteração.';
+        return 'Por favor, inicie sessão novamente antes de efetuar esta alteração.';
       case 'invalid-email':
         return 'Por favor, insira um endereço de e-mail válido.';
       default:

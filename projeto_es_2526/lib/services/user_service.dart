@@ -128,7 +128,7 @@ class UserService {
       });
       return null;
     } catch (_) {
-      return 'Falha ao negar a candidatura.';
+      return 'Falha ao recusar a candidatura.';
     }
   }
 
@@ -160,7 +160,7 @@ class UserService {
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Não conseguiu revogar a função de médico..';
+      return 'Falha ao revogar a função de médico.';
     }
   }
 }

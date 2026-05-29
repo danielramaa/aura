@@ -94,7 +94,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() => _mutedGroups = previous);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Falha ao atualizar as configurações de notificação.'),
+            content: Text(
+              'Falha ao atualizar as configurações de notificação.',
+            ),
           ),
         );
       }
@@ -346,14 +348,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (_userGroups.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text('Você ainda não se juntou a nenhuma comunidade.'),
+                    child: Text('Ainda não se juntou a nenhuma comunidade.'),
                   ),
                 ..._userGroups.map((g) {
                   final isMuted = _mutedGroups.contains(g['id']);
                   return SwitchListTile(
                     title: Text(g['name']),
                     subtitle: Text(
-                      isMuted ? 'Notificações desligadas' : 'Notificações ligadas',
+                      isMuted
+                          ? 'Notificações desligadas'
+                          : 'Notificações ligadas',
                     ),
                     value: !isMuted,
                     activeThumbColor: Theme.of(context).colorScheme.primary,
@@ -420,7 +424,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context: context,
                       builder: (ctx) => AlertDialog(
                         title: const Text('Logout'),
-                        content: const Text('Tem certeza de que deseja sair??'),
+                        content: const Text(
+                          'Tem a certeza de que pretende sair?',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, false),

@@ -192,7 +192,9 @@ class _SubmitMedicationFormState extends State<_SubmitMedicationForm> {
                     Navigator.pop(context);
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text(err ?? 'Medicação adicionada com sucesso!'),
+                        content: Text(
+                          err ?? 'Medicação adicionada com sucesso!',
+                        ),
                       ),
                     );
                   }

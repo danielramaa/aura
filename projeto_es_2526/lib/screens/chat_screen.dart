@@ -183,8 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool get _isModerator =>
-      _currentUserRole == UserRole.admin ||
-      _currentUserRole == UserRole.medic;
+      _currentUserRole == UserRole.admin || _currentUserRole == UserRole.medic;
 
   void _showMessageOptions(BuildContext context, Message message) {
     final isPinned = _controller.isMessagePinned(message.id);
@@ -338,9 +337,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            result.error ?? 'Denúncia enviada com sucesso.',
-          ),
+          content: Text(result.error ?? 'Denúncia enviada com sucesso.'),
         ),
       );
     });
@@ -478,12 +475,15 @@ class _ChatScreenState extends State<ChatScreen> {
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: const Text(
-            'Tem certeza de que deseja sair desta conversa? Você não receberá mais notificações desta comunidade.',
+            'Tem a certeza de que pretende sair desta conversa? Deixará de receber notificações desta comunidade.',
             style: TextStyle(color: Colors.black87),
           ),
           actions: [
             TextButton(
-              child: Text('Cancelar', style: TextStyle(color: Colors.grey[600])),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
@@ -503,7 +503,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Saindo da comunidade...'),
+                    content: Text('A sair da comunidade...'),
                     duration: Duration(seconds: 1),
                   ),
                 );
@@ -516,10 +516,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Falha ao sair da comunidade'),
+                      content: const Text('Falha ao sair da comunidade.'),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
-                        label: 'Tente Novamente',
+                        label: 'Tentar Novamente',
                         textColor: Colors.white,
                         onPressed: () async {
                           final retry = await _processLeaveGroup();

@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 _isSearching
                                     ? 'Tente usar um termo de pesquisa diferente.'
-                                    : 'Junte-se a uma comunidade para se conectar com pessoas que entendem o que você está passando.',
+                                    : 'Junte-se a uma comunidade para se ligar a pessoas que compreendem o que está a passar.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   fontSize: 14,

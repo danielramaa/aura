@@ -53,6 +53,7 @@ class ChatController extends ChangeNotifier {
   bool _isTyping = false;
   late final Stream<List<String>> typingNamesStream;
 
+  // Maps messageId → the emoji that failed, so retry knows what to re-send.
   final Map<String, String> _reactionErrors = {};
   final Set<String> _reactionRetrying = {};
 
@@ -99,7 +100,6 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  
   List<Message> get messages => _messages;
   List<MessageSearchResult> get searchResults => _searchResults;
   List<PinnedMessage> get pinnedMessages => _pinnedMessages;
@@ -118,7 +118,6 @@ class ChatController extends ChangeNotifier {
       _reactionErrors.containsKey(messageId);
   bool isRetryingReaction(String messageId) =>
       _reactionRetrying.contains(messageId);
-
 
   List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
     final cutoff = Timestamp.fromDate(
@@ -169,7 +168,6 @@ class ChatController extends ChangeNotifier {
     );
   }
 
-  
   Future<void> _initialize() async {
     try {
       _anonymousIdentity = await _identityService.getOrCreateIdentity(
@@ -184,7 +182,8 @@ class ChatController extends ChangeNotifier {
 
       if (_isDisposed) return;
 
-
+      // Fire-and-forget: nicknames are refreshed lazily on each @ trigger,
+      // so there's no need to block the message stream on this read.
       unawaited(_loadRoomNicknames());
 
       _messagesSubscription = _chatService
@@ -229,7 +228,8 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-
+  /// Reloads the nickname list from Firestore so recently joined members
+  /// appear in autocomplete suggestions.
   Future<void> refreshRoomNicknames() async {
     await _loadRoomNicknames();
     if (!_isDisposed) notifyListeners();
@@ -248,7 +248,7 @@ class ChatController extends ChangeNotifier {
           .where((n) => n != _anonymousIdentity?.nickname)
           .toList();
     } catch (e) {
-      debugPrint('Falha ao carregar os apelidos das salas.: $e');
+      debugPrint('Falha ao carregar os apelidos da sala: $e');
       _roomNicknames = [];
     }
   }
@@ -424,12 +424,11 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-
   PollServiceInterface get pollService => _pollService;
 
   Future<String?> createPoll(String question, List<String> options) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não está conectado ao chat';
+    if (identity == null) return 'Não está ligado à conversa.';
     return _pollService.createPoll(
       groupId: groupId,
       question: question,
@@ -578,8 +577,6 @@ class ChatController extends ChangeNotifier {
     _reactionRetrying.remove(messageId);
     notifyListeners();
   }
-
-
 
   Future<void> _createNotification({List<String> mentions = const []}) async {
     try {

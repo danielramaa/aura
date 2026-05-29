@@ -57,7 +57,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       case 'too-many-requests':
         return 'Muitas tentativas foram feitas. Por favor, tente novamente mais tarde.';
       default:
-        return 'Algo deu errado. Por favor, tente novamente.';
+        return 'Algo correu mal. Por favor, tente novamente.';
     }
   }
 
@@ -101,7 +101,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Insira seu e-mail e enviaremos um link para redefinir sua password.",
+            "Insira o seu e-mail e enviaremos um link para redefinir a sua password.",
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -156,7 +156,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Icon(Icons.mark_email_read_outlined, size: 72, color: _blue),
         const SizedBox(height: 24),
         Text(
-          'Verifique seu e-mail',
+          'Verifique o seu e-mail',
           style: Theme.of(
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -164,7 +164,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Se o e-mail existir, você receberá um link para redefinir sua password.',
+          'Se o e-mail existir, receberá um link para redefinir a sua password.',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),

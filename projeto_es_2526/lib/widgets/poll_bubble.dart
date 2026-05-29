@@ -255,7 +255,7 @@ class _PollCard extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Divider(height: 1),
                     ),
-                    
+
                     ...List.generate(poll.options.length, (i) {
                       final option = poll.options[i];
                       final isVoted = userVote == i;

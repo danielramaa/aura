@@ -12,6 +12,7 @@ class Group {
   final Color color;
   final String category;
 
+  /// True when [memberCount] is a seed estimate, not a live Firestore value.
   final bool isEstimate;
 
   const Group({
@@ -32,9 +33,12 @@ class Group {
       description: data['description'] as String? ?? '',
       memberCount: (data['memberCount'] as num?)?.toInt() ?? 0,
       color: Color((data['color'] as num?)?.toInt() ?? _defaultColorValue),
+      // Store the canonical category key; Portuguese display is handled by
+      // groupCategoryLabels. Falling back to 'Geral' here would write a
+      // non-key and break category filtering.
       category: groupCategories.contains(data['category'])
           ? data['category'] as String
-          : 'Geral',
+          : 'General',
     );
   }
 }

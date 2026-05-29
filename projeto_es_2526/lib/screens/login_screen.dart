@@ -112,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
       case 'too-many-requests':
         return 'Muitas tentativas foram feitas. Por favor, tente novamente mais tarde.';
       default:
-        return 'Algo deu errado. Por favor, tente novamente.';
+        return 'Algo correu mal. Por favor, tente novamente.';
     }
   }
 

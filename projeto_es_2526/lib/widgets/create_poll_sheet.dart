@@ -56,7 +56,9 @@ class _CreatePollSheetState extends State<CreatePollSheet> {
     final question = _questionCtrl.text.trim();
 
     setState(() {
-      _questionError = question.isEmpty ? 'A pergunta não pode estar vazia.' : null;
+      _questionError = question.isEmpty
+          ? 'A pergunta não pode estar vazia.'
+          : null;
       if (_questionError != null) valid = false;
 
       for (int i = 0; i < _optionCtrls.length; i++) {

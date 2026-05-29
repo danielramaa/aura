@@ -95,10 +95,9 @@ class ChatService implements ChatServiceInterface {
       );
     }
 
-    final baseQuery = _messagesRef(groupId).orderBy(
-      'timestamp',
-      descending: true,
-    );
+    final baseQuery = _messagesRef(
+      groupId,
+    ).orderBy('timestamp', descending: true);
     var firestoreQuery = baseQuery.limit(pageSize);
     if (startAfter != null) {
       firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
@@ -208,7 +207,9 @@ class ChatService implements ChatServiceInterface {
     }
   }
 
-
+  /// Adds [emoji] reaction from [anonymousId] to a message.
+  /// Enforces one reaction per user: removes any existing reaction first.
+  /// Returns null on success, or an error string on failure.
   @override
   Future<String?> addReaction({
     required String groupId,
@@ -228,16 +229,20 @@ class ChatService implements ChatServiceInterface {
             ? Map<String, dynamic>.from(data['reactions'] as Map)
             : <String, dynamic>{};
 
+        // Remove user from any existing reaction (one reaction per user rule)
         final updated = raw.map(
           (e, users) => MapEntry(e, List<String>.from(users as List)),
         );
         updated.forEach((e, users) => users.remove(anonymousId));
 
+        // Add to the chosen emoji list
         updated[emoji] = (updated[emoji] ?? [])..add(anonymousId);
 
+        // Clean up empty entries
         updated.removeWhere((_, users) => users.isEmpty);
 
-
+        // Use set (not update) so the reactions field is fully replaced,
+        // not deep-merged with the existing map.
         transaction.set(docRef, {...data, 'reactions': updated});
       });
       return null;
@@ -261,7 +266,7 @@ class ChatService implements ChatServiceInterface {
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Não foi possível excluir a mensagem. Por favor tente novamente.';
+      return 'Não foi possível eliminar a mensagem. Por favor, tente novamente.';
     }
   }
 

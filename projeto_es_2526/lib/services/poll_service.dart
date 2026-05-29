@@ -161,8 +161,10 @@ class PollService implements PollServiceInterface {
       return null;
     } on Exception catch (e) {
       final msg = e.toString();
-      if (msg.contains('Poll is closed')) return 'Esta sondagem está encerrada.';
-      if (msg.contains('Already voted')) return 'Você já votou.';
+      if (msg.contains('Poll is closed')) {
+        return 'Esta sondagem está encerrada.';
+      }
+      if (msg.contains('Already voted')) return 'Já votou.';
       return 'Não foi possível enviar o voto. Tente novamente.';
     }
   }

@@ -61,9 +61,9 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
     final confirmPassword = _confirmPasswordCtrl.text.trim();
 
     if (newPassword.isNotEmpty && newPassword != confirmPassword) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('As passwords não são iguais.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('As passwords não são iguais.')),
+      );
       return;
     }
 
