@@ -70,7 +70,12 @@ service cloud.firestore {
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
-      allow delete: if false;
+      // RGPD erasure: a user may delete their own profile, but only once their
+      // account is actually scheduled for deletion. This keeps the deletion
+      // confined to the grace-period flow (it can't be triggered casually).
+      allow delete: if request.auth != null
+        && request.auth.uid == userId
+        && resource.data.deletionScheduled == true;
 
       match /anonymousIdentities/{groupId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -104,14 +109,17 @@ service cloud.firestore {
       // Tracks which anonymous IDs in this group belong to verified medics.
       // Readable by all members; writable only by the owner of that anonymousId
       // when they currently hold the 'medic' role. Admins can delete entries
-      // to revoke the badge when demoting a medic.
+      // to revoke the badge when demoting a medic; a medic may also delete their
+      // own badge (used by RGPD account erasure to clean up the badge).
       match /medicAnonymousIds/{anonymousId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic';
         allow delete: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+          && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+            || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic'
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId));
       }
 
       match /typing/{anonymousId} {
@@ -350,7 +358,12 @@ service cloud.firestore {
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
-      allow delete: if false;
+      // RGPD erasure: a user may delete their own application (it holds their
+      // email and license number), but only while their account is actually
+      // scheduled for deletion, so the audit record stays immutable otherwise.
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.deletionScheduled == true;
     }
 
     match /{document=**} {
