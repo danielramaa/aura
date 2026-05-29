@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FlaggedTerm {
@@ -45,13 +46,19 @@ class ContentFilteringService {
   List<String> _profanities = List.from(defaultProfanities);
   List<String> _hateSpeech = List.from(defaultHateSpeech);
 
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _moderationSub;
+
   ContentFilteringService({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance {
     _listenToModerationRules();
   }
 
   void _listenToModerationRules() {
-    _firestore.collection('moderation').doc('banned_words').snapshots().listen((snap) {
+    _moderationSub = _firestore
+        .collection('moderation')
+        .doc('banned_words')
+        .snapshots()
+        .listen((snap) {
       if (snap.exists) {
         final data = snap.data() ?? {};
         if (data['profanity'] is List) {
@@ -75,11 +82,24 @@ class ContentFilteringService {
   // Exposed for tests or manual configuration
   void updateLists({List<String>? profanities, List<String>? hateSpeech}) {
     if (profanities != null) {
-      _profanities = profanities.map((e) => removeAccents(e)).toList();
+      _profanities = profanities
+          .map((e) => removeAccents(e.trim()))
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
     if (hateSpeech != null) {
-      _hateSpeech = hateSpeech.map((e) => removeAccents(e)).toList();
+      _hateSpeech = hateSpeech
+          .map((e) => removeAccents(e.trim()))
+          .where((e) => e.isNotEmpty)
+          .toList();
     }
+  }
+
+  /// Cancels the Firestore moderation-rules listener. Must be called when the
+  /// owning controller is disposed, otherwise the snapshot subscription leaks.
+  void dispose() {
+    _moderationSub?.cancel();
+    _moderationSub = null;
   }
 
   static String removeAccents(String text) {
@@ -129,7 +149,10 @@ class ContentFilteringService {
       final pattern = charMap[char] ?? RegExp.escape(char);
       buffer.write(pattern);
       if (i < word.length - 1) {
-        buffer.write(r'[\s\.\-\_\*]*');
+        // Allow a *bounded* run of separators between letters so deliberate
+        // evasion ("f u c k", "p.u.t.a") is still caught, without letting an
+        // unbounded gap match a banned word spread across unrelated words.
+        buffer.write(r'[\s\.\-\_\*]{0,2}');
       }
     }
     buffer.write(r'\b');
@@ -169,7 +192,7 @@ class ContentFilteringService {
           // Replace from right to left so indices don't shift
           for (final match in matches.reversed) {
             final matchedStr = filtered.substring(match.start, match.end);
-            final masked = _maskWord(matchedStr);
+            final masked = maskWord(matchedStr);
             filtered = filtered.replaceRange(match.start, match.end, masked);
           }
         }
@@ -184,8 +207,13 @@ class ContentFilteringService {
     );
   }
 
-  String _maskWord(String matched) {
-    if (matched.length <= 3) {
+  /// Masks a token for display. Fully hides short tokens and keeps only the
+  /// first/last character of longer ones. Public so the warning UI can show a
+  /// censored form of a detected term instead of re-printing the raw slur.
+  static String maskWord(String matched) {
+    // Fully mask short tokens — revealing the first and last letter of a
+    // four-character slur (e.g. "f**k") leaves it trivially legible.
+    if (matched.length <= 4) {
       return '*' * matched.length;
     }
     return matched[0] + ('*' * (matched.length - 2)) + matched[matched.length - 1];

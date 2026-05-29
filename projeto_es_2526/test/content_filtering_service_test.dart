@@ -79,6 +79,25 @@ void main() {
       expect(result.flaggedTerms.length, 1); // unique words flagged
     });
 
+    test('Fully masks short (<=4 char) slurs so they are not legible', () {
+      final result = filterService.filterContent('isto é fuck');
+      expect(result.isFlagged, isTrue);
+      expect(result.filteredText, 'isto é ****');
+    });
+
+    test('Does not match across an unbounded run of separators', () {
+      // More than two separators between letters is no longer treated as the
+      // same word, avoiding false positives spread across unrelated words.
+      final result = filterService.filterContent('f     u     c     k');
+      expect(result.isFlagged, isFalse);
+      expect(result.filteredText, 'f     u     c     k');
+    });
+
+    test('maskWord censors a term for display', () {
+      expect(ContentFilteringService.maskWord('puta'), '****');
+      expect(ContentFilteringService.maskWord('paneleiro'), 'p*******o');
+    });
+
     test('Handles mixed categories', () {
       final result = filterService.filterContent('paneleiro de merda');
       expect(result.isFlagged, isTrue);

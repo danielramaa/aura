@@ -73,7 +73,7 @@ class ContentWarningDialog extends StatelessWidget {
                           style: const TextStyle(fontSize: 14, color: Colors.black87),
                           children: [
                             TextSpan(
-                              text: '"${term.word}"',
+                              text: '"${ContentFilteringService.maskWord(term.word)}"',
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             TextSpan(

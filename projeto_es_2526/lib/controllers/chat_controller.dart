@@ -397,12 +397,22 @@ class ChatController extends ChangeNotifier {
     _isSending = true;
     notifyListeners();
 
+    // Defence-in-depth: enforce the content filter on every send path, not just
+    // the UI confirmation dialog, so no caller can post unmasked banned content.
+    // Already-masked text from the dialog does not re-match, so this is a no-op
+    // for the normal flow. NOTE: this is still client-side — robust enforcement
+    // against a modified client requires a server-side check (Cloud Function or
+    // Firestore rule).
+    final outgoing = _filteringService.filterContent(trimmed).filteredText;
+
     try {
+      // Mentions are resolved from the original text so masking a nickname that
+      // happens to contain a flagged substring does not drop the notification.
       final mentions = _extractMentions(trimmed);
 
       final sendError = await _chatService.sendMessage(
         groupId: groupId,
-        text: trimmed,
+        text: outgoing,
         identity: _anonymousIdentity!,
         replyToText: replyToText,
         mentions: mentions,
@@ -643,6 +653,7 @@ class ChatController extends ChangeNotifier {
     _messagesSubscription?.cancel();
     _pinnedMessagesSubscription?.cancel();
     _medicSub?.cancel();
+    _filteringService.dispose();
     super.dispose();
   }
 }
