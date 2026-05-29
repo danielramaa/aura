@@ -26,17 +26,17 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
 
   static const List<String> _months = [
     'Jan',
-    'Feb',
+    'Fev',
     'Mar',
-    'Apr',
-    'May',
+    'Abr',
+    'Mai',
     'Jun',
     'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
+    'Ago',
+    'Set',
+    'Out',
     'Nov',
-    'Dec',
+    'Dez',
   ];
 
   String _formatTimestamp(DateTime dt) {
@@ -180,7 +180,7 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
                   size: 18,
                   color: Colors.grey[500],
                 ),
-                tooltip: 'Unpin',
+                tooltip: 'Desafixar',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () => widget.onUnpin(pinned.messageId),
