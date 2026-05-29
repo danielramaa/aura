@@ -407,7 +407,10 @@ class ChatService implements ChatServiceInterface {
         'type': 'kudos',
         'isRead': false,
       });
-    } catch (e) {}
+    } catch (_) {
+      // Best-effort notification: the Kudos itself is already persisted, so a
+      // failure here is non-critical and intentionally swallowed.
+    }
   }
 
   Future<void> _checkForAbuse(String recipientAnonId, String giverAnonId) async {
