@@ -827,4 +827,76 @@ Every AI-suggested change was read, tested, and approved by a team member before
 
 ### Sprint 3
 
+#### What was delivered
+
+Sprint 3 closed out the MVP's **safety, compliance and engagement** backlog: the automatic content filter and self-service privacy tooling that the requirements survey flagged as deal-breakers, the gratitude (kudos) system, the user/message reporting pipeline, the legal-acceptance gate, and a full Portuguese localization pass over the whole app.
+
+**Automatic content filter (profanity & hate speech)**
+- New `ContentFilteringService` that scans outgoing messages against a profanity and hate-speech word list, returning a `FilteringResult` (flagged terms, category, masked text).
+- Detection is robust to evasion: case-insensitive, accent/diacritic-folding, leetspeak, and bounded separator runs (dots/spaces) so `f.u.c.k` is caught while substrings inside innocent words are not.
+- The banned-word lists ship with safe defaults but are **live-updatable from Firestore** (`moderation/banned_words`) via a snapshot listener, so moderators can adjust them without an app release.
+- `ContentWarningDialog` warns the sender before a flagged message goes out; the stored message is masked. Directly addresses the survey's top churn risks (trolling 45.5 %, misinformation 36.4 %).
+
+**Kudos (anonymous gratitude)**
+- Per-message kudos list plus a per-identity `totalKudos` aggregate, reframed — per the survey — as an expression of gratitude rather than a reliability signal.
+- `ChatService.toggleKudos` toggles atomically in a single Firestore transaction (all reads before writes), keeping the message list and the recipient's aggregate consistent; self-kudos is blocked at both the controller and service layers.
+- The `MessageBubble` shows a tappable kudos pill (count + state); the recipient gets a `type: 'kudos'` notification on a best-effort basis.
+
+**GDPR / RGPD self-service (deletion & export)**
+- `GDPRService` implements a **30-day grace period** deletion: `scheduleAccountDeletion` flags the account and returns the permanent-deletion date; `cancelAccountDeletion` reactivates it.
+- `DeletionGracePeriodGate` executes the erasure lazily on the next sign-in after the window elapses — a deliberate design for Firebase's free (Spark) plan, which has no Cloud Functions or scheduler.
+- Erasure anonymizes rather than hard-deletes chat history (severs the `anonymousId → userId` reverse-lookup link) so conversations stay intact while ceasing to be personal data; it also frees nicknames/avatar slots and the medic badge.
+- Handles Firebase's `requires-recent-login` by surfacing `RecentLoginRequiredException` and prompting re-authentication. Data export compiles the user's profile, identities and messages.
+
+**Reporting pipeline**
+- `ReportService` for reporting both anonymous users and individual messages, with category validation and a written-reason requirement; self-reports are rejected.
+- High-risk text is flagged with a suggested "life risk" category to route urgent reports faster; admins review reports in the moderation queue.
+
+**Legal compliance**
+- Terms of Service and Privacy Policy acceptance is recorded at registration (with stored document versions and an acceptance timestamp), gated behind a minimum-age date-of-birth check.
+- Versioned **re-acceptance**: when the stored ToS/Privacy version is outdated (or absent on legacy accounts), `AuthGate` routes the user to `ReacceptTermsScreen` before granting access.
+
+**Full Portuguese localization**
+- All user-facing strings migrated to European Portuguese (`Anónimo`, `Comunidade`, month names, tooltips, snackbars, session/login copy), with consistent error-message phrasing across services.
+
+**Tests**
+- Suite grew to **21 unit/widget files**  plus the 4 integration flows.
+- New suites: `GDPRService` (covering scheduling, cancellation, export, lazy erasure, recent-login and not-scheduled guards), `ContentFilteringService` (evasion variants and false-positive guards), `ReportService` (user/message reports, self-report rejection, high-risk routing); kudos coverage added to the chat suites.
+- All tests run against `fake_cloud_firestore` / `firebase_auth_mocks` — no emulator required.
+
+#### Board screenshots
+
+**Beginning of sprint:**
+
+<p align="center">
+  <img src="assets/Sprint3_inicio.png"/>
+</p>
+
+**End of sprint:**
+
+<p align="center">
+  <img src="assets/Sprint3_end.png"/>
+</p>
+
+#### Retrospective
+
+**Did well:**
+- Delivered the safety and privacy features the requirements survey ranked as the biggest churn risks (content filter, reporting, GDPR self-service).
+- Kept hardening transactional integrity — kudos toggles, like reactions and poll votes before them, are single-transaction read-before-write operations.
+- Shipped GDPR deletion within the constraints of the free Firebase plan by designing a lazy, sign-in-triggered erasure instead of assuming a server-side scheduler.
+- Completed a full Portuguese localization pass, giving the app a consistent voice end-to-end.
+
+**Do differently:**
+- Resolve cross-branch merge conflicts sooner — the localization pass and the feature branches (kudos, content filter, GDPR) touched overlapping files and collided late in the sprint.
+- Settle on one user-facing copy style up front (formal vs. informal address, "sala" vs. "comunidade") to avoid churn during conflict resolution.
+- Land the medical-disclaimer-on-room-entry story earlier; it carried over still in progress at the sprint boundary.
+
+**Puzzles:**
+- Whether the lazy, client-side GDPR erasure is sufficient for the MVP, or whether a paid plan with Cloud Functions is needed to guarantee deletion for users who never sign in again.
+- How far to push client-side content filtering before it belongs in a server-side Cloud Function that clients can't bypass.
+
+#### Use of AI
+
+We continued the Sprint 2 workflow: AI (Claude / ChatGPT) to draft tests, and a two-pass PR review (Claude first, then GitHub Copilot) with every suggestion read, tested and approved by a team member before merge. This sprint we also leaned on AI for **merge-conflict resolution** across the parallel feature and localization branches and for an automated **code review of the kudos feature**, which surfaced a Firestore read-after-write transaction bug that was fixed before merge.
+
 ### Final Release
