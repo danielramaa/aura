@@ -332,20 +332,28 @@ class ChatService implements ChatServiceInterface {
     required Message message,
     required String givingUserAnonId,
   }) async {
+    // Defense in depth: never let a user give Kudos to their own message,
+    // which would otherwise inflate their own totalKudos aggregate.
+    if (message.anonymousId == givingUserAnonId) return null;
+
     final messageRef = _messagesRef(groupId).doc(message.id);
-    final identityRef = _firestore.collection('anonymousIdentities').doc(message.anonymousId);
+    final identityRef =
+        _firestore.collection('anonymousIdentities').doc(message.anonymousId);
 
     try {
-      await _firestore.runTransaction((transaction) async {
+      // Firestore requires all reads to happen before any writes, so we read
+      // both docs up front, then issue the updates. The callback may re-run on
+      // contention, so it must stay free of external side-effects.
+      final isAdding = await _firestore.runTransaction<bool>((transaction) async {
         final snap = await transaction.get(messageRef);
         if (!snap.exists) throw Exception('Mensagem não encontrada.');
+        final identitySnap = await transaction.get(identityRef);
 
         final data = snap.data() ?? {};
         final kudosList = List<String>.from(data['kudos'] ?? []);
+        final adding = !kudosList.contains(givingUserAnonId);
 
-        final isAdding = !kudosList.contains(givingUserAnonId);
-
-        if (isAdding) {
+        if (adding) {
           kudosList.add(givingUserAnonId);
         } else {
           kudosList.remove(givingUserAnonId);
@@ -353,20 +361,22 @@ class ChatService implements ChatServiceInterface {
 
         transaction.update(messageRef, {'kudos': kudosList});
 
-        final identitySnap = await transaction.get(identityRef);
         if (identitySnap.exists) {
           final identityData = identitySnap.data() ?? {};
-          int currentTotal = identityData['totalKudos'] as int? ?? 0;
-          currentTotal = isAdding ? currentTotal + 1 : currentTotal - 1;
+          var currentTotal = identityData['totalKudos'] as int? ?? 0;
+          currentTotal = adding ? currentTotal + 1 : currentTotal - 1;
           if (currentTotal < 0) currentTotal = 0;
           transaction.update(identityRef, {'totalKudos': currentTotal});
         }
 
-        if (isAdding) {
-          _notifyKudosRecipient(groupId, message);
-          _checkForAbuse(message.anonymousId, givingUserAnonId);
-        }
+        return adding;
       });
+
+      // Side-effects run exactly once, after the transaction has committed.
+      if (isAdding) {
+        await _notifyKudosRecipient(groupId, message);
+        _checkForAbuse(message.anonymousId, givingUserAnonId);
+      }
       return null;
     } catch (_) {
       return 'Não foi possível atualizar os Kudos. Tente novamente.';
