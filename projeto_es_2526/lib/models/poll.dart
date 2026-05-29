@@ -20,6 +20,7 @@ class Poll {
   final List<PollOption> options;
   final String creatorAnonymousId;
   final Timestamp createdAt;
+  // null means not manually closed yet
   final Timestamp? closedAt;
 
   const Poll({
@@ -31,6 +32,7 @@ class Poll {
     this.closedAt,
   });
 
+  /// Poll is open when not manually closed and within 24 hours of creation.
   bool get isOpen {
     if (closedAt != null) return false;
     final expiry = createdAt.toDate().add(const Duration(hours: 24));

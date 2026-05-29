@@ -63,6 +63,7 @@ class GroupService {
           final groupIds = snap.docs.map((d) => d.id).toList();
           if (groupIds.isEmpty) return <Group>[];
 
+          // Fetch all joined IDs from Firestore — whereIn limit is 30, chunk to stay within it.
           final chunks = <List<String>>[];
           for (var i = 0; i < groupIds.length; i += 30) {
             chunks.add(groupIds.sublist(i, (i + 30).clamp(0, groupIds.length)));
@@ -74,7 +75,8 @@ class GroupService {
             ),
           );
 
-
+          // Firestore wins when the document exists and is complete (has a name).
+          // Fall back to seed for missing or partial documents.
           final firestoreMap = <String, Group>{};
           for (final doc in querySnaps.expand((s) => s.docs)) {
             final g = Group.fromFirestore(doc);

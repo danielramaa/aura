@@ -71,6 +71,8 @@ class IdentityService {
     } else {
       final newIdentity = await _generateNewIdentity(userId, groupId);
       await identityDocRef.set(newIdentity.toMap());
+      // Identity is now committed — increment memberCount.
+      // Ignore not-found: default/seeded groups have no Firestore document.
       try {
         await _firestore.collection('groups').doc(groupId).update({
           'memberCount': FieldValue.increment(1),
@@ -93,6 +95,7 @@ class IdentityService {
 
     final groupDocRef = _firestore.collection('groups').doc(groupId);
 
+    // Read identity and group doc in parallel.
     final userIdentityDoc = await userIdentityRef.get();
     if (!userIdentityDoc.exists) return;
     final groupDoc = await groupDocRef.get();
@@ -104,6 +107,8 @@ class IdentityService {
 
     final batch = _firestore.batch();
 
+    // Decrement memberCount atomically with the identity deletion.
+    // Skip if the group has no Firestore document (default/seeded groups).
     if (groupDoc.exists) {
       batch.update(groupDocRef, {'memberCount': FieldValue.increment(-1)});
     }
@@ -149,6 +154,7 @@ class IdentityService {
     final avatarIndex = await _reserveAvatarIndex(groupId, nickname);
     final anonymousId = _firestore.collection('anonymousIdentities').doc().id;
 
+    // Reverse lookup for moderation: maps anonymousId → real userId
     final reverseLookupRef = _firestore
         .collection('anonymousIdentities')
         .doc(anonymousId);
@@ -165,6 +171,8 @@ class IdentityService {
     );
   }
 
+  /// Reserves a unique avatar slot in the group and returns its index (0–19).
+  /// Falls back to a hash-derived index when all slots are taken (>20 members).
   Future<int> _reserveAvatarIndex(String groupId, String nickname) async {
     final preferred =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
@@ -191,6 +199,7 @@ class IdentityService {
         rethrow;
       }
     }
+    // All 20 slots taken (>20 members): collision unavoidable, fall back to hash.
     return preferred;
   }
 
@@ -229,11 +238,12 @@ class IdentityService {
       if (await tryReserve(candidate)) return candidate;
     }
 
+    // Fallback after 10 collisions: timestamp suffix guarantees uniqueness
     final fallback =
         '${_adjectives[random.nextInt(_adjectives.length)]}'
         '${_nouns[random.nextInt(_nouns.length)]}'
         '${DateTime.now().millisecondsSinceEpoch % 9999}';
-    await tryReserve(fallback); 
+    await tryReserve(fallback); // reserve it too; rethrows on real errors
     return fallback;
   }
 }

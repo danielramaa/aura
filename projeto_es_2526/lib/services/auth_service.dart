@@ -74,6 +74,7 @@ class AuthService {
           .doc(credential.user!.uid)
           .set(userData);
     } catch (_) {
+      // Roll back the Auth account so there's no dangling user without a profile.
       await credential.user!.delete();
       rethrow;
     }

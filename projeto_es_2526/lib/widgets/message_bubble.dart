@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/message.dart';
 import '../utils/avatar_utils.dart';
 
+/// Returns RichText spans for [text], highlighting only @tokens whose word
+/// part appears in [mentions] (the validated list stored on the message).
 List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
   final spans = <TextSpan>[];
   final regex = RegExp(r'@(\w+)');
