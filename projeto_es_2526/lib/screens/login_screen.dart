@@ -164,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     const SizedBox(height: 48),
                     Text(
-                      _isLogin ? 'Bem vindo de volta' : 'Criar conta',
+                      _isLogin ? 'Bem-vindo de volta' : 'Criar conta',
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
                       textAlign: TextAlign.center,
@@ -308,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onChanged: (v) =>
                               setState(() => _stayLoggedIn = v ?? true),
                         ),
-                        const Text('Permaneça online'),
+                        const Text('Manter sessão iniciada'),
                       ],
                     ),
                     if (_errorMessage != null) ...[
