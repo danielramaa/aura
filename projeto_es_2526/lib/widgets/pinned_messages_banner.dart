@@ -25,8 +25,18 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
   bool _expanded = false;
 
   static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Fev',
+    'Mar',
+    'Abr',
+    'Mai',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Set',
+    'Out',
+    'Nov',
+    'Dez',
   ];
 
   String _formatTimestamp(DateTime dt) {
@@ -47,16 +57,11 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFFF0F5FF),
-          border: Border(
-            bottom: BorderSide(color: Colors.grey[200]!),
-          ),
+          border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildHeader(count),
-            if (_expanded) _buildPinnedList(),
-          ],
+          children: [_buildHeader(count), if (_expanded) _buildPinnedList()],
         ),
       ),
     );
@@ -154,8 +159,7 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
                       const SizedBox(width: 6),
                       Text(
                         _formatTimestamp(dt),
-                        style:
-                            TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -171,9 +175,12 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
             ),
             if (widget.canUnpin)
               IconButton(
-                icon: Icon(Icons.push_pin_outlined,
-                    size: 18, color: Colors.grey[500]),
-                tooltip: 'Unpin',
+                icon: Icon(
+                  Icons.push_pin_outlined,
+                  size: 18,
+                  color: Colors.grey[500],
+                ),
+                tooltip: 'Desafixar',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 onPressed: () => widget.onUnpin(pinned.messageId),

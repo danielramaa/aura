@@ -70,13 +70,13 @@ class _PollBubbleState extends State<PollBubble> {
   }
 
   String _timeLabel(Poll poll) {
-    if (!poll.isOpen) return 'Poll closed';
+    if (!poll.isOpen) return 'Sondagem encerrada';
     final expiry = poll.createdAt.toDate().add(const Duration(hours: 24));
     final remaining = expiry.difference(DateTime.now());
     if (remaining.inHours >= 1) {
-      return 'Closes in ${remaining.inHours}h ${remaining.inMinutes.remainder(60)}m';
+      return 'Fecha em ${remaining.inHours}h ${remaining.inMinutes.remainder(60)}m';
     }
-    return 'Closes in ${remaining.inMinutes}m';
+    return 'Fecha em ${remaining.inMinutes}m';
   }
 
   @override
@@ -186,7 +186,6 @@ class _PollCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
                       child: Column(
@@ -211,7 +210,7 @@ class _PollCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Anonymous Poll',
+                                'Sondagem anónima',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey[600],
@@ -230,7 +229,7 @@ class _PollCard extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    'Closed',
+                                    'Fechada',
                                     style: TextStyle(
                                       fontSize: 10,
                                       color: Colors.grey[700],
@@ -256,7 +255,7 @@ class _PollCard extends StatelessWidget {
                       padding: EdgeInsets.symmetric(vertical: 8),
                       child: Divider(height: 1),
                     ),
-                    // Options
+
                     ...List.generate(poll.options.length, (i) {
                       final option = poll.options[i];
                       final isVoted = userVote == i;
@@ -274,13 +273,12 @@ class _PollCard extends StatelessWidget {
                         onVote: () => onVote(i),
                       );
                     }),
-                    // Footer
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
                       child: Row(
                         children: [
                           Text(
-                            '$total vote${total == 1 ? '' : 's'} · $timeLabel',
+                            '$total voto${total == 1 ? '' : 's'} · $timeLabel',
                             style: TextStyle(
                               fontSize: 11,
                               color: Colors.grey[600],
@@ -421,7 +419,7 @@ class _CloseButton extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 1.5),
               )
             : Text(
-                'Close poll',
+                'Fechar sondagem',
                 style: TextStyle(fontSize: 11, color: Colors.grey[700]),
               ),
       ),

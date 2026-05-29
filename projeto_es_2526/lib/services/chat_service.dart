@@ -101,10 +101,9 @@ class ChatService implements ChatServiceInterface {
       );
     }
 
-    final baseQuery = _messagesRef(groupId).orderBy(
-      'timestamp',
-      descending: true,
-    );
+    final baseQuery = _messagesRef(
+      groupId,
+    ).orderBy('timestamp', descending: true);
     var firestoreQuery = baseQuery.limit(pageSize);
     if (startAfter != null) {
       firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
@@ -242,7 +241,7 @@ class ChatService implements ChatServiceInterface {
       });
       return null;
     } catch (_) {
-      return 'Não foi possível adicionar a reação. Tente novamente.';
+      return 'Não foi possível adicionar a reação. Por favor tente novamente.';
     }
   }
 

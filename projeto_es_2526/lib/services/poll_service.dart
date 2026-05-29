@@ -75,17 +75,17 @@ class PollService implements PollServiceInterface {
     required AnonymousIdentity identity,
   }) async {
     final trimmedQuestion = question.trim();
-    if (trimmedQuestion.isEmpty) return 'Question cannot be empty.';
+    if (trimmedQuestion.isEmpty) return 'A pergunta não pode estar vazia.';
 
     final trimmedOptions = optionTexts.map((o) => o.trim()).toList();
     if (trimmedOptions.length < 2) {
-      return 'A poll must have at least 2 options.';
+      return 'A sondagem deve ter pelo menos 2 opções.';
     }
     if (trimmedOptions.length > 6) {
-      return 'A poll cannot have more than 6 options.';
+      return 'A sondagem não pode ter mais de 6 opções.';
     }
     if (trimmedOptions.any((o) => o.isEmpty)) {
-      return 'All options must have text.';
+      return 'Todas as opções devem conter texto.';
     }
 
     try {
@@ -118,7 +118,7 @@ class PollService implements PollServiceInterface {
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Failed to create poll. Please try again.';
+      return 'Não foi possível criar a sondagem. Tente novamente.';
     }
   }
 
@@ -161,9 +161,11 @@ class PollService implements PollServiceInterface {
       return null;
     } on Exception catch (e) {
       final msg = e.toString();
-      if (msg.contains('Poll is closed')) return 'This poll is closed.';
-      if (msg.contains('Already voted')) return 'You have already voted.';
-      return 'Failed to submit vote. Please try again.';
+      if (msg.contains('Poll is closed')) {
+        return 'Esta sondagem está encerrada.';
+      }
+      if (msg.contains('Already voted')) return 'Já votou.';
+      return 'Não foi possível enviar o voto. Tente novamente.';
     }
   }
 
@@ -191,9 +193,9 @@ class PollService implements PollServiceInterface {
     } on Exception catch (e) {
       final msg = e.toString();
       if (msg.contains('Not the creator')) {
-        return 'Only the poll creator can close it.';
+        return 'Somente o criador da sondagem pode fechá-la.';
       }
-      return 'Failed to close poll. Please try again.';
+      return 'Não foi possível fechar a sondagem. Tente novamente.';
     }
   }
 }

@@ -117,7 +117,7 @@ class UserService {
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Failed to approve application.';
+      return 'Falha ao aceitar a candidatura.';
     }
   }
 
@@ -128,12 +128,10 @@ class UserService {
       });
       return null;
     } catch (_) {
-      return 'Failed to deny application.';
+      return 'Falha ao recusar a candidatura.';
     }
   }
 
-  /// Revokes medic role and removes all medicAnonymousIds badge entries across
-  /// every group the user belongs to, so the badge disappears immediately.
   Future<String?> revokeMedicRole(String userId) async {
     try {
       final identitiesSnap = await _firestore
@@ -162,7 +160,7 @@ class UserService {
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Failed to revoke medic role.';
+      return 'Falha ao revogar a função de médico.';
     }
   }
 }

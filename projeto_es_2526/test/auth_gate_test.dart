@@ -10,6 +10,7 @@ import 'package:projeto_es_2526/screens/login_screen.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/screens/reaccept_terms_screen.dart';
 import 'package:projeto_es_2526/services/auth_service.dart';
+import 'package:projeto_es_2526/services/gdpr_service.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 
 HomeController makeHomeController(String userId, FakeFirebaseFirestore store) =>
@@ -33,6 +34,7 @@ void main() {
             mainController: mainController,
             homeController: homeController,
             authService: AuthService(auth: auth, firestore: store),
+            gdprService: GDPRService(auth: auth, firestore: store),
           ),
         ),
       );
@@ -61,6 +63,7 @@ void main() {
             mainController: mainController,
             homeController: homeController,
             authService: AuthService(auth: auth, firestore: store),
+            gdprService: GDPRService(auth: auth, firestore: store),
           ),
         ),
       );
@@ -92,6 +95,7 @@ void main() {
             mainController: mainController,
             homeController: homeController,
             authService: AuthService(auth: auth, firestore: store),
+            gdprService: GDPRService(auth: auth, firestore: store),
           ),
         ),
       );

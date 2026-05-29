@@ -42,7 +42,7 @@ class MedicationService {
       });
       return null;
     } catch (e) {
-      return 'Failed to add medication. Please try again.';
+      return 'Não foi possível adicionar o medicamento. Por favor tente novamente.';
     }
   }
 }

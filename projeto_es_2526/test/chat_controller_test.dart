@@ -434,7 +434,7 @@ void main() {
     test('uses fallbacks for missing fields', () {
       final identity = AnonymousIdentity.fromMap({});
       expect(identity.anonymousId, '');
-      expect(identity.nickname, 'Anonymous');
+      expect(identity.nickname, 'Anónimo');
       expect(identity.avatarIndex, 0);
     });
 

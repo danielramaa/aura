@@ -49,24 +49,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Apply for Moderator'),
+          title: const Text('Candidate-se a moderador'),
           content: Form(
             key: formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  'To become a verified moderator, please provide your medical credentials.',
+                  'Para se tornar um moderador verificado, forneça suas credenciais médicas.',
                   style: TextStyle(fontSize: 13, color: Colors.black87),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   decoration: const InputDecoration(
-                    labelText: 'Medical License / Certification',
+                    labelText: 'Licença / Certificação Médica',
                     border: OutlineInputBorder(),
                   ),
                   validator: (v) =>
-                      v == null || v.trim().isEmpty ? 'Required' : null,
+                      v == null || v.trim().isEmpty ? 'Obrigatório' : null,
                   onSaved: (v) => licenseNumber = v!.trim(),
                 ),
               ],
@@ -75,7 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
+              child: const Text('Cancelar'),
             ),
             ElevatedButton(
               onPressed: isSubmitting
@@ -92,7 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                err ?? 'Application submitted successfully!',
+                                err ?? 'Candidatura submetida com sucesso!',
                               ),
                             ),
                           );
@@ -105,7 +105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Submit'),
+                  : const Text('Submeter'),
             ),
           ],
         ),
@@ -122,12 +122,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Profile'),
+            title: const Text('Perfil'),
             actions: [
               if (user != null) ...[
                 IconButton(
                   icon: const Icon(Icons.settings),
-                  tooltip: 'Settings',
+                  tooltip: 'Definições',
                   onPressed: () {
                     Navigator.push(
                       context,
@@ -139,14 +139,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit),
-                  tooltip: 'Edit Profile',
+                  tooltip: 'Editar Perfil',
                   onPressed: _showEditProfileDialog,
                 ),
               ],
             ],
           ),
           body: user == null
-              ? const Center(child: Text('User not logged in.'))
+              ? const Center(child: Text('Utilizador sem sessão iniciada.'))
               : _buildBody(context, user),
         );
       },
@@ -172,14 +172,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
         Center(
           child: Text(
-            user.displayName ?? 'Anonymous User',
+            user.displayName ?? 'Utilizador anónimo',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
         ),
         const SizedBox(height: 8),
         Center(
           child: Text(
-            user.email ?? 'No email available',
+            user.email ?? 'Nenhum e-mail disponível',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
@@ -188,7 +188,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 8),
         Center(child: RoleBadge(uid: user.uid)),
         const SizedBox(height: 32),
-        Text('My Communities', style: Theme.of(context).textTheme.titleLarge),
+        Text(
+          'Minhas Comunidades',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
         const SizedBox(height: 16),
         if (_controller.isLoadingCommunities)
           const Center(child: CircularProgressIndicator())
@@ -198,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: TextStyle(color: Theme.of(context).colorScheme.error),
           )
         else if (_controller.joinedCommunities.isEmpty)
-          const Text('You have not joined any communities yet.')
+          const Text('Ainda não pertence a nenhuma comunidade.')
         else
           ..._controller.joinedCommunities.map(
             (community) => Card(
@@ -212,7 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (_controller.userRole == UserRole.admin) ...[
           ElevatedButton.icon(
             icon: const Icon(Icons.admin_panel_settings_outlined),
-            label: const Text('Review Moderator Applications'),
+            label: const Text('Analisar candidaturas de moderadores'),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => AdminApplicationsScreen()),
@@ -240,7 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         if (_controller.userRole == UserRole.user) ...[
           ElevatedButton.icon(
             icon: const Icon(Icons.verified_user_outlined),
-            label: const Text('Apply for Medical Moderator'),
+            label: const Text('Candidate-se a Moderador Médico'),
             onPressed: _showApplyModeratorDialog,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF185FA5),
@@ -251,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
         ElevatedButton.icon(
           icon: const Icon(Icons.logout),
-          label: const Text('Logout'),
+          label: const Text('Terminar sessão'),
           onPressed: _controller.logout,
         ),
       ],

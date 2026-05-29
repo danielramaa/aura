@@ -33,11 +33,11 @@ void main() {
     ) async {
       await pumpSheet(tester, onPublish: (_, opts) async => null);
 
-      await tester.ensureVisible(find.text('Publish Poll'));
-      await tester.tap(find.text('Publish Poll'));
+      await tester.ensureVisible(find.text('Enviar Sondagem'));
+      await tester.tap(find.text('Enviar Sondagem'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Question cannot be empty.'), findsOneWidget);
+      expect(find.text('A pergunta não pode estar vazia.'), findsOneWidget);
     });
 
     testWidgets('shows error for each empty option when Publish is tapped', (
@@ -47,11 +47,11 @@ void main() {
 
       await tester.enterText(questionField(), 'My question?');
       // Leave both option fields empty.
-      await tester.ensureVisible(find.text('Publish Poll'));
-      await tester.tap(find.text('Publish Poll'));
+      await tester.ensureVisible(find.text('Enviar Sondagem'));
+      await tester.tap(find.text('Enviar Sondagem'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Option cannot be empty.'), findsWidgets);
+      expect(find.text('A opção não pode estar vazia.'), findsWidgets);
     });
 
     testWidgets('does not call onPublish when validation fails', (
@@ -66,8 +66,8 @@ void main() {
         },
       );
 
-      await tester.ensureVisible(find.text('Publish Poll'));
-      await tester.tap(find.text('Publish Poll'));
+      await tester.ensureVisible(find.text('Enviar Sondagem'));
+      await tester.tap(find.text('Enviar Sondagem'));
       await tester.pumpAndSettle();
 
       expect(called, isFalse);
@@ -78,16 +78,16 @@ void main() {
     ) async {
       await pumpSheet(tester, onPublish: (_, opts) async => null);
 
-      await tester.ensureVisible(find.text('Publish Poll'));
-      await tester.tap(find.text('Publish Poll'));
+      await tester.ensureVisible(find.text('Enviar Sondagem'));
+      await tester.tap(find.text('Enviar Sondagem'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Question cannot be empty.'), findsOneWidget);
+      expect(find.text('A pergunta não pode estar vazia.'), findsOneWidget);
 
       await tester.enterText(questionField(), 'A');
       await tester.pumpAndSettle();
 
-      expect(find.text('Question cannot be empty.'), findsNothing);
+      expect(find.text('A pergunta não pode estar vazia.'), findsNothing);
     });
   });
 
@@ -110,8 +110,8 @@ void main() {
     testWidgets('add option button adds a new field', (tester) async {
       await pumpSheet(tester, onPublish: (_, opts) async => null);
 
-      await tester.ensureVisible(find.textContaining('Add option'));
-      await tester.tap(find.textContaining('Add option'));
+      await tester.ensureVisible(find.textContaining('Adicionar opção'));
+      await tester.tap(find.textContaining('Adicionar opção'));
       await tester.pumpAndSettle();
 
       // Now 1 question + 3 options = 4 TextFields.
@@ -123,8 +123,8 @@ void main() {
     ) async {
       await pumpSheet(tester, onPublish: (_, opts) async => null);
 
-      await tester.ensureVisible(find.textContaining('Add option'));
-      await tester.tap(find.textContaining('Add option'));
+      await tester.ensureVisible(find.textContaining('Adicionar opção'));
+      await tester.tap(find.textContaining('Adicionar opção'));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.remove_circle_outline), findsWidgets);
@@ -136,12 +136,12 @@ void main() {
       await pumpSheet(tester, onPublish: (_, opts) async => null);
 
       for (int i = 0; i < 4; i++) {
-        await tester.ensureVisible(find.textContaining('Add option'));
-        await tester.tap(find.textContaining('Add option'));
+        await tester.ensureVisible(find.textContaining('Adicionar opção'));
+        await tester.tap(find.textContaining('Adicionar opção'));
         await tester.pumpAndSettle();
       }
 
-      expect(find.textContaining('Add option'), findsNothing);
+      expect(find.textContaining('Adicionar opção'), findsNothing);
       // 1 question + 6 options = 7 TextFields.
       expect(find.byType(TextField), findsNWidgets(7));
     });
@@ -149,8 +149,8 @@ void main() {
     testWidgets('removing an option reduces the field count', (tester) async {
       await pumpSheet(tester, onPublish: (_, opts) async => null);
 
-      await tester.ensureVisible(find.textContaining('Add option'));
-      await tester.tap(find.textContaining('Add option'));
+      await tester.ensureVisible(find.textContaining('Adicionar opção'));
+      await tester.tap(find.textContaining('Adicionar opção'));
       await tester.pumpAndSettle();
 
       expect(find.byType(TextField), findsNWidgets(4));
@@ -182,8 +182,8 @@ void main() {
       await tester.enterText(optionField(1), '  Yes  ');
       await tester.enterText(optionField(2), '  No  ');
 
-      await tester.ensureVisible(find.text('Publish Poll'));
-      await tester.tap(find.text('Publish Poll'));
+      await tester.ensureVisible(find.text('Enviar Sondagem'));
+      await tester.tap(find.text('Enviar Sondagem'));
       await tester.pumpAndSettle();
 
       expect(capturedQuestion, 'Is Flutter great?');
@@ -199,8 +199,8 @@ void main() {
       await tester.enterText(optionField(1), 'Yes');
       await tester.enterText(optionField(2), 'No');
 
-      await tester.ensureVisible(find.text('Publish Poll'));
-      await tester.tap(find.text('Publish Poll'));
+      await tester.ensureVisible(find.text('Enviar Sondagem'));
+      await tester.tap(find.text('Enviar Sondagem'));
       await tester.pumpAndSettle();
 
       expect(find.text('Network error.'), findsOneWidget);

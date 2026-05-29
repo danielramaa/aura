@@ -10,6 +10,7 @@ import '../models/user_role.dart';
 import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 import '../services/poll_service.dart';
+import '../services/content_filtering_service.dart';
 import '../services/report_service.dart';
 
 class ChatController extends ChangeNotifier {
@@ -22,6 +23,7 @@ class ChatController extends ChangeNotifier {
 
   late final ChatServiceInterface _chatService;
   late final PollServiceInterface _pollService;
+  late final ContentFilteringService _filteringService;
   late final ReportServiceInterface _reportService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
@@ -61,12 +63,14 @@ class ChatController extends ChangeNotifier {
     FirebaseAuth? auth,
     ChatServiceInterface? chatService,
     PollServiceInterface? pollService,
+    ContentFilteringService? filteringService,
     ReportServiceInterface? reportService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     _pollService = pollService ?? PollService(firestore: _firestore);
+    _filteringService = filteringService ?? ContentFilteringService(firestore: _firestore);
     _reportService = reportService ?? ReportService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
@@ -115,6 +119,14 @@ class ChatController extends ChangeNotifier {
       _reactionErrors.containsKey(messageId);
   bool isRetryingReaction(String messageId) =>
       _reactionRetrying.contains(messageId);
+
+  FilteringResult checkMessage(String text) {
+    return _filteringService.filterContent(text);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Typing
+  // ---------------------------------------------------------------------------
 
   List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
     final cutoff = Timestamp.fromDate(
@@ -241,7 +253,7 @@ class ChatController extends ChangeNotifier {
           .where((n) => n != _anonymousIdentity?.nickname)
           .toList();
     } catch (e) {
-      debugPrint('Failed to load room nicknames: $e');
+      debugPrint('Falha ao carregar os apelidos da sala: $e');
       _roomNicknames = [];
     }
   }
@@ -370,12 +382,22 @@ class ChatController extends ChangeNotifier {
     _isSending = true;
     notifyListeners();
 
+    // Defence-in-depth: enforce the content filter on every send path, not just
+    // the UI confirmation dialog, so no caller can post unmasked banned content.
+    // Already-masked text from the dialog does not re-match, so this is a no-op
+    // for the normal flow. NOTE: this is still client-side — robust enforcement
+    // against a modified client requires a server-side check (Cloud Function or
+    // Firestore rule).
+    final outgoing = _filteringService.filterContent(trimmed).filteredText;
+
     try {
+      // Mentions are resolved from the original text so masking a nickname that
+      // happens to contain a flagged substring does not drop the notification.
       final mentions = _extractMentions(trimmed);
 
       final sendError = await _chatService.sendMessage(
         groupId: groupId,
-        text: trimmed,
+        text: outgoing,
         identity: _anonymousIdentity!,
         replyToText: replyToText,
         mentions: mentions,
@@ -396,7 +418,7 @@ class ChatController extends ChangeNotifier {
                 .set({'isMedic': true})
                 .catchError(
                   (Object e) =>
-                      debugPrint('Failed to mark anonymousId as medic: $e'),
+                      debugPrint('Falha ao marcar anonymousId como médico: $e'),
                 ),
           );
         }
@@ -413,7 +435,7 @@ class ChatController extends ChangeNotifier {
 
   Future<String?> createPoll(String question, List<String> options) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não estás ligado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
     return _pollService.createPoll(
       groupId: groupId,
       question: question,
@@ -429,7 +451,7 @@ class ChatController extends ChangeNotifier {
     String description = '',
   }) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não estás ligado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
 
     return _reportService.submitUserReport(
       groupId: groupId,
@@ -450,7 +472,7 @@ class ChatController extends ChangeNotifier {
     String details = '',
   }) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não estás ligado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
 
     return _reportService.submitMessageReport(
       groupId: groupId,
@@ -580,7 +602,7 @@ class ChatController extends ChangeNotifier {
       await _firestore.collection('notifications').add({
         'groupId': groupId,
         'groupName': groupName,
-        'description': 'Nova mensagem em "$groupName".',
+        'description': 'Nova mensagem na comunidade "$groupName".',
         'senderId': _userId,
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'message',
@@ -613,7 +635,9 @@ class ChatController extends ChangeNotifier {
           'isRead': false,
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('Falha ao criar notificação para a comunidade "$groupId": $e');
+    }
   }
 
   @override
@@ -624,6 +648,7 @@ class ChatController extends ChangeNotifier {
     _messagesSubscription?.cancel();
     _pinnedMessagesSubscription?.cancel();
     _medicSub?.cancel();
+    _filteringService.dispose();
     super.dispose();
   }
 }
