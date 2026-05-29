@@ -201,8 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
             SizedBox(height: 4),
             Text(
               groups.isEmpty
-                  ? 'Nenhuma comunidade ativo'
-                  : '${groups.length} comunidades ativa${groups.length == 1 ? '' : 's'}',
+                  ? 'Nenhuma comunidade ativa'
+                  : '${groups.length} comunidade${groups.length == 1 ? '' : 's'} ativa${groups.length == 1 ? '' : 's'}',
               style: TextStyle(fontSize: 13, color: Colors.grey[600]),
             ),
           ],
