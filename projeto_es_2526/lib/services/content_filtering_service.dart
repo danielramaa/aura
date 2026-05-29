@@ -39,9 +39,7 @@ class ContentFilteringService {
     'cunt',
   ];
 
-  static const List<String> defaultHateSpeech = [
-    'paneleiro',
-  ];
+  static const List<String> defaultHateSpeech = ['paneleiro'];
 
   List<String> _profanities = List.from(defaultProfanities);
   List<String> _hateSpeech = List.from(defaultHateSpeech);
@@ -49,7 +47,7 @@ class ContentFilteringService {
   StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _moderationSub;
 
   ContentFilteringService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance {
+    : _firestore = firestore ?? FirebaseFirestore.instance {
     _listenToModerationRules();
   }
 
@@ -58,25 +56,28 @@ class ContentFilteringService {
         .collection('moderation')
         .doc('banned_words')
         .snapshots()
-        .listen((snap) {
-      if (snap.exists) {
-        final data = snap.data() ?? {};
-        if (data['profanity'] is List) {
-          _profanities = (data['profanity'] as List)
-              .map((e) => removeAccents(e.toString().trim()))
-              .where((e) => e.isNotEmpty)
-              .toList();
-        }
-        if (data['hateSpeech'] is List) {
-          _hateSpeech = (data['hateSpeech'] as List)
-              .map((e) => removeAccents(e.toString().trim()))
-              .where((e) => e.isNotEmpty)
-              .toList();
-        }
-      }
-    }, onError: (e) {
-      // Fallback silently to defaults if document doesn't exist yet or permission denied
-    });
+        .listen(
+          (snap) {
+            if (snap.exists) {
+              final data = snap.data() ?? {};
+              if (data['profanity'] is List) {
+                _profanities = (data['profanity'] as List)
+                    .map((e) => removeAccents(e.toString().trim()))
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+              }
+              if (data['hateSpeech'] is List) {
+                _hateSpeech = (data['hateSpeech'] as List)
+                    .map((e) => removeAccents(e.toString().trim()))
+                    .where((e) => e.isNotEmpty)
+                    .toList();
+              }
+            }
+          },
+          onError: (e) {
+            // Fallback silently to defaults if document doesn't exist yet or permission denied
+          },
+        );
   }
 
   // Exposed for tests or manual configuration
@@ -188,7 +189,7 @@ class ContentFilteringService {
         final matches = regex.allMatches(filtered).toList();
         if (matches.isNotEmpty) {
           flagged.add(FlaggedTerm(word: word, category: category));
-          
+
           // Replace from right to left so indices don't shift
           for (final match in matches.reversed) {
             final matchedStr = filtered.substring(match.start, match.end);
@@ -216,6 +217,8 @@ class ContentFilteringService {
     if (matched.length <= 4) {
       return '*' * matched.length;
     }
-    return matched[0] + ('*' * (matched.length - 2)) + matched[matched.length - 1];
+    return matched[0] +
+        ('*' * (matched.length - 2)) +
+        matched[matched.length - 1];
   }
 }

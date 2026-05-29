@@ -70,7 +70,8 @@ class ChatController extends ChangeNotifier {
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     _pollService = pollService ?? PollService(firestore: _firestore);
-    _filteringService = filteringService ?? ContentFilteringService(firestore: _firestore);
+    _filteringService =
+        filteringService ?? ContentFilteringService(firestore: _firestore);
     _reportService = reportService ?? ReportService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')

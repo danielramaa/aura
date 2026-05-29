@@ -14,7 +14,10 @@ import 'package:projeto_es_2526/services/gdpr_service.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
 
 HomeController makeHomeController(String userId, FakeFirebaseFirestore store) =>
-    HomeController(service: GroupService(firestore: store), userId: userId);
+    HomeController(
+      service: GroupService(firestore: store),
+      userId: userId,
+    );
 
 void main() {
   group('AuthGate', () {

@@ -337,14 +337,17 @@ class ChatService implements ChatServiceInterface {
     if (message.anonymousId == givingUserAnonId) return null;
 
     final messageRef = _messagesRef(groupId).doc(message.id);
-    final identityRef =
-        _firestore.collection('anonymousIdentities').doc(message.anonymousId);
+    final identityRef = _firestore
+        .collection('anonymousIdentities')
+        .doc(message.anonymousId);
 
     try {
       // Firestore requires all reads to happen before any writes, so we read
       // both docs up front, then issue the updates. The callback may re-run on
       // contention, so it must stay free of external side-effects.
-      final isAdding = await _firestore.runTransaction<bool>((transaction) async {
+      final isAdding = await _firestore.runTransaction<bool>((
+        transaction,
+      ) async {
         final snap = await transaction.get(messageRef);
         if (!snap.exists) throw Exception('Mensagem não encontrada.');
         final identitySnap = await transaction.get(identityRef);
@@ -413,6 +416,8 @@ class ChatService implements ChatServiceInterface {
     }
   }
 
-  Future<void> _checkForAbuse(String recipientAnonId, String giverAnonId) async {
-  }
+  Future<void> _checkForAbuse(
+    String recipientAnonId,
+    String giverAnonId,
+  ) async {}
 }

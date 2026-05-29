@@ -7,7 +7,9 @@ void main() {
     late ContentFilteringService filterService;
 
     setUp(() {
-      filterService = ContentFilteringService(firestore: FakeFirebaseFirestore());
+      filterService = ContentFilteringService(
+        firestore: FakeFirebaseFirestore(),
+      );
       // Configure custom lists for test predictability
       filterService.updateLists(
         profanities: ['puta', 'merda', 'fuck', 'shit'],
@@ -101,8 +103,14 @@ void main() {
     test('Handles mixed categories', () {
       final result = filterService.filterContent('paneleiro de merda');
       expect(result.isFlagged, isTrue);
-      expect(result.flaggedTerms.any((t) => t.category == 'profanidade'), isTrue);
-      expect(result.flaggedTerms.any((t) => t.category == 'discurso de ódio'), isTrue);
+      expect(
+        result.flaggedTerms.any((t) => t.category == 'profanidade'),
+        isTrue,
+      );
+      expect(
+        result.flaggedTerms.any((t) => t.category == 'discurso de ódio'),
+        isTrue,
+      );
     });
   });
 }

@@ -4,19 +4,14 @@ import '../services/content_filtering_service.dart';
 class ContentWarningDialog extends StatelessWidget {
   final FilteringResult result;
 
-  const ContentWarningDialog({
-    super.key,
-    required this.result,
-  });
+  const ContentWarningDialog({super.key, required this.result});
 
   @override
   Widget build(BuildContext context) {
     final flaggedTerms = result.flaggedTerms;
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       title: Row(
         children: [
           const Icon(
@@ -28,10 +23,7 @@ class ContentWarningDialog extends StatelessWidget {
           const Expanded(
             child: Text(
               'Aviso de Conteúdo',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
             ),
           ),
         ],
@@ -70,11 +62,17 @@ class ContentWarningDialog extends StatelessWidget {
                     Expanded(
                       child: RichText(
                         text: TextSpan(
-                          style: const TextStyle(fontSize: 14, color: Colors.black87),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
                           children: [
                             TextSpan(
-                              text: '"${ContentFilteringService.maskWord(term.word)}"',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              text:
+                                  '"${ContentFilteringService.maskWord(term.word)}"',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             TextSpan(
                               text: ' classificado como ',
@@ -84,7 +82,9 @@ class ContentWarningDialog extends StatelessWidget {
                               text: term.category,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                color: isHateSpeech ? Colors.red[700] : Colors.orange[800],
+                                color: isHateSpeech
+                                    ? Colors.red[700]
+                                    : Colors.orange[800],
                               ),
                             ),
                           ],
@@ -135,7 +135,10 @@ class ContentWarningDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(false),
           child: Text(
             'Reescrever',
-            style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         ElevatedButton(
@@ -149,10 +152,7 @@ class ContentWarningDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(true),
           child: const Text(
             'Enviar Censurada',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
       ],

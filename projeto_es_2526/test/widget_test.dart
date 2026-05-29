@@ -81,9 +81,7 @@ void main() {
     expect(find.text('Encontrar'), findsWidgets);
 
     await tester.tap(
-      find
-          .descendant(of: bottomNav, matching: find.text('Notificações'))
-          .first,
+      find.descendant(of: bottomNav, matching: find.text('Notificações')).first,
     );
     await tester.pumpAndSettle();
     expect(find.text('Nenhuma nova notificação'), findsOneWidget);

@@ -185,10 +185,7 @@ void main() {
     });
 
     test('suggests a neutral category for ordinary text', () {
-      expect(
-        ReportService.suggestedMessageCategory('olá tudo bem?'),
-        'Other',
-      );
+      expect(ReportService.suggestedMessageCategory('olá tudo bem?'), 'Other');
     });
   });
 }

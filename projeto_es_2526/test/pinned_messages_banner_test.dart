@@ -68,7 +68,10 @@ void main() {
     ) async {
       await pumpBanner(
         tester,
-        pinned: [makePinned('m1', 'First pinned'), makePinned('m2', 'Second pinned')],
+        pinned: [
+          makePinned('m1', 'First pinned'),
+          makePinned('m2', 'Second pinned'),
+        ],
       );
 
       // Collapsed: the list (and the second item) is not built.
@@ -92,7 +95,10 @@ void main() {
       final navigated = <String>[];
       await pumpBanner(
         tester,
-        pinned: [makePinned('m1', 'First pinned'), makePinned('m2', 'Second pinned')],
+        pinned: [
+          makePinned('m1', 'First pinned'),
+          makePinned('m2', 'Second pinned'),
+        ],
         onNavigate: navigated.add,
       );
 

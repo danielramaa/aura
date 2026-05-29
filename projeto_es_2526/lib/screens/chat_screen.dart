@@ -518,7 +518,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Não foi possível sair da comunidade.'),
+                      content: const Text(
+                        'Não foi possível sair da comunidade.',
+                      ),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
                         label: 'Tentar Novamente',

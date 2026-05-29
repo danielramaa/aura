@@ -542,10 +542,8 @@ void main() {
       service = ChatService(firestore: firestore);
     });
 
-    CollectionReference<Map<String, dynamic>> messagesRef() => firestore
-        .collection('groups')
-        .doc('g1')
-        .collection('messages');
+    CollectionReference<Map<String, dynamic>> messagesRef() =>
+        firestore.collection('groups').doc('g1').collection('messages');
 
     // Seeds a text message. [second] makes the timestamp deterministic so the
     // descending-by-timestamp scan order is predictable.
@@ -557,43 +555,47 @@ void main() {
           'timestamp': Timestamp.fromDate(DateTime(2026, 1, 1, 0, 0, second)),
         });
 
-    test('matches case-insensitively and preserves original case in snippet',
-        () async {
-      await seedText('Hello World', second: 1);
+    test(
+      'matches case-insensitively and preserves original case in snippet',
+      () async {
+        await seedText('Hello World', second: 1);
 
-      final page = await service.searchMessages(groupId: 'g1', query: 'WORLD');
+        final page = await service.searchMessages(
+          groupId: 'g1',
+          query: 'WORLD',
+        );
 
-      expect(page.results.length, 1);
-      final result = page.results.first;
-      expect(result.snippet, 'Hello World');
-      expect(
-        result.snippet.substring(result.matchStart, result.matchEnd),
-        'World',
-      );
-    });
+        expect(page.results.length, 1);
+        final result = page.results.first;
+        expect(result.snippet, 'Hello World');
+        expect(
+          result.snippet.substring(result.matchStart, result.matchEnd),
+          'World',
+        );
+      },
+    );
 
     test('returns no results when nothing matches', () async {
       await seedText('Hello World', second: 1);
 
-      final page = await service.searchMessages(
-        groupId: 'g1',
-        query: 'absent',
-      );
+      final page = await service.searchMessages(groupId: 'g1', query: 'absent');
 
       expect(page.results, isEmpty);
       expect(page.hasMore, isFalse);
     });
 
-    test('returns empty page for a blank query without touching Firestore',
-        () async {
-      await seedText('Hello World', second: 1);
+    test(
+      'returns empty page for a blank query without touching Firestore',
+      () async {
+        await seedText('Hello World', second: 1);
 
-      final page = await service.searchMessages(groupId: 'g1', query: '   ');
+        final page = await service.searchMessages(groupId: 'g1', query: '   ');
 
-      expect(page.results, isEmpty);
-      expect(page.hasMore, isFalse);
-      expect(page.lastDocument, isNull);
-    });
+        expect(page.results, isEmpty);
+        expect(page.hasMore, isFalse);
+        expect(page.lastDocument, isNull);
+      },
+    );
 
     test('snippet truncation offsets still bracket the match', () async {
       final text = '${'a' * 50}NEEDLE${'b' * 50}';
