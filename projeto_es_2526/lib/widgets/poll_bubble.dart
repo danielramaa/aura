@@ -210,7 +210,7 @@ class _PollCard extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Sondagem anônima',
+                                'Sondagem anónima',
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: Colors.grey[600],

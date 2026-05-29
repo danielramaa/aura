@@ -172,7 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
         Center(
           child: Text(
-            user.displayName ?? 'Usuário anônimo',
+            user.displayName ?? 'Utilizador anónimo',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
         ),

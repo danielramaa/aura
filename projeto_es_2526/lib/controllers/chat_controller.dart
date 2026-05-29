@@ -448,7 +448,7 @@ class ChatController extends ChangeNotifier {
     String description = '',
   }) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não está conectado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
 
     return _reportService.submitUserReport(
       groupId: groupId,
@@ -469,7 +469,7 @@ class ChatController extends ChangeNotifier {
     String details = '',
   }) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não está conectado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
 
     return _reportService.submitMessageReport(
       groupId: groupId,

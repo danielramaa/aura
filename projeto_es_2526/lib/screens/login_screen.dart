@@ -332,7 +332,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_isLogin ? 'Login' : 'Registro'),
+                          : Text(_isLogin ? 'Iniciar sessão' : 'Registar'),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
@@ -347,8 +347,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             }),
                       child: Text(
                         _isLogin
-                            ? "Não tem uma conta? Cadastre-se"
-                            : 'Já tem uma conta? Login',
+                            ? "Não tem uma conta? Registe-se"
+                            : 'Já tem uma conta? Inicie sessão',
                       ),
                     ),
                     const SizedBox(height: 48),

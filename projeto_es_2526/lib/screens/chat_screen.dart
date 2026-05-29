@@ -307,7 +307,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // a form whose submission is guaranteed to be rejected.
     if (_controller.anonymousIdentity == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Não está conectado à sala.')),
+        const SnackBar(content: Text('Não está ligado à sala.')),
       );
       return;
     }

@@ -94,9 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() => _mutedGroups = previous);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-              'Falha ao atualizar as configurações de notificação.',
-            ),
+            content: Text('Falha ao atualizar as preferências de notificação.'),
           ),
         );
       }
@@ -217,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'A sua conta será desativada e agendada para eliminação permanente em 30 dias. Durante este período, pode cancelar o processo fazendo login novamente.\n\nPara confirmar, escreva "CONFIRMAR" no campo abaixo:',
+                  'A sua conta será desativada e agendada para eliminação permanente em 30 dias. Durante este período, pode cancelar o processo ao iniciar sessão novamente.\n\nPara confirmar, escreva "CONFIRMAR" no campo abaixo:',
                   style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 16),

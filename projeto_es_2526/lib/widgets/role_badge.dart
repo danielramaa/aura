@@ -28,7 +28,7 @@ class _RoleBadgeState extends State<RoleBadge> {
         final (label, color) = switch (role) {
           UserRole.admin => ('Admin', Colors.red),
           UserRole.medic => ('Médico', Colors.green),
-          UserRole.user => ('Usuário', Colors.blueGrey),
+          UserRole.user => ('Utilizador', Colors.blueGrey),
         };
         return Chip(
           label: Text(label, style: const TextStyle(color: Colors.white)),
