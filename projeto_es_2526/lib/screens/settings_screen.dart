@@ -416,14 +416,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
                   title: const Text(
-                    'Logout',
+                    'Terminar sessão',
                     style: TextStyle(color: Colors.red),
                   ),
                   onTap: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Logout'),
+                        title: const Text('Terminar sessão'),
                         content: const Text(
                           'Tem a certeza de que pretende sair?',
                         ),
@@ -435,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, true),
                             child: const Text(
-                              'Logout',
+                              'Terminar sessão',
                               style: TextStyle(color: Colors.red),
                             ),
                           ),

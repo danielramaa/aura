@@ -254,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
         ElevatedButton.icon(
           icon: const Icon(Icons.logout),
-          label: const Text('Logout'),
+          label: const Text('Terminar sessão'),
           onPressed: _controller.logout,
         ),
       ],
