@@ -126,7 +126,7 @@ class _EditProfileDialogState extends State<EditProfileDialog> {
                 controller: _currentPasswordCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Password atual',
-                  helperText: 'É necessário alterar o e-mail ou a password.',
+                  helperText: 'Necessária para alterar o e-mail ou a password.',
                 ),
                 obscureText: true,
               ),
