@@ -94,7 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() => _mutedGroups = previous);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to update notification settings.'),
+            content: Text('Falha ao atualizar as preferências de notificação.'),
           ),
         );
       }
@@ -215,7 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'A sua conta será desativada e agendada para eliminação permanente em 30 dias. Durante este período, pode cancelar o processo fazendo login novamente.\n\nPara confirmar, escreva "CONFIRMAR" no campo abaixo:',
+                  'A sua conta será desativada e agendada para eliminação permanente em 30 dias. Durante este período, pode cancelar o processo ao iniciar sessão novamente.\n\nPara confirmar, escreva "CONFIRMAR" no campo abaixo:',
                   style: TextStyle(fontSize: 14),
                 ),
                 const SizedBox(height: 16),
@@ -327,7 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text(
-          'Settings',
+          'Definições',
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         iconTheme: const IconThemeData(color: Colors.black),
@@ -339,21 +339,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Text(
-                    'Notification Preferences',
+                    'Preferências de notificação',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 if (_userGroups.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Text('You have not joined any communities yet.'),
+                    child: Text('Ainda não se juntou a nenhuma comunidade.'),
                   ),
                 ..._userGroups.map((g) {
                   final isMuted = _mutedGroups.contains(g['id']);
                   return SwitchListTile(
                     title: Text(g['name']),
                     subtitle: Text(
-                      isMuted ? 'Notifications off' : 'Notifications on',
+                      isMuted
+                          ? 'Notificações desligadas'
+                          : 'Notificações ligadas',
                     ),
                     value: !isMuted,
                     activeThumbColor: Theme.of(context).colorScheme.primary,
@@ -412,24 +414,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
                   title: const Text(
-                    'Logout',
+                    'Terminar sessão',
                     style: TextStyle(color: Colors.red),
                   ),
                   onTap: () async {
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
-                        title: const Text('Logout'),
-                        content: const Text('Are you sure you want to logout?'),
+                        title: const Text('Terminar sessão'),
+                        content: const Text(
+                          'Tem a certeza de que pretende sair?',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
+                            child: const Text('Cancelar'),
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, true),
                             child: const Text(
-                              'Logout',
+                              'Terminar sessão',
                               style: TextStyle(color: Colors.red),
                             ),
                           ),

@@ -100,10 +100,6 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Getters
-  // ---------------------------------------------------------------------------
-
   List<Message> get messages => _messages;
   List<MessageSearchResult> get searchResults => _searchResults;
   List<PinnedMessage> get pinnedMessages => _pinnedMessages;
@@ -122,10 +118,6 @@ class ChatController extends ChangeNotifier {
       _reactionErrors.containsKey(messageId);
   bool isRetryingReaction(String messageId) =>
       _reactionRetrying.contains(messageId);
-
-  // ---------------------------------------------------------------------------
-  // Typing
-  // ---------------------------------------------------------------------------
 
   List<String> _toTypingNames(QuerySnapshot<Map<String, dynamic>> snap) {
     final cutoff = Timestamp.fromDate(
@@ -175,10 +167,6 @@ class ChatController extends ChangeNotifier {
           .delete(),
     );
   }
-
-  // ---------------------------------------------------------------------------
-  // Init
-  // ---------------------------------------------------------------------------
 
   Future<void> _initialize() async {
     try {
@@ -260,7 +248,7 @@ class ChatController extends ChangeNotifier {
           .where((n) => n != _anonymousIdentity?.nickname)
           .toList();
     } catch (e) {
-      debugPrint('Failed to load room nicknames: $e');
+      debugPrint('Falha ao carregar os apelidos da sala: $e');
       _roomNicknames = [];
     }
   }
@@ -423,7 +411,7 @@ class ChatController extends ChangeNotifier {
                 .set({'isMedic': true})
                 .catchError(
                   (Object e) =>
-                      debugPrint('Failed to mark anonymousId as medic: $e'),
+                      debugPrint('Falha ao marcar anonymousId como médico: $e'),
                 ),
           );
         }
@@ -436,15 +424,11 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Polls
-  // ---------------------------------------------------------------------------
-
   PollServiceInterface get pollService => _pollService;
 
   Future<String?> createPoll(String question, List<String> options) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Not connected to the room.';
+    if (identity == null) return 'Não está ligado à conversa.';
     return _pollService.createPoll(
       groupId: groupId,
       question: question,
@@ -464,7 +448,7 @@ class ChatController extends ChangeNotifier {
     String description = '',
   }) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não está conectado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
 
     return _reportService.submitUserReport(
       groupId: groupId,
@@ -485,7 +469,7 @@ class ChatController extends ChangeNotifier {
     String details = '',
   }) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Não está conectado à sala.';
+    if (identity == null) return 'Não está ligado à sala.';
 
     return _reportService.submitMessageReport(
       groupId: groupId,
@@ -594,10 +578,6 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------------------------------------------------------------------------
-  // Notifications
-  // ---------------------------------------------------------------------------
-
   Future<void> _createNotification({List<String> mentions = const []}) async {
     try {
       final groupName = _groupName ?? 'Community';
@@ -605,7 +585,7 @@ class ChatController extends ChangeNotifier {
       await _firestore.collection('notifications').add({
         'groupId': groupId,
         'groupName': groupName,
-        'description': 'Nova mensagem no grupo "$groupName".',
+        'description': 'Nova mensagem na comunidade "$groupName".',
         'senderId': _userId,
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'message',
@@ -639,7 +619,7 @@ class ChatController extends ChangeNotifier {
         });
       }
     } catch (e) {
-      debugPrint('Failed to create notification for group "$groupId": $e');
+      debugPrint('Falha ao criar notificação para a comunidade "$groupId": $e');
     }
   }
 

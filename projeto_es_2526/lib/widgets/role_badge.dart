@@ -27,8 +27,8 @@ class _RoleBadgeState extends State<RoleBadge> {
         final role = snap.data ?? UserRole.user;
         final (label, color) = switch (role) {
           UserRole.admin => ('Admin', Colors.red),
-          UserRole.medic => ('Medic', Colors.green),
-          UserRole.user => ('User', Colors.blueGrey),
+          UserRole.medic => ('Médico', Colors.green),
+          UserRole.user => ('Utilizador', Colors.blueGrey),
         };
         return Chip(
           label: Text(label, style: const TextStyle(color: Colors.white)),

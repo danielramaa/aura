@@ -27,7 +27,7 @@ class HomeController extends ChangeNotifier {
           },
           onError: (Object e) {
             _isLoading = false;
-            _error = 'Failed to load groups.';
+            _error = 'Falha ao carregar as comunidades.';
             notifyListeners();
           },
         );

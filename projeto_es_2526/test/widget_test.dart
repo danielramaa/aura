@@ -55,10 +55,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomNavigationBar), findsOneWidget);
-    expect(find.text('My Groups'), findsWidgets);
-    expect(find.text('Find Groups'), findsOneWidget);
-    expect(find.text('Notifications'), findsOneWidget);
-    expect(find.text('Profile'), findsOneWidget);
+    expect(find.text('Minhas comunidades'), findsWidgets);
+    expect(find.text('Encontrar'), findsOneWidget);
+    expect(find.text('Notificações'), findsOneWidget);
+    expect(find.text('Perfil'), findsOneWidget);
   });
 
   testWidgets('Bottom navigation changes visible screen', (
@@ -75,24 +75,24 @@ void main() {
     final bottomNav = find.byType(BottomNavigationBar);
 
     await tester.tap(
-      find.descendant(of: bottomNav, matching: find.text('Find Groups')).first,
+      find.descendant(of: bottomNav, matching: find.text('Encontrar')).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Find Groups'), findsWidgets);
+    expect(find.text('Encontrar'), findsWidgets);
 
     await tester.tap(
       find
-          .descendant(of: bottomNav, matching: find.text('Notifications'))
+          .descendant(of: bottomNav, matching: find.text('Notificações'))
           .first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('No new notifications'), findsOneWidget);
+    expect(find.text('Nenhuma nova notificação'), findsOneWidget);
 
     await tester.tap(
-      find.descendant(of: bottomNav, matching: find.text('Profile')).first,
+      find.descendant(of: bottomNav, matching: find.text('Perfil')).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Profile'), findsWidgets);
+    expect(find.text('Perfil'), findsWidgets);
   });
 
   group('GroupCard unread badge', () {
@@ -141,9 +141,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Online now'), findsOneWidget);
-      expect(find.text('2400 members'), findsOneWidget);
-      expect(find.text('Nobody online'), findsNothing);
+      expect(find.text('Online agora'), findsOneWidget);
+      expect(find.text('2400 membros'), findsOneWidget);
+      expect(find.text('Ninguém online'), findsNothing);
     });
   });
 

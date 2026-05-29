@@ -29,9 +29,7 @@ class UserReport {
     this.createdAt,
   });
 
-  factory UserReport.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  factory UserReport.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     return UserReport(
       id: doc.id,

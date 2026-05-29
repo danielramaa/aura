@@ -183,8 +183,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool get _isModerator =>
-      _currentUserRole == UserRole.admin ||
-      _currentUserRole == UserRole.medic;
+      _currentUserRole == UserRole.admin || _currentUserRole == UserRole.medic;
 
   void _showMessageOptions(BuildContext context, Message message) {
     final isPinned = _controller.isMessagePinned(message.id);
@@ -198,7 +197,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.emoji_emotions_outlined),
-              title: const Text('React'),
+              title: const Text('Reagir'),
               onTap: () {
                 Navigator.pop(sheetContext);
                 _showEmojiPicker(context, message);
@@ -308,7 +307,7 @@ class _ChatScreenState extends State<ChatScreen> {
     // a form whose submission is guaranteed to be rejected.
     if (_controller.anonymousIdentity == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Não está conectado à sala.')),
+        const SnackBar(content: Text('Não está ligado à sala.')),
       );
       return;
     }
@@ -338,9 +337,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            result.error ?? 'Denúncia enviada com sucesso.',
-          ),
+          content: Text(result.error ?? 'Denúncia enviada com sucesso.'),
         ),
       );
     });
@@ -460,7 +457,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _controller.leaveGroup();
       return true;
     } catch (e) {
-      debugPrint('Error leaving group: $e');
+      debugPrint('Erro ao sair da comunidade: $e');
       return false;
     }
   }
@@ -474,16 +471,19 @@ class _ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text(
-            'Leave Group',
+            'Sair da comunidade',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: const Text(
-            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            'Tem a certeza de que pretende sair desta conversa? Deixará de receber notificações desta comunidade.',
             style: TextStyle(color: Colors.black87),
           ),
           actions: [
             TextButton(
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
@@ -492,7 +492,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                'Leave',
+                'Sair',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -503,7 +503,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Leaving group...'),
+                    content: Text('A sair da comunidade...'),
                     duration: Duration(seconds: 1),
                   ),
                 );
@@ -516,10 +516,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Failed to leave group.'),
+                      content: const Text('Falha ao sair da comunidade.'),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
-                        label: 'Try Again',
+                        label: 'Tentar Novamente',
                         textColor: Colors.white,
                         onPressed: () async {
                           final retry = await _processLeaveGroup();
@@ -590,7 +590,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             Text(
-              '${widget.memberCount} members',
+              '${widget.memberCount} membros',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
@@ -607,7 +607,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.medical_services_outlined),
-            tooltip: 'Medications',
+            tooltip: 'Medicações',
             onPressed: () {
               showDialog(
                 context: context,
@@ -633,13 +633,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         _showLeaveConfirmation(context);
                       },
                       child: const Text(
-                        'Leave Group',
+                        'Sair da comunidade',
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(infoContext),
-                      child: const Text('Close'),
+                      child: const Text('Fechar'),
                     ),
                   ],
                 ),
@@ -973,8 +973,8 @@ class _ChatScreenState extends State<ChatScreen> {
         final names = snapshot.data ?? [];
         if (names.isEmpty) return const SizedBox.shrink();
         final label = names.length == 1
-            ? '${names.first} is typing...'
-            : '${names.join(', ')} are typing...';
+            ? '${names.first} está a escrever...'
+            : '${names.join(', ')} estão a escrever...';
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
@@ -1082,7 +1082,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.poll_outlined),
             color: const Color(0xFF185FA5),
-            tooltip: 'Create poll',
+            tooltip: 'Criar uma sondagem',
             onPressed: isSending ? null : _showCreatePollSheet,
           ),
           Expanded(

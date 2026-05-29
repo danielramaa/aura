@@ -60,19 +60,19 @@ class MainScreen extends StatelessWidget {
             items: const [
               BottomNavigationBarItem(
                 icon: Icon(Icons.group),
-                label: 'My Groups',
+                label: 'Minhas comunidades',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.search),
-                label: 'Find Groups',
+                label: 'Encontrar',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.notifications_outlined),
-                label: 'Notifications',
+                label: 'Notificações',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),
-                label: 'Profile',
+                label: 'Perfil',
               ),
             ],
           ),

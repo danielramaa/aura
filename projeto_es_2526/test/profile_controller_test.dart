@@ -120,7 +120,7 @@ void main() {
         newPassword: 'short',
         currentPassword: 'current',
       );
-      expect(error, contains('8 characters'));
+      expect(error, contains('8 caracteres'));
     });
 
     test('requires current password when changing password', () async {
@@ -131,7 +131,7 @@ void main() {
         newPassword: 'newpassword123',
         currentPassword: '',
       );
-      expect(error, contains('Current password'));
+      expect(error, contains('password atual'));
     });
 
     test('requires current password when changing email', () async {
@@ -142,7 +142,7 @@ void main() {
         newPassword: '',
         currentPassword: '',
       );
-      expect(error, contains('Current password'));
+      expect(error, contains('password atual'));
     });
 
     test('returns error when re-auth needed but user has no email', () async {
@@ -235,7 +235,7 @@ void main() {
 
       final err = await controller.submitModeratorApplication('LIC-002');
 
-      expect(err, contains('pending application'));
+      expect(err, contains('candidatura pendente'));
       final snap = await firestore
           .collection('moderator_applications')
           .where('userId', isEqualTo: 'u1')

@@ -30,7 +30,6 @@ class GroupCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // coloured left bar
           Container(
             width: 4,
             height: 80,
@@ -43,7 +42,6 @@ class GroupCard extends StatelessWidget {
             ),
           ),
           SizedBox(width: 12),
-          // content
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -78,13 +76,13 @@ class GroupCard extends StatelessWidget {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        isOnline ? 'Online now' : 'Nobody online',
+                        isOnline ? 'Online agora' : 'Ninguém online',
                         style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                       ),
                       if (memberCount > 0) ...[
                         SizedBox(width: 8),
                         Text(
-                          '$memberCount members',
+                          '$memberCount membros',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[400],
@@ -97,7 +95,6 @@ class GroupCard extends StatelessWidget {
               ),
             ),
           ),
-          // time
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Column(

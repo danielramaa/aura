@@ -23,7 +23,7 @@ class AdminApplicationsScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            err ?? (approve ? 'Application approved.' : 'Application denied.'),
+            err ?? (approve ? 'Candidatura aprovada.' : 'Candidatura negada.'),
           ),
         ),
       );
@@ -33,7 +33,7 @@ class AdminApplicationsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Moderator Applications')),
+      appBar: AppBar(title: const Text('Candidaturas para moderador')),
       body: StreamBuilder<List<ModeratorApplication>>(
         stream: _userService.streamPendingApplications(),
         builder: (context, snapshot) {
@@ -41,13 +41,13 @@ class AdminApplicationsScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return const Center(child: Text('Failed to load applications.'));
+            return const Center(child: Text('Falha ao carregar candidaturas.'));
           }
           final apps = snapshot.data ?? [];
           if (apps.isEmpty) {
             return const Center(
               child: Text(
-                'No pending applications.',
+                'Sem candidaturas pendentes.',
                 style: TextStyle(color: Colors.grey),
               ),
             );
@@ -70,7 +70,7 @@ class AdminApplicationsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'License: ${app.licenseNumber}',
+                        'Licença: ${app.licenseNumber}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: Colors.black87,
@@ -84,7 +84,7 @@ class AdminApplicationsScreen extends StatelessWidget {
                             onPressed: () =>
                                 _handleDecision(context, app, false),
                             child: const Text(
-                              'Deny',
+                              'Recusar',
                               style: TextStyle(color: Colors.red),
                             ),
                           ),
@@ -96,7 +96,7 @@ class AdminApplicationsScreen extends StatelessWidget {
                               backgroundColor: const Color(0xFF185FA5),
                               foregroundColor: Colors.white,
                             ),
-                            child: const Text('Approve'),
+                            child: const Text('Aprovar'),
                           ),
                         ],
                       ),

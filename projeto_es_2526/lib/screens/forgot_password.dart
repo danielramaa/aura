@@ -53,11 +53,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String _friendlyError(String code) {
     switch (code) {
       case 'invalid-email':
-        return 'Enter a valid email address.';
+        return 'Insira um endereço de e-mail válido.';
       case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
+        return 'Muitas tentativas foram feitas. Por favor, tente novamente mais tarde.';
       default:
-        return 'Something went wrong. Please try again.';
+        return 'Algo correu mal. Por favor, tente novamente.';
     }
   }
 
@@ -93,7 +93,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         children: [
           const SizedBox(height: 48),
           Text(
-            'Reset password',
+            'Redefinir password',
             style: Theme.of(
               context,
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -101,7 +101,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Enter your email and we'll send you a link to reset your password.",
+            "Insira o seu e-mail e enviaremos um link para redefinir a sua password.",
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -113,7 +113,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             keyboardType: TextInputType.emailAddress,
             autovalidateMode: AutovalidateMode.onUserInteraction,
             decoration: const InputDecoration(
-              labelText: 'Email',
+              labelText: 'E-mail',
               border: OutlineInputBorder(),
             ),
             validator: validateEmail,
@@ -135,12 +135,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Send reset link'),
+                : const Text('Enviar link de redefinição'),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _loading ? null : () => Navigator.of(context).pop(),
-            child: const Text('Back to Login'),
+            child: const Text('Voltar ao login'),
           ),
           const SizedBox(height: 48),
         ],
@@ -156,7 +156,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         Icon(Icons.mark_email_read_outlined, size: 72, color: _blue),
         const SizedBox(height: 24),
         Text(
-          'Check your email',
+          'Verifique o seu e-mail',
           style: Theme.of(
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -164,7 +164,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'If the email exists, you\'ll receive a password reset link.',
+          'Se o e-mail existir, receberá um link para redefinir a sua password.',
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
@@ -173,7 +173,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         const SizedBox(height: 40),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Back to Login'),
+          child: const Text('Voltar ao login'),
         ),
         const SizedBox(height: 16),
         TextButton(
@@ -184,7 +184,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   width: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Resend email'),
+              : const Text('Reenviar e-mail'),
         ),
         const SizedBox(height: 48),
       ],
