@@ -24,6 +24,15 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/groups/$(groupId)/polls/$(pollId)).data;
     }
 
+    function isAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function currentAnonymousId(groupId) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId;
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -61,7 +70,12 @@ service cloud.firestore {
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role']);
-      allow delete: if false;
+      // RGPD erasure: a user may delete their own profile, but only once their
+      // account is actually scheduled for deletion. This keeps the deletion
+      // confined to the grace-period flow (it can't be triggered casually).
+      allow delete: if request.auth != null
+        && request.auth.uid == userId
+        && resource.data.deletionScheduled == true;
 
       match /anonymousIdentities/{groupId} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
@@ -95,14 +109,17 @@ service cloud.firestore {
       // Tracks which anonymous IDs in this group belong to verified medics.
       // Readable by all members; writable only by the owner of that anonymousId
       // when they currently hold the 'medic' role. Admins can delete entries
-      // to revoke the badge when demoting a medic.
+      // to revoke the badge when demoting a medic; a medic may also delete their
+      // own badge (used by RGPD account erasure to clean up the badge).
       match /medicAnonymousIds/{anonymousId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic';
         allow delete: if request.auth != null
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+          && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+            || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'medic'
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)/anonymousIdentities/$(groupId)).data.anonymousId == anonymousId));
       }
 
       match /typing/{anonymousId} {
@@ -209,6 +226,99 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /user_reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'groupId',
+          'groupName',
+          'reportedAnonymousId',
+          'reportedNickname',
+          'reportedAvatarIndex',
+          'reporterAnonymousId',
+          'category',
+          'reason',
+          'description',
+          'status',
+          'createdAt',
+        ])
+        && request.resource.data.groupId is string
+        && request.resource.data.groupName is string
+        && request.resource.data.reportedAnonymousId is string
+        && request.resource.data.reportedAnonymousId.size() > 0
+        && request.resource.data.reportedNickname is string
+        && request.resource.data.reportedAvatarIndex is int
+        && request.resource.data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId)
+        && request.resource.data.reportedAnonymousId != request.resource.data.reporterAnonymousId
+        && request.resource.data.category in [
+          'Spam',
+          'Harassment',
+          'Misinformation',
+          'Abuse',
+          'Other',
+        ]
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0
+        && request.resource.data.reason.size() <= 200
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+        && request.resource.data.status in ['reviewed', 'dismissed']
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /message_reports/{reportId} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'groupId',
+          'groupName',
+          'messageId',
+          'messageText',
+          'messageSenderAnonymousId',
+          'messageSenderNickname',
+          'messageSenderAvatarIndex',
+          'reporterAnonymousId',
+          'category',
+          'details',
+          'status',
+          'createdAt',
+        ])
+        && request.resource.data.groupId is string
+        && request.resource.data.groupName is string
+        && request.resource.data.messageId is string
+        && request.resource.data.messageId.size() > 0
+        && request.resource.data.messageText is string
+        && request.resource.data.messageText.size() > 0
+        && request.resource.data.messageText.size() <= 2000
+        && request.resource.data.messageSenderAnonymousId is string
+        && request.resource.data.messageSenderAnonymousId.size() > 0
+        && request.resource.data.messageSenderNickname is string
+        && request.resource.data.messageSenderAvatarIndex is int
+        && request.resource.data.reporterAnonymousId == currentAnonymousId(request.resource.data.groupId)
+        && request.resource.data.messageSenderAnonymousId != request.resource.data.reporterAnonymousId
+        && request.resource.data.category in [
+          'Spam',
+          'Misinformation',
+          'Bullying',
+          'LifeRisk',
+          'Other',
+        ]
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 2000
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'reviewedAt'])
+        && request.resource.data.status in ['reviewed', 'dismissed']
+        && request.resource.data.reviewedAt == request.time;
+      allow delete: if false;
+    }
+
     // Reverse lookup for moderation (anonymousId → real userId). Never deleted
     // from the client so historical messages remain traceable after a user leaves.
     match /anonymousIdentities/{anonymousId} {
@@ -248,7 +358,12 @@ service cloud.firestore {
       allow update: if request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
-      allow delete: if false;
+      // RGPD erasure: a user may delete their own application (it holds their
+      // email and license number), but only while their account is actually
+      // scheduled for deletion, so the audit record stays immutable otherwise.
+      allow delete: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.deletionScheduled == true;
     }
 
     match /moderation/banned_words {

@@ -11,6 +11,7 @@ import '../services/chat_service.dart';
 import '../services/identity_service.dart';
 import '../services/poll_service.dart';
 import '../services/content_filtering_service.dart';
+import '../services/report_service.dart';
 
 class ChatController extends ChangeNotifier {
   static const int maxMessageLength = 2000;
@@ -23,6 +24,7 @@ class ChatController extends ChangeNotifier {
   late final ChatServiceInterface _chatService;
   late final PollServiceInterface _pollService;
   late final ContentFilteringService _filteringService;
+  late final ReportServiceInterface _reportService;
   late final String _userId;
   AnonymousIdentity? _anonymousIdentity;
   String? _groupName;
@@ -65,12 +67,14 @@ class ChatController extends ChangeNotifier {
     ChatServiceInterface? chatService,
     PollServiceInterface? pollService,
     ContentFilteringService? filteringService,
+    ReportServiceInterface? reportService,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _identityService = identityService ?? IdentityService(),
        _auth = auth ?? FirebaseAuth.instance {
     _chatService = chatService ?? ChatService(firestore: _firestore);
     _pollService = pollService ?? PollService(firestore: _firestore);
     _filteringService = filteringService ?? ContentFilteringService(firestore: _firestore);
+    _reportService = reportService ?? ReportService(firestore: _firestore);
     typingNamesStream = _firestore
         .collection('groups')
         .doc(groupId)
@@ -99,10 +103,6 @@ class ChatController extends ChangeNotifier {
       _isLoading = false;
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Getters
-  // ---------------------------------------------------------------------------
 
   List<Message> get messages => _messages;
   List<MessageSearchResult> get searchResults => _searchResults;
@@ -179,10 +179,6 @@ class ChatController extends ChangeNotifier {
           .delete(),
     );
   }
-
-  // ---------------------------------------------------------------------------
-  // Init
-  // ---------------------------------------------------------------------------
 
   Future<void> _initialize() async {
     try {
@@ -264,7 +260,7 @@ class ChatController extends ChangeNotifier {
           .where((n) => n != _anonymousIdentity?.nickname)
           .toList();
     } catch (e) {
-      debugPrint('Failed to load room nicknames: $e');
+      debugPrint('Falha ao carregar os apelidos da sala: $e');
       _roomNicknames = [];
     }
   }
@@ -427,7 +423,7 @@ class ChatController extends ChangeNotifier {
                 .set({'isMedic': true})
                 .catchError(
                   (Object e) =>
-                      debugPrint('Failed to mark anonymousId as medic: $e'),
+                      debugPrint('Falha ao marcar anonymousId como médico: $e'),
                 ),
           );
         }
@@ -440,20 +436,64 @@ class ChatController extends ChangeNotifier {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Polls
-  // ---------------------------------------------------------------------------
-
   PollServiceInterface get pollService => _pollService;
 
   Future<String?> createPoll(String question, List<String> options) async {
     final identity = _anonymousIdentity;
-    if (identity == null) return 'Not connected to the room.';
+    if (identity == null) return 'Não está ligado à conversa.';
     return _pollService.createPoll(
       groupId: groupId,
       question: question,
       optionTexts: options,
       identity: identity,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reports
+  // ---------------------------------------------------------------------------
+
+  Future<String?> reportUser({
+    required Message reportedMessage,
+    required String category,
+    required String reason,
+    String description = '',
+  }) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Não está ligado à sala.';
+
+    return _reportService.submitUserReport(
+      groupId: groupId,
+      groupName: _groupName ?? 'Community',
+      reporterIdentity: identity,
+      reportedAnonymousId: reportedMessage.anonymousId,
+      reportedNickname: reportedMessage.senderNickname,
+      reportedAvatarIndex: reportedMessage.senderAvatarIndex,
+      category: category,
+      reason: reason,
+      description: description,
+    );
+  }
+
+  Future<String?> reportMessage({
+    required Message message,
+    required String category,
+    String details = '',
+  }) async {
+    final identity = _anonymousIdentity;
+    if (identity == null) return 'Não está ligado à sala.';
+
+    return _reportService.submitMessageReport(
+      groupId: groupId,
+      groupName: _groupName ?? 'Comunidade',
+      reporterIdentity: identity,
+      messageId: message.id,
+      messageText: message.text,
+      messageSenderAnonymousId: message.anonymousId,
+      messageSenderNickname: message.senderNickname,
+      messageSenderAvatarIndex: message.senderAvatarIndex,
+      category: category,
+      details: details,
     );
   }
 
@@ -550,10 +590,6 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------------------------------------------------------------------------
-  // Notifications
-  // ---------------------------------------------------------------------------
-
   Future<void> _createNotification({List<String> mentions = const []}) async {
     try {
       final groupName = _groupName ?? 'Community';
@@ -561,7 +597,7 @@ class ChatController extends ChangeNotifier {
       await _firestore.collection('notifications').add({
         'groupId': groupId,
         'groupName': groupName,
-        'description': 'Nova mensagem no grupo "$groupName".',
+        'description': 'Nova mensagem na comunidade "$groupName".',
         'senderId': _userId,
         'timestamp': FieldValue.serverTimestamp(),
         'type': 'message',
@@ -595,7 +631,7 @@ class ChatController extends ChangeNotifier {
         });
       }
     } catch (e) {
-      debugPrint('Failed to create notification for group "$groupId": $e');
+      debugPrint('Falha ao criar notificação para a comunidade "$groupId": $e');
     }
   }
 

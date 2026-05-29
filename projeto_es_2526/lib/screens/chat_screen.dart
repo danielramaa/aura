@@ -8,6 +8,7 @@ import '../controllers/chat_controller.dart';
 import '../models/message.dart';
 import '../models/message_search_result.dart';
 import '../models/user_role.dart';
+import '../services/report_service.dart';
 import '../services/user_service.dart';
 import '../utils/avatar_utils.dart';
 import '../widgets/create_poll_sheet.dart';
@@ -183,40 +184,59 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   bool get _isModerator =>
-      _currentUserRole == UserRole.admin ||
-      _currentUserRole == UserRole.medic;
+      _currentUserRole == UserRole.admin || _currentUserRole == UserRole.medic;
 
   void _showMessageOptions(BuildContext context, Message message) {
     final isPinned = _controller.isMessagePinned(message.id);
+    final isOwnMessage =
+        message.anonymousId == _controller.anonymousIdentity?.anonymousId;
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.emoji_emotions_outlined),
-              title: const Text('React'),
+              title: const Text('Reagir'),
               onTap: () {
-                Navigator.pop(context);
+                Navigator.pop(sheetContext);
                 _showEmojiPicker(context, message);
               },
             ),
-            ListTile(
-              leading: Icon(
-                isPinned ? Icons.push_pin_outlined : Icons.push_pin,
-                color: const Color(0xFF185FA5),
+            if (_isModerator)
+              ListTile(
+                leading: Icon(
+                  isPinned ? Icons.push_pin_outlined : Icons.push_pin,
+                  color: const Color(0xFF185FA5),
+                ),
+                title: Text(isPinned ? 'Unpin message' : 'Pin message'),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (isPinned) {
+                    _controller.unpinMessage(message.id);
+                  } else {
+                    _controller.pinMessage(message);
+                  }
+                },
               ),
-              title: Text(isPinned ? 'Unpin message' : 'Pin message'),
-              onTap: () {
-                Navigator.pop(context);
-                if (isPinned) {
-                  _controller.unpinMessage(message.id);
-                } else {
-                  _controller.pinMessage(message);
-                }
-              },
-            ),
+            if (!isOwnMessage)
+              ListTile(
+                leading: const Icon(
+                  Icons.report_gmailerrorred_outlined,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  'Denunciar mensagem',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  await Future<void>.delayed(Duration.zero);
+                  if (!mounted) return;
+                  await _showReportMessageDialog(message);
+                },
+              ),
             if (_currentUserRole == UserRole.admin)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
@@ -233,6 +253,125 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showUserOptions(BuildContext context, Message message) async {
+    if (message.anonymousId == _controller.anonymousIdentity?.anonymousId) {
+      return;
+    }
+
+    final shouldReport = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: AvatarUtils.buildAvatarFromAsset(
+                message.senderAvatarAssetPath,
+                36,
+              ),
+              title: Text(message.senderNickname),
+              subtitle: Text(widget.groupName),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(
+                Icons.report_gmailerrorred_outlined,
+                color: Colors.red,
+              ),
+              title: const Text(
+                'Denunciar utilizador',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext, true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || shouldReport != true) return;
+    await Future<void>.delayed(Duration.zero);
+    if (!mounted) return;
+    await _showReportUserDialog(message);
+  }
+
+  Future<void> _showReportUserDialog(Message message) async {
+    final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
+
+    // Guard before opening the form: if we no longer have a session-bound
+    // identity, fail fast with a snackbar instead of letting the user fill in
+    // a form whose submission is guaranteed to be rejected.
+    if (_controller.anonymousIdentity == null) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Não está ligado à sala.')),
+      );
+      return;
+    }
+
+    final result = await showDialog<_ReportDialogResult>(
+      context: screenContext,
+      builder: (_) => _ReportUserDialog(
+        reportedNickname: message.senderNickname,
+        onSubmit:
+            ({
+              required String category,
+              required String reason,
+              required String description,
+            }) {
+              return _controller.reportUser(
+                reportedMessage: message,
+                category: category,
+                reason: reason,
+                description: description,
+              );
+            },
+      ),
+    );
+
+    if (!mounted || result == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(result.error ?? 'Denúncia enviada com sucesso.'),
+        ),
+      );
+    });
+  }
+
+  Future<void> _showReportMessageDialog(Message message) async {
+    final screenContext = context;
+    final messenger = ScaffoldMessenger.of(screenContext);
+
+    final err = await showDialog<String?>(
+      context: screenContext,
+      builder: (_) => _ReportMessageDialog(
+        messageText: message.text,
+        initialCategory: ReportService.suggestedMessageCategory(message.text),
+        onSubmit: ({required String category, required String details}) {
+          return _controller.reportMessage(
+            message: message,
+            category: category,
+            details: details,
+          );
+        },
+      ),
+    );
+
+    if (!mounted || err == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(err.isEmpty ? 'Denúncia enviada com sucesso.' : err),
+        ),
+      );
+    });
   }
 
   void _showEmojiPicker(BuildContext context, Message message) {
@@ -319,7 +458,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _controller.leaveGroup();
       return true;
     } catch (e) {
-      debugPrint('Error leaving group: $e');
+      debugPrint('Erro ao sair da comunidade: $e');
       return false;
     }
   }
@@ -333,16 +472,19 @@ class _ChatScreenState extends State<ChatScreen> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text(
-            'Leave Group',
+            'Sair da comunidade',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           content: const Text(
-            'Are you sure you want to leave this conversation? You will no longer receive notifications from this group.',
+            'Tem a certeza de que pretende sair desta conversa? Deixará de receber notificações desta comunidade.',
             style: TextStyle(color: Colors.black87),
           ),
           actions: [
             TextButton(
-              child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+              child: Text(
+                'Cancelar',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
               onPressed: () => Navigator.of(dialogContext).pop(),
             ),
             ElevatedButton(
@@ -351,7 +493,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 elevation: 0,
               ),
               child: const Text(
-                'Leave',
+                'Sair',
                 style: TextStyle(
                   color: Colors.red,
                   fontWeight: FontWeight.bold,
@@ -362,7 +504,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Leaving group...'),
+                    content: Text('A sair da comunidade...'),
                     duration: Duration(seconds: 1),
                   ),
                 );
@@ -375,10 +517,10 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Failed to leave group.'),
+                      content: const Text('Falha ao sair da comunidade.'),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
-                        label: 'Try Again',
+                        label: 'Tentar Novamente',
                         textColor: Colors.white,
                         onPressed: () async {
                           final retry = await _processLeaveGroup();
@@ -465,7 +607,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
             Text(
-              '${widget.memberCount} members',
+              '${widget.memberCount} membros',
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,
@@ -482,7 +624,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.medical_services_outlined),
-            tooltip: 'Medications',
+            tooltip: 'Medicações',
             onPressed: () {
               showDialog(
                 context: context,
@@ -508,13 +650,13 @@ class _ChatScreenState extends State<ChatScreen> {
                         _showLeaveConfirmation(context);
                       },
                       child: const Text(
-                        'Leave Group',
+                        'Sair da comunidade',
                         style: TextStyle(color: Colors.red),
                       ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(infoContext),
-                      child: const Text('Close'),
+                      child: const Text('Fechar'),
                     ),
                   ],
                 ),
@@ -621,10 +763,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 _controller.anonymousIdentity?.anonymousId ?? '',
             hasReactionError: _controller.hasReactionError(message.id),
             isRetryingReaction: _controller.isRetryingReaction(message.id),
-            onShowOptions: () => _isModerator
-                ? _showMessageOptions(context, message)
-                : _showEmojiPicker(context, message),
+            onShowOptions: () => _showMessageOptions(context, message),
             onReply: () => _startReply(message),
+            onSenderTap: () => _showUserOptions(context, message),
             onToggleReaction: (emoji) =>
                 _controller.toggleReaction(message.id, emoji),
             onRetryReaction: () => _controller.retryReaction(message.id),
@@ -849,8 +990,8 @@ class _ChatScreenState extends State<ChatScreen> {
         final names = snapshot.data ?? [];
         if (names.isEmpty) return const SizedBox.shrink();
         final label = names.length == 1
-            ? '${names.first} is typing...'
-            : '${names.join(', ')} are typing...';
+            ? '${names.first} está a escrever...'
+            : '${names.join(', ')} estão a escrever...';
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           child: Text(
@@ -958,7 +1099,7 @@ class _ChatScreenState extends State<ChatScreen> {
           IconButton(
             icon: const Icon(Icons.poll_outlined),
             color: const Color(0xFF185FA5),
-            tooltip: 'Create poll',
+            tooltip: 'Criar uma sondagem',
             onPressed: isSending ? null : _showCreatePollSheet,
           ),
           Expanded(
@@ -989,6 +1130,286 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Outcome of the report dialog. `null` (no value passed to `Navigator.pop`)
+/// means the user cancelled; a non-null value means the user submitted, and
+/// `error` is null on success or the error message on failure. Using a typed
+/// result avoids the previous overloaded `null` / `''` / `String` convention.
+class _ReportDialogResult {
+  final String? error;
+  const _ReportDialogResult({this.error});
+}
+
+class _ReportUserDialog extends StatefulWidget {
+  final String reportedNickname;
+  final Future<String?> Function({
+    required String category,
+    required String reason,
+    required String description,
+  })
+  onSubmit;
+
+  const _ReportUserDialog({
+    required this.reportedNickname,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportUserDialog> createState() => _ReportUserDialogState();
+}
+
+class _ReportUserDialogState extends State<_ReportUserDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _reasonController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  String _selectedCategory = ReportService.userReportCategories.first;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _reasonController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final err = await widget.onSubmit(
+      category: _selectedCategory,
+      reason: _reasonController.text,
+      description: _descriptionController.text,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).pop(_ReportDialogResult(error: err));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Denunciar ${widget.reportedNickname}'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              decoration: const InputDecoration(
+                labelText: 'Categoria',
+                border: OutlineInputBorder(),
+              ),
+              items: ReportService.userReportCategories
+                  .map(
+                    (category) => DropdownMenuItem(
+                      value: category,
+                      child: Text(ReportService.labelForCategory(category)),
+                    ),
+                  )
+                  .toList(),
+              onChanged: _isSubmitting
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        setState(() => _selectedCategory = value);
+                      }
+                    },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _reasonController,
+              enabled: !_isSubmitting,
+              maxLength: ReportService.maxReasonLength,
+              decoration: const InputDecoration(
+                labelText: 'Motivo',
+                border: OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Escreve um motivo.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _descriptionController,
+              enabled: !_isSubmitting,
+              minLines: 3,
+              maxLines: 5,
+              maxLength: ReportService.maxDescriptionLength,
+              decoration: const InputDecoration(
+                labelText: 'Descrição ou evidência',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[50],
+            foregroundColor: Colors.red,
+            elevation: 0,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Enviar denúncia'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReportMessageDialog extends StatefulWidget {
+  final String messageText;
+  final String initialCategory;
+  final Future<String?> Function({
+    required String category,
+    required String details,
+  })
+  onSubmit;
+
+  const _ReportMessageDialog({
+    required this.messageText,
+    required this.initialCategory,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_ReportMessageDialog> createState() => _ReportMessageDialogState();
+}
+
+class _ReportMessageDialogState extends State<_ReportMessageDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _detailsController = TextEditingController();
+
+  late String _selectedCategory;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory =
+        ReportService.messageReportCategories.contains(widget.initialCategory)
+        ? widget.initialCategory
+        : ReportService.messageReportCategories.first;
+  }
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isSubmitting = true);
+    final err = await widget.onSubmit(
+      category: _selectedCategory,
+      details: _detailsController.text,
+    );
+
+    if (!mounted) return;
+    Navigator.of(context).pop(err ?? '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Denunciar mensagem'),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.messageText,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: Colors.grey[700]),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: _selectedCategory,
+                decoration: const InputDecoration(
+                  labelText: 'Categoria',
+                  border: OutlineInputBorder(),
+                ),
+                items: ReportService.messageReportCategories
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(
+                          ReportService.labelForMessageCategory(category),
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: _isSubmitting
+                    ? null
+                    : (value) {
+                        if (value != null) {
+                          setState(() => _selectedCategory = value);
+                        }
+                      },
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _detailsController,
+                enabled: !_isSubmitting,
+                minLines: 3,
+                maxLines: 5,
+                maxLength: ReportService.maxDescriptionLength,
+                decoration: const InputDecoration(
+                  labelText: 'Detalhes adicionais',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _isSubmitting ? null : _submit,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red[50],
+            foregroundColor: Colors.red,
+            elevation: 0,
+          ),
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Enviar denúncia'),
+        ),
+      ],
     );
   }
 }

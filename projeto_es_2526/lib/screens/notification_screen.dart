@@ -41,8 +41,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
           .get();
       if (mounted) {
         setState(() {
-          // whereIn is limited to 30 values; users in >30 groups will only see
-          // notifications for their most recently joined 30.
           _userGroupIds = snap.docs.map((d) => d.id).take(30).toList();
         });
       }
@@ -75,7 +73,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
           groupId: data['groupId'] ?? '',
           groupName: data['groupName'] ?? 'Community',
           memberCount: memberCount.toString(),
-          groupDescription: data['description'] ?? 'New message in community',
+          groupDescription:
+              data['description'] ?? 'Nova mensagem na comunidade',
         ),
       ),
     );
@@ -93,7 +92,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No new notifications',
+            'Nenhuma nova notificação',
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey[600],
@@ -165,7 +164,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               }
 
               return NotificationTile(
-                description: data['description'] ?? 'New notification',
+                description: data['description'] ?? 'Nova notificação',
                 timeString: timeString,
                 type: type,
                 isRead: isRead,
@@ -182,7 +181,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
     backgroundColor: Colors.white,
     elevation: 0,
     title: const Text(
-      'Notifications',
+      'Notificações',
       style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
     ),
   );

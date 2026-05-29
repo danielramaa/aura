@@ -351,6 +351,74 @@ void main() {
     });
   });
 
+  group('ChatController — user reports', () {
+    late FakeFirebaseFirestore firestore;
+    late MockFirebaseAuth auth;
+    late ChatController controller;
+
+    setUp(() async {
+      firestore = FakeFirebaseFirestore();
+      await seedGroup(firestore, 'g1');
+      auth = MockFirebaseAuth(
+        signedIn: true,
+        mockUser: MockUser(uid: 'user-1'),
+      );
+      controller = makeController(firestore, auth);
+      await waitForInit(controller);
+    });
+
+    tearDown(() => controller.dispose());
+
+    test('creates a report for another anonymous user', () async {
+      final message = Message(
+        id: 'm1',
+        text: 'bad message',
+        anonymousId: 'anon-reported',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 2,
+        timestamp: Timestamp.now(),
+      );
+
+      final err = await controller.reportUser(
+        reportedMessage: message,
+        category: 'Abuse',
+        reason: 'Insultos repetidos',
+        description: 'Repeated insults.',
+      );
+
+      expect(err, isNull);
+      final reports = await firestore.collection('user_reports').get();
+      expect(reports.docs.length, 1);
+      expect(reports.docs.first.data()['reportedNickname'], 'BraveOwl7');
+      expect(reports.docs.first.data()['groupName'], 'g1');
+    });
+
+    test('creates a report for a message', () async {
+      final message = Message(
+        id: 'm1',
+        text: 'mensagem imprópria',
+        anonymousId: 'anon-author',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 2,
+        timestamp: Timestamp.now(),
+      );
+
+      final err = await controller.reportMessage(
+        message: message,
+        category: 'Misinformation',
+        details: 'Informação falsa sobre saúde.',
+      );
+
+      expect(err, isNull);
+      final reports = await firestore.collection('message_reports').get();
+      expect(reports.docs.length, 1);
+      expect(reports.docs.first.data()['messageId'], 'm1');
+      expect(reports.docs.first.data()['messageText'], 'mensagem imprópria');
+      expect(reports.docs.first.data()['messageSenderNickname'], 'BraveOwl7');
+      expect(reports.docs.first.data()['groupName'], 'g1');
+    });
+  });
+
   group('AnonymousIdentity.fromMap', () {
     test('parses a complete map', () {
       final identity = AnonymousIdentity.fromMap({
@@ -366,7 +434,7 @@ void main() {
     test('uses fallbacks for missing fields', () {
       final identity = AnonymousIdentity.fromMap({});
       expect(identity.anonymousId, '');
-      expect(identity.nickname, 'Anonymous');
+      expect(identity.nickname, 'Anónimo');
       expect(identity.avatarIndex, 0);
     });
 

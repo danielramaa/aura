@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:projeto_es_2526/controllers/home_controller.dart';
 import 'package:projeto_es_2526/controllers/main_controller.dart';
 import 'package:projeto_es_2526/controllers/profile_controller.dart';
+import 'package:projeto_es_2526/models/message.dart';
 import 'package:projeto_es_2526/widgets/message_bubble.dart';
 import 'package:projeto_es_2526/screens/main_screen.dart';
 import 'package:projeto_es_2526/services/group_service.dart';
@@ -53,10 +55,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(BottomNavigationBar), findsOneWidget);
-    expect(find.text('My Groups'), findsWidgets);
-    expect(find.text('Find Groups'), findsOneWidget);
-    expect(find.text('Notifications'), findsOneWidget);
-    expect(find.text('Profile'), findsOneWidget);
+    expect(find.text('Minhas comunidades'), findsWidgets);
+    expect(find.text('Encontrar'), findsOneWidget);
+    expect(find.text('Notificações'), findsOneWidget);
+    expect(find.text('Perfil'), findsOneWidget);
   });
 
   testWidgets('Bottom navigation changes visible screen', (
@@ -73,24 +75,24 @@ void main() {
     final bottomNav = find.byType(BottomNavigationBar);
 
     await tester.tap(
-      find.descendant(of: bottomNav, matching: find.text('Find Groups')).first,
+      find.descendant(of: bottomNav, matching: find.text('Encontrar')).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Find Groups'), findsWidgets);
+    expect(find.text('Encontrar'), findsWidgets);
 
     await tester.tap(
       find
-          .descendant(of: bottomNav, matching: find.text('Notifications'))
+          .descendant(of: bottomNav, matching: find.text('Notificações'))
           .first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('No new notifications'), findsOneWidget);
+    expect(find.text('Nenhuma nova notificação'), findsOneWidget);
 
     await tester.tap(
-      find.descendant(of: bottomNav, matching: find.text('Profile')).first,
+      find.descendant(of: bottomNav, matching: find.text('Perfil')).first,
     );
     await tester.pumpAndSettle();
-    expect(find.text('Profile'), findsWidgets);
+    expect(find.text('Perfil'), findsWidgets);
   });
 
   group('GroupCard unread badge', () {
@@ -139,9 +141,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Online now'), findsOneWidget);
-      expect(find.text('2400 members'), findsOneWidget);
-      expect(find.text('Nobody online'), findsNothing);
+      expect(find.text('Online agora'), findsOneWidget);
+      expect(find.text('2400 membros'), findsOneWidget);
+      expect(find.text('Ninguém online'), findsNothing);
     });
   });
 
@@ -194,6 +196,93 @@ void main() {
       final ghost = spans.firstWhere((s) => s.text == '@Ghost');
       expect(alice.style?.color, const Color(0xFF185FA5));
       expect(ghost.style?.color, Colors.black87);
+    });
+  });
+
+  group('MessageBubble', () {
+    testWidgets('tapping a sender nickname triggers onSenderTap', (
+      tester,
+    ) async {
+      var tapped = false;
+      final message = Message(
+        id: 'm1',
+        text: 'hello',
+        anonymousId: 'anon-1',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 0,
+        timestamp: Timestamp.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubble(
+              message: message,
+              isOwn: false,
+              isSenderMedic: false,
+              isPinned: false,
+              isHighlighted: false,
+              currentAnonymousId: 'anon-current',
+              hasReactionError: false,
+              isRetryingReaction: false,
+              onShowOptions: () {},
+              onReply: () {},
+              onSenderTap: () => tapped = true,
+              onToggleReaction: (_) {},
+              onRetryReaction: () {},
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('BraveOwl7'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(tapped, isTrue);
+    });
+
+    testWidgets('double-tapping a message bubble triggers onShowOptions', (
+      tester,
+    ) async {
+      var optionsShown = false;
+      final message = Message(
+        id: 'm1',
+        text: 'hello',
+        anonymousId: 'anon-1',
+        senderNickname: 'BraveOwl7',
+        senderAvatarIndex: 0,
+        timestamp: Timestamp.now(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: MessageBubble(
+              message: message,
+              isOwn: false,
+              isSenderMedic: false,
+              currentAnonymousId: 'anon-current',
+              hasReactionError: false,
+              isRetryingReaction: false,
+              onShowOptions: () => optionsShown = true,
+              onReply: () {},
+              onSenderTap: () {},
+              onToggleReaction: (_) {},
+              onRetryReaction: () {},
+            ),
+          ),
+        ),
+      );
+
+      final center = tester.getCenter(find.byType(AnimatedContainer));
+      final firstTap = await tester.startGesture(center);
+      await firstTap.up();
+      await tester.pump(const Duration(milliseconds: 50));
+      final secondTap = await tester.startGesture(center);
+      await secondTap.up();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(optionsShown, isTrue);
     });
   });
 }

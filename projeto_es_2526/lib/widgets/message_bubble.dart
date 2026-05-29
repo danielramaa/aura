@@ -55,11 +55,12 @@ class MessageBubble extends StatelessWidget {
   final bool hasReactionError;
   final bool isRetryingReaction;
 
-  /// Opens the options/react menu. Wired to the double-tap gesture.
+  /// Opens the options/react/report menu. Wired to the double-tap gesture.
   final VoidCallback onShowOptions;
 
   /// Starts a reply. Wired to the long-press gesture.
   final VoidCallback onReply;
+  final VoidCallback? onSenderTap;
   final ValueChanged<String> onToggleReaction;
   final VoidCallback onRetryReaction;
 
@@ -75,6 +76,7 @@ class MessageBubble extends StatelessWidget {
     required this.isRetryingReaction,
     required this.onShowOptions,
     required this.onReply,
+    this.onSenderTap,
     required this.onToggleReaction,
     required this.onRetryReaction,
   });
@@ -176,6 +178,7 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onDoubleTap: onShowOptions,
       onLongPress: onReply,
       child: Align(
@@ -226,12 +229,21 @@ class MessageBubble extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (!isOwn)
-                                  Text(
-                                    message.senderNickname,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                      color: Color(0xFF185FA5),
+                                  InkWell(
+                                    onTap: onSenderTap,
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 2,
+                                      ),
+                                      child: Text(
+                                        message.senderNickname,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Color(0xFF185FA5),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 if (isSenderMedic)

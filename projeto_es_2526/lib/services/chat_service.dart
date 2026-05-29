@@ -95,10 +95,9 @@ class ChatService implements ChatServiceInterface {
       );
     }
 
-    final baseQuery = _messagesRef(groupId).orderBy(
-      'timestamp',
-      descending: true,
-    );
+    final baseQuery = _messagesRef(
+      groupId,
+    ).orderBy('timestamp', descending: true);
     var firestoreQuery = baseQuery.limit(pageSize);
     if (startAfter != null) {
       firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
@@ -185,9 +184,9 @@ class ChatService implements ChatServiceInterface {
     required String senderRole,
   }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return 'Message cannot be empty.';
+    if (trimmed.isEmpty) return 'A mensagem não pode estar vazia.';
     if (trimmed.length > maxMessageLength) {
-      return 'Message cannot exceed $maxMessageLength characters.';
+      return 'A mensagem não pode exceder $maxMessageLength caracteres.';
     }
 
     try {
@@ -204,7 +203,7 @@ class ChatService implements ChatServiceInterface {
       });
       return null;
     } catch (_) {
-      return 'Failed to send message. Please try again.';
+      return 'Falha ao enviar a mensagem. Tente novamente.';
     }
   }
 
@@ -223,7 +222,7 @@ class ChatService implements ChatServiceInterface {
     try {
       await _firestore.runTransaction((transaction) async {
         final snap = await transaction.get(docRef);
-        if (!snap.exists) throw Exception('Message not found.');
+        if (!snap.exists) throw Exception('Mensagem não encontrada.');
 
         final data = snap.data() ?? {};
         final raw = data['reactions'] != null
@@ -248,7 +247,7 @@ class ChatService implements ChatServiceInterface {
       });
       return null;
     } catch (_) {
-      return 'Não foi possível adicionar a reação. Tente novamente.';
+      return 'Não foi possível adicionar a reação. Por favor tente novamente.';
     }
   }
 
@@ -267,7 +266,7 @@ class ChatService implements ChatServiceInterface {
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Failed to delete message. Please try again.';
+      return 'Não foi possível eliminar a mensagem. Por favor, tente novamente.';
     }
   }
 
@@ -317,7 +316,7 @@ class ChatService implements ChatServiceInterface {
     try {
       await _firestore.runTransaction((transaction) async {
         final snap = await transaction.get(docRef);
-        if (!snap.exists) throw Exception('Message not found.');
+        if (!snap.exists) throw Exception('Mensagem não encontrada.');
 
         final data = snap.data() ?? {};
         final raw = data['reactions'] != null
