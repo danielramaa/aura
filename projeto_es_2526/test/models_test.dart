@@ -85,7 +85,7 @@ void main() {
       expect(message.replyToText, 'quoted');
     });
 
-    test('falls back to "Anonymous" when senderNickname is missing', () async {
+    test('falls back to "Anónimo" when senderNickname is missing', () async {
       final firestore = FakeFirebaseFirestore();
       await firestore
           .collection('groups')
@@ -105,7 +105,7 @@ void main() {
           .doc('m1')
           .get();
       final message = Message.fromFirestore(doc);
-      expect(message.senderNickname, 'Anonymous');
+      expect(message.senderNickname, 'Anónimo');
     });
 
     test('accepts "createdAt" as a fallback for timestamp', () async {
