@@ -15,8 +15,8 @@ class Message {
   final Timestamp timestamp;
   final String? replyToText;
   final List<String> mentions;
-  // reactions: { emoji: [anonymousId, ...] }
   final Map<String, List<String>> reactions;
+  final List<String> kudos;
   final MessageType type;
   final String? pollId;
 
@@ -34,6 +34,7 @@ class Message {
     this.replyToText,
     this.mentions = const [],
     this.reactions = const {},
+    this.kudos = const [],
     this.type = MessageType.text,
     this.pollId,
   });
@@ -49,7 +50,6 @@ class Message {
       });
     }
 
-    // Fall back to hash-based index for messages sent before this field existed.
     final nickname = data['senderNickname'] as String? ?? '';
     final fallbackIndex =
         nickname.codeUnits.fold(0, (acc, c) => acc + c) % AvatarUtils.count;
@@ -66,7 +66,7 @@ class Message {
       id: doc.id,
       text: data['text'] ?? '',
       anonymousId: data['senderId'] ?? '',
-      senderNickname: nickname.isEmpty ? 'Anonymous' : nickname,
+      senderNickname: nickname.isEmpty ? 'Anónimo' : nickname,
       senderAvatarIndex: data['senderAvatarIndex'] as int? ?? fallbackIndex,
       senderRole: parsedRole,
       timestamp:
@@ -76,12 +76,12 @@ class Message {
       replyToText: data['replyToText'] as String?,
       mentions: List<String>.from(data['mentions'] ?? []),
       reactions: parsedReactions,
+      kudos: List<String>.from(data['kudos'] ?? []),
       type: msgType,
       pollId: data['pollId'] as String?,
     );
   }
 
-  /// Emoji reacted by [anonymousId], or null if none.
   String? userReaction(String anonymousId) {
     for (final entry in reactions.entries) {
       if (entry.value.contains(anonymousId)) return entry.key;
@@ -89,7 +89,6 @@ class Message {
     return null;
   }
 
-  /// Sorted list of (emoji, count) for display, excluding empty entries.
   List<MapEntry<String, int>> get reactionSummary {
     return reactions.entries
         .where((e) => e.value.isNotEmpty)
@@ -97,4 +96,8 @@ class Message {
         .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
   }
+
+  bool hasKudosFrom(String anonId) => kudos.contains(anonId);
+
+  int get kudosCount => kudos.length;
 }

@@ -53,8 +53,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSearchOpen = false;
   String? _highlightedMessageId;
 
-  // Per-message keys so scroll-to-message can use Scrollable.ensureVisible for
-  // precise, correctly-aligned positioning despite variable-height bubbles.
   final Map<String, GlobalKey> _messageKeys = {};
 
   GlobalKey _keyForMessage(String messageId) =>
@@ -144,12 +142,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final context = _messageKeys[messageId]?.currentContext;
     if (context != null) {
-      // Already built and laid out: position it precisely.
       _ensureMessageVisible(messageId);
     } else if (_scrollController.hasClients) {
-      // Off-screen in the lazy builder, so its context doesn't exist yet.
-      // Jump to an approximate offset to bring it into the build window, then
-      // refine on the next frame once the item has been laid out.
       final maxExtent = _scrollController.position.maxScrollExtent;
       final target = maxExtent * (index / messages.length);
       _scrollController
@@ -168,9 +162,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  /// Brings the message into view with correct alignment, using the per-item
-  /// key. No-op if the item still isn't built (target far outside the range
-  /// the approximate jump reached).
   void _ensureMessageVisible(String messageId) {
     if (!mounted) return;
     final context = _messageKeys[messageId]?.currentContext;
@@ -210,7 +201,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   isPinned ? Icons.push_pin_outlined : Icons.push_pin,
                   color: const Color(0xFF185FA5),
                 ),
-                title: Text(isPinned ? 'Unpin message' : 'Pin message'),
+                title: Text(isPinned ? 'Desfixar mensagem' : 'Fixar mensagem'),
                 onTap: () {
                   Navigator.pop(context);
                   if (isPinned) {
@@ -241,7 +232,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
                 title: const Text(
-                  'Delete message',
+                  'Eliminar mensagem',
                   style: TextStyle(color: Colors.red),
                 ),
                 onTap: () {
@@ -272,7 +263,23 @@ class _ChatScreenState extends State<ChatScreen> {
                 36,
               ),
               title: Text(message.senderNickname),
-              subtitle: Text(widget.groupName),
+              subtitle: FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance
+                    .collection('anonymousIdentities')
+                    .doc(message.anonymousId)
+                    .get(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Text('${widget.groupName} • a carregar...');
+                  }
+                  int totalKudos = 0;
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final data = snapshot.data!.data() as Map<String, dynamic>?;
+                    totalKudos = data?['totalKudos'] ?? 0;
+                  }
+                  return Text('${widget.groupName} • ⭐ $totalKudos Kudos');
+                },
+              ),
             ),
             const Divider(height: 1),
             ListTile(
@@ -303,9 +310,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final screenContext = context;
     final messenger = ScaffoldMessenger.of(screenContext);
 
-    // Guard before opening the form: if we no longer have a session-bound
-    // identity, fail fast with a snackbar instead of letting the user fill in
-    // a form whose submission is guaranteed to be rejected.
     if (_controller.anonymousIdentity == null) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Não está ligado à sala.')),
@@ -445,9 +449,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     _closeSearch();
-    // Defer until the search panel is gone so the list has its final height
-    // before _scrollToMessage reads scroll offsets. It handles the precise
-    // key-based positioning and the highlight pulse.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _scrollToMessage(messageId);
     });
@@ -517,7 +518,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Falha ao sair da comunidade.'),
+                      content: const Text('Não foi possível sair da comunidade.'),
                       backgroundColor: Colors.red,
                       action: SnackBarAction(
                         label: 'Tentar Novamente',
@@ -674,21 +675,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
           if (_controller.error != null &&
               _controller.anonymousIdentity == null) {
-            return Center(
+            return const Center(
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: EdgeInsets.all(20.0),
                 child: Text(
                   'Não foi possível carregar o chat. Tente novamente mais tarde.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                  style: TextStyle(color: Colors.red, fontSize: 14),
                 ),
               ),
             );
           }
 
-          // While searching, the panel takes over the body so its result list
-          // is the only flexible child — stacking it above the message list
-          // overflowed once the keyboard shrank the available height.
           if (_isSearchOpen) {
             return Column(children: [Expanded(child: _buildSearchPanel())]);
           }
@@ -769,6 +767,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onToggleReaction: (emoji) =>
                 _controller.toggleReaction(message.id, emoji),
             onRetryReaction: () => _controller.retryReaction(message.id),
+            onToggleKudos: () => _controller.toggleKudos(message),
           ),
         );
       },
@@ -1134,10 +1133,6 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-/// Outcome of the report dialog. `null` (no value passed to `Navigator.pop`)
-/// means the user cancelled; a non-null value means the user submitted, and
-/// `error` is null on success or the error message on failure. Using a typed
-/// result avoids the previous overloaded `null` / `''` / `String` convention.
 class _ReportDialogResult {
   final String? error;
   const _ReportDialogResult({this.error});
@@ -1232,7 +1227,7 @@ class _ReportUserDialogState extends State<_ReportUserDialog> {
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Escreve um motivo.';
+                  return 'Escreva um motivo.';
                 }
                 return null;
               },

@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/message.dart';
 import '../utils/avatar_utils.dart';
 
-/// Returns RichText spans for [text], highlighting only @tokens whose word
-/// part appears in [mentions] (the validated list stored on the message).
 List<TextSpan> buildMentionSpans(String text, List<String> mentions) {
   final spans = <TextSpan>[];
   final regex = RegExp(r'@(\w+)');
@@ -55,14 +53,12 @@ class MessageBubble extends StatelessWidget {
   final bool hasReactionError;
   final bool isRetryingReaction;
 
-  /// Opens the options/react/report menu. Wired to the double-tap gesture.
   final VoidCallback onShowOptions;
-
-  /// Starts a reply. Wired to the long-press gesture.
   final VoidCallback onReply;
   final VoidCallback? onSenderTap;
   final ValueChanged<String> onToggleReaction;
   final VoidCallback onRetryReaction;
+  final VoidCallback onToggleKudos;
 
   const MessageBubble({
     super.key,
@@ -79,6 +75,7 @@ class MessageBubble extends StatelessWidget {
     this.onSenderTap,
     required this.onToggleReaction,
     required this.onRetryReaction,
+    required this.onToggleKudos,
   });
 
   Widget _buildMessageText(String text, List<String> mentions) =>
@@ -159,6 +156,53 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildKudosButton() {
+    final hasGivenKudos = message.hasKudosFrom(currentAnonymousId);
+    final count = message.kudosCount;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0),
+      child: GestureDetector(
+        onTap: isOwn ? null : onToggleKudos,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: hasGivenKudos ? const Color(0xFF185FA5) : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isOwn ? Colors.grey[400]! : const Color(0xFF185FA5),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.star,
+                size: 14,
+                color: hasGivenKudos
+                    ? Colors.white
+                    : (isOwn ? Colors.grey[400] : const Color(0xFF185FA5)),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Kudos $count',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: hasGivenKudos
+                      ? Colors.white
+                      : (isOwn ? Colors.grey[400] : const Color(0xFF185FA5)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -298,6 +342,10 @@ class MessageBubble extends StatelessWidget {
                           ),
                         _buildMessageText(message.text, message.mentions),
                         _buildReactionBar(context),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: _buildKudosButton(),
+                        ),
                       ],
                     ),
                   ),

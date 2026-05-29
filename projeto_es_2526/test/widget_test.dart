@@ -230,6 +230,7 @@ void main() {
               onSenderTap: () => tapped = true,
               onToggleReaction: (_) {},
               onRetryReaction: () {},
+              onToggleKudos: () {},
             ),
           ),
         ),
@@ -269,12 +270,13 @@ void main() {
               onSenderTap: () {},
               onToggleReaction: (_) {},
               onRetryReaction: () {},
+              onToggleKudos: () {},
             ),
           ),
         ),
       );
 
-      final center = tester.getCenter(find.byType(AnimatedContainer));
+      final center = tester.getCenter(find.byType(AnimatedContainer).first);
       final firstTap = await tester.startGesture(center);
       await firstTap.up();
       await tester.pump(const Duration(milliseconds: 50));

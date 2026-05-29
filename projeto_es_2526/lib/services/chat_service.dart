@@ -56,6 +56,12 @@ abstract class ChatServiceInterface {
     required String groupId,
     required String messageId,
   });
+
+  Future<String?> toggleKudos({
+    required String groupId,
+    required Message message,
+    required String givingUserAnonId,
+  });
 }
 
 class ChatService implements ChatServiceInterface {
@@ -106,8 +112,6 @@ class ChatService implements ChatServiceInterface {
     final snap = await firestoreQuery.get();
     final results = <MessageSearchResult>[];
     DocumentSnapshot<Map<String, dynamic>>? lastScannedDocument;
-    // Whether we visited every fetched doc. False means we hit maxResults with
-    // unscanned docs still left in this page, which is itself a "more" signal.
     var scannedWholePage = true;
 
     for (var i = 0; i < snap.docs.length; i++) {
@@ -145,8 +149,6 @@ class ChatService implements ChatServiceInterface {
     return MessageSearchPage(
       results: results,
       lastDocument: lastScannedDocument ?? startAfter,
-      // More may remain either because docs in this page went unscanned, or
-      // because Firestore returned a full page that could be followed by more.
       hasMore: !scannedWholePage || snap.docs.length == pageSize,
     );
   }
@@ -200,16 +202,14 @@ class ChatService implements ChatServiceInterface {
         'senderRole': senderRole,
         'mentions': mentions,
         'reactions': {},
+        'kudos': [],
       });
       return null;
     } catch (_) {
-      return 'Falha ao enviar a mensagem. Tente novamente.';
+      return 'Não foi possível enviar a mensagem. Tente novamente.';
     }
   }
 
-  /// Adds [emoji] reaction from [anonymousId] to a message.
-  /// Enforces one reaction per user: removes any existing reaction first.
-  /// Returns null on success, or an error string on failure.
   @override
   Future<String?> addReaction({
     required String groupId,
@@ -229,20 +229,14 @@ class ChatService implements ChatServiceInterface {
             ? Map<String, dynamic>.from(data['reactions'] as Map)
             : <String, dynamic>{};
 
-        // Remove user from any existing reaction (one reaction per user rule)
         final updated = raw.map(
           (e, users) => MapEntry(e, List<String>.from(users as List)),
         );
         updated.forEach((e, users) => users.remove(anonymousId));
 
-        // Add to the chosen emoji list
         updated[emoji] = (updated[emoji] ?? [])..add(anonymousId);
-
-        // Clean up empty entries
         updated.removeWhere((_, users) => users.isEmpty);
 
-        // Use set (not update) so the reactions field is fully replaced,
-        // not deep-merged with the existing map.
         transaction.set(docRef, {...data, 'reactions': updated});
       });
       return null;
@@ -257,16 +251,13 @@ class ChatService implements ChatServiceInterface {
     required String messageId,
   }) async {
     try {
-      // Delete the message and any pinned entry for it atomically. The pinned
-      // doc shares the message id, so deleting it unconditionally is a no-op
-      // when the message wasn't pinned and prevents orphan pinned banners.
       final batch = _firestore.batch();
       batch.delete(_messagesRef(groupId).doc(messageId));
       batch.delete(_pinnedRef(groupId).doc(messageId));
       await batch.commit();
       return null;
     } catch (_) {
-      return 'Não foi possível eliminar a mensagem. Por favor, tente novamente.';
+      return 'Não foi possível eliminar a mensagem. Tente novamente.';
     }
   }
 
@@ -285,7 +276,7 @@ class ChatService implements ChatServiceInterface {
       });
       return null;
     } catch (_) {
-      return 'Failed to pin message. Please try again.';
+      return 'Não foi possível fixar a mensagem. Tente novamente.';
     }
   }
 
@@ -298,12 +289,10 @@ class ChatService implements ChatServiceInterface {
       await _pinnedRef(groupId).doc(messageId).delete();
       return null;
     } catch (_) {
-      return 'Failed to unpin message. Please try again.';
+      return 'Não foi possível desfixar a mensagem. Tente novamente.';
     }
   }
 
-  /// Removes [emoji] reaction from [anonymousId].
-  /// Returns null on success, or an error string on failure.
   @override
   Future<String?> removeReaction({
     required String groupId,
@@ -335,5 +324,95 @@ class ChatService implements ChatServiceInterface {
     } catch (_) {
       return 'Não foi possível remover a reação. Tente novamente.';
     }
+  }
+
+  @override
+  Future<String?> toggleKudos({
+    required String groupId,
+    required Message message,
+    required String givingUserAnonId,
+  }) async {
+    // Defense in depth: never let a user give Kudos to their own message,
+    // which would otherwise inflate their own totalKudos aggregate.
+    if (message.anonymousId == givingUserAnonId) return null;
+
+    final messageRef = _messagesRef(groupId).doc(message.id);
+    final identityRef =
+        _firestore.collection('anonymousIdentities').doc(message.anonymousId);
+
+    try {
+      // Firestore requires all reads to happen before any writes, so we read
+      // both docs up front, then issue the updates. The callback may re-run on
+      // contention, so it must stay free of external side-effects.
+      final isAdding = await _firestore.runTransaction<bool>((transaction) async {
+        final snap = await transaction.get(messageRef);
+        if (!snap.exists) throw Exception('Mensagem não encontrada.');
+        final identitySnap = await transaction.get(identityRef);
+
+        final data = snap.data() ?? {};
+        final kudosList = List<String>.from(data['kudos'] ?? []);
+        final adding = !kudosList.contains(givingUserAnonId);
+
+        if (adding) {
+          kudosList.add(givingUserAnonId);
+        } else {
+          kudosList.remove(givingUserAnonId);
+        }
+
+        transaction.update(messageRef, {'kudos': kudosList});
+
+        if (identitySnap.exists) {
+          final identityData = identitySnap.data() ?? {};
+          var currentTotal = identityData['totalKudos'] as int? ?? 0;
+          currentTotal = adding ? currentTotal + 1 : currentTotal - 1;
+          if (currentTotal < 0) currentTotal = 0;
+          transaction.update(identityRef, {'totalKudos': currentTotal});
+        }
+
+        return adding;
+      });
+
+      // Side-effects run exactly once, after the transaction has committed.
+      if (isAdding) {
+        await _notifyKudosRecipient(groupId, message);
+        _checkForAbuse(message.anonymousId, givingUserAnonId);
+      }
+      return null;
+    } catch (_) {
+      return 'Não foi possível atualizar os Kudos. Tente novamente.';
+    }
+  }
+
+  Future<void> _notifyKudosRecipient(String groupId, Message message) async {
+    try {
+      final identitySnap = await _firestore
+          .collection('anonymousIdentities')
+          .doc(message.anonymousId)
+          .get();
+
+      if (!identitySnap.exists) return;
+
+      final recipientUserId = identitySnap.data()?['userId'] as String?;
+      if (recipientUserId == null) return;
+
+      final groupDoc = await _firestore.collection('groups').doc(groupId).get();
+      final groupName = groupDoc.data()?['name'] ?? 'Comunidade';
+
+      await _firestore.collection('notifications').add({
+        'groupId': groupId,
+        'groupName': groupName,
+        'description': 'A tua mensagem recebeu Kudos!',
+        'recipientId': recipientUserId,
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'kudos',
+        'isRead': false,
+      });
+    } catch (_) {
+      // Best-effort notification: the Kudos itself is already persisted, so a
+      // failure here is non-critical and intentionally swallowed.
+    }
+  }
+
+  Future<void> _checkForAbuse(String recipientAnonId, String giverAnonId) async {
   }
 }
