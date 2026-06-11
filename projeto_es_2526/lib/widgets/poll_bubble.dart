@@ -277,14 +277,17 @@ class _PollCard extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
                       child: Row(
                         children: [
-                          Text(
-                            '$total voto${total == 1 ? '' : 's'} · $timeLabel',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[600],
+                          Expanded(
+                            child: Text(
+                              '$total voto${total == 1 ? '' : 's'} · $timeLabel',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ),
-                          const Spacer(),
                           if (isCreator && poll.isOpen)
                             _CloseButton(
                               isClosing: isClosing,

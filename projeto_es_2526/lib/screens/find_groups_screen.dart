@@ -102,152 +102,154 @@ class _FindGroupsScreenState extends State<FindGroupsScreen> {
                 horizontal: 24,
                 vertical: 24,
               ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            group.name,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+              child: SingleChildScrollView(
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              group.name,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 16),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(dialogContext),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.grey,
+                              size: 28,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
                         ),
-                        const SizedBox(width: 16),
-                        GestureDetector(
-                          onTap: () => Navigator.pop(dialogContext),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.grey,
-                            size: 28,
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${group.isEstimate ? "~" : ""}${group.memberCount} membros',
+                          style: TextStyle(
+                            color: Colors.blue[800],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 8,
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${group.isEstimate ? "~" : ""}${group.memberCount} membros',
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Sobre a comunidade',
                         style: TextStyle(
-                          color: Colors.blue[800],
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          fontSize: 14,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                    const Text(
-                      'Sobre a comunidade',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
+                      const SizedBox(height: 12),
+                      Text(
+                        group.description,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                          height: 1.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      group.description,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: FilledButton(
-                        onPressed: isJoined || isJoining
-                            ? null
-                            : () async {
-                                final uid = _auth.currentUser?.uid;
-                                if (uid == null) return;
+                      const SizedBox(height: 48),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: FilledButton(
+                          onPressed: isJoined || isJoining
+                              ? null
+                              : () async {
+                                  final uid = _auth.currentUser?.uid;
+                                  if (uid == null) return;
 
-                                setDialogState(() => isJoining = true);
-                                try {
-                                  await _identityService.getOrCreateIdentity(
-                                    uid,
-                                    group.id,
-                                  );
-                                  if (!scaffoldContext.mounted) return;
-                                  Navigator.pop(scaffoldContext);
-                                  Navigator.push(
-                                    scaffoldContext,
-                                    MaterialPageRoute(
-                                      builder: (_) => ChatScreen(
-                                        groupId: group.id,
-                                        groupName: group.name,
-                                        memberCount: group.memberCount
-                                            .toString(),
-                                        groupDescription: group.description,
-                                      ),
-                                    ),
-                                  );
-                                } catch (e) {
-                                  debugPrint(
-                                    'Erro ao juntar-se a comunidade: $e',
-                                  );
-                                  if (dialogContext.mounted) {
-                                    setDialogState(() => isJoining = false);
-                                  }
-                                  if (scaffoldContext.mounted) {
-                                    ScaffoldMessenger.of(
+                                  setDialogState(() => isJoining = true);
+                                  try {
+                                    await _identityService.getOrCreateIdentity(
+                                      uid,
+                                      group.id,
+                                    );
+                                    if (!scaffoldContext.mounted) return;
+                                    Navigator.pop(scaffoldContext);
+                                    Navigator.push(
                                       scaffoldContext,
-                                    ).showSnackBar(
-                                      SnackBar(
-                                        content: Text(_friendlyJoinError(e)),
-                                        duration: const Duration(seconds: 6),
+                                      MaterialPageRoute(
+                                        builder: (_) => ChatScreen(
+                                          groupId: group.id,
+                                          groupName: group.name,
+                                          memberCount: group.memberCount
+                                              .toString(),
+                                          groupDescription: group.description,
+                                        ),
                                       ),
                                     );
+                                  } catch (e) {
+                                    debugPrint(
+                                      'Erro ao juntar-se a comunidade: $e',
+                                    );
+                                    if (dialogContext.mounted) {
+                                      setDialogState(() => isJoining = false);
+                                    }
+                                    if (scaffoldContext.mounted) {
+                                      ScaffoldMessenger.of(
+                                        scaffoldContext,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(_friendlyJoinError(e)),
+                                          duration: const Duration(seconds: 6),
+                                        ),
+                                      );
+                                    }
                                   }
-                                }
-                              },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: isJoined
-                              ? Colors.green
-                              : const Color(0xFF185FA5),
-                          disabledBackgroundColor: isJoined
-                              ? Colors.green
-                              : Colors.grey[300],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: isJoined
+                                ? Colors.green
+                                : const Color(0xFF185FA5),
+                            disabledBackgroundColor: isJoined
+                                ? Colors.green
+                                : Colors.grey[300],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
+                          child: isJoining
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  isJoined ? 'Membro' : 'Entrar na comunidade',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
-                        child: isJoining
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : Text(
-                                isJoined ? 'Membro' : 'Entrar na comunidade',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );

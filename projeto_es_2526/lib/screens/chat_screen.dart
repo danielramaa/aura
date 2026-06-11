@@ -603,6 +603,8 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(
               widget.groupName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.black,
                 fontSize: 16,
@@ -611,6 +613,8 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
             Text(
               '${widget.memberCount} membros',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: Colors.grey[600],
                 fontSize: 12,

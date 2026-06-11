@@ -81,11 +81,15 @@ class GroupCard extends StatelessWidget {
                       ),
                       if (memberCount > 0) ...[
                         SizedBox(width: 8),
-                        Text(
-                          '$memberCount membros',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.grey[400],
+                        Flexible(
+                          child: Text(
+                            '$memberCount membros',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey[400],
+                            ),
                           ),
                         ),
                       ],

@@ -148,12 +148,16 @@ class _PinnedMessagesBannerState extends State<PinnedMessagesBanner> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        pinned.senderNickname,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF185FA5),
+                      Flexible(
+                        child: Text(
+                          pinned.senderNickname,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF185FA5),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),

@@ -273,19 +273,23 @@ class MessageBubble extends StatelessWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (!isOwn)
-                                  InkWell(
-                                    onTap: onSenderTap,
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 2,
-                                      ),
-                                      child: Text(
-                                        message.senderNickname,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 13,
-                                          color: Color(0xFF185FA5),
+                                  Flexible(
+                                    child: InkWell(
+                                      onTap: onSenderTap,
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 2,
+                                        ),
+                                        child: Text(
+                                          message.senderNickname,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: Color(0xFF185FA5),
+                                          ),
                                         ),
                                       ),
                                     ),

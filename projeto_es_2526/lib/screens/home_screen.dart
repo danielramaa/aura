@@ -187,26 +187,33 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Minhas comunidades',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w500,
-                color: Colors.black,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Minhas comunidades',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black,
+                ),
               ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              groups.isEmpty
-                  ? 'Nenhuma comunidade ativa'
-                  : '${groups.length} comunidade${groups.length == 1 ? '' : 's'} ativa${groups.length == 1 ? '' : 's'}',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-          ],
+              SizedBox(height: 4),
+              Text(
+                groups.isEmpty
+                    ? 'Nenhuma comunidade ativa'
+                    : '${groups.length} comunidade${groups.length == 1 ? '' : 's'} ativa${groups.length == 1 ? '' : 's'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+            ],
+          ),
         ),
+        SizedBox(width: 12),
         GestureDetector(
           onTap: _startSearch,
           child: Container(
