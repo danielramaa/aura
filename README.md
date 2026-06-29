@@ -900,3 +900,23 @@ Sprint 3 closed out the MVP's **safety, compliance and engagement** backlog: the
 We continued the Sprint 2 workflow: AI (Claude / ChatGPT) to draft tests, and a two-pass PR review (Claude first, then GitHub Copilot) with every suggestion read, tested and approved by a team member before merge. This sprint we also leaned on AI for **merge-conflict resolution** across the parallel feature and localization branches and for an automated **code review of the kudos feature**, which surfaced a Firestore read-after-write transaction bug that was fixed before merge.
 
 ### Final Release
+
+#### What was delivered
+
+The final release is a stabilization pass over the Sprint 3, no new features, just a round of UI polish that resolves text-overflow defects across the app so long content renders cleanly on every screen size.
+
+**Text-overflow fixes**
+- Chat, home and find-groups screens now constrain and ellipsize long text instead of overflowing their bounds.
+- Group names, descriptions and last-message previews truncate gracefully in `GroupCard` and the home list.
+- Message bubbles, the pinned-messages banner and poll bubbles handle long content (names, options, quoted replies) without breaking layout.
+
+No backend, security-rule or data-model changes were made in this release; the Firebase integration and feature set are unchanged from Sprint 3.
+
+#### Retrospective
+
+**Did well:**
+- Caught and fixed the remaining overflow defects before the final demo, giving the app a consistent, polished look on different device sizes.
+- Kept the release scope tight — UI-only changes with no risk to the backend or existing features.
+
+**Do differently:**
+- Add overflow handling as part of building each widget rather than as a late cleanup pass.
