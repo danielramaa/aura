@@ -337,20 +337,24 @@ class ChatService implements ChatServiceInterface {
     if (message.anonymousId == givingUserAnonId) return null;
 
     final messageRef = _messagesRef(groupId).doc(message.id);
-    final identityRef = _firestore
-        .collection('anonymousIdentities')
+    // Public, PII-free aggregate of a recipient's total Kudos. Kept in its own
+    // collection (keyed by anonymousId, no userId) so it can be read by anyone
+    // to render a member's Kudos count, without exposing the read-blocked
+    // anonymousIdentities reverse-lookup doc.
+    final kudosTotalRef = _firestore
+        .collection('kudosTotals')
         .doc(message.anonymousId);
 
     try {
-      // Firestore requires all reads to happen before any writes, so we read
-      // both docs up front, then issue the updates. The callback may re-run on
-      // contention, so it must stay free of external side-effects.
+      // We only read the message doc to learn whether this is an add or a
+      // remove. We must NOT read any anonymity doc here — instead we bump the
+      // aggregate with an atomic FieldValue.increment, a blind write that needs
+      // no prior read.
       final isAdding = await _firestore.runTransaction<bool>((
         transaction,
       ) async {
         final snap = await transaction.get(messageRef);
         if (!snap.exists) throw Exception('Mensagem não encontrada.');
-        final identitySnap = await transaction.get(identityRef);
 
         final data = snap.data() ?? {};
         final kudosList = List<String>.from(data['kudos'] ?? []);
@@ -363,14 +367,11 @@ class ChatService implements ChatServiceInterface {
         }
 
         transaction.update(messageRef, {'kudos': kudosList});
-
-        if (identitySnap.exists) {
-          final identityData = identitySnap.data() ?? {};
-          var currentTotal = identityData['totalKudos'] as int? ?? 0;
-          currentTotal = adding ? currentTotal + 1 : currentTotal - 1;
-          if (currentTotal < 0) currentTotal = 0;
-          transaction.update(identityRef, {'totalKudos': currentTotal});
-        }
+        transaction.set(
+          kudosTotalRef,
+          {'total': FieldValue.increment(adding ? 1 : -1)},
+          SetOptions(merge: true),
+        );
 
         return adding;
       });

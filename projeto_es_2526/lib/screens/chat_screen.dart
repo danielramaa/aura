@@ -263,11 +263,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 36,
               ),
               title: Text(message.senderNickname),
-              subtitle: FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('anonymousIdentities')
+              subtitle: StreamBuilder<DocumentSnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('kudosTotals')
                     .doc(message.anonymousId)
-                    .get(),
+                    .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return Text('${widget.groupName} • a carregar...');
@@ -275,7 +275,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   int totalKudos = 0;
                   if (snapshot.hasData && snapshot.data!.exists) {
                     final data = snapshot.data!.data() as Map<String, dynamic>?;
-                    totalKudos = data?['totalKudos'] ?? 0;
+                    totalKudos = data?['total'] ?? 0;
                   }
                   return Text('${widget.groupName} • ⭐ $totalKudos Kudos');
                 },

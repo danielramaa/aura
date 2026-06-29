@@ -147,7 +147,7 @@ service cloud.firestore {
               && request.resource.data.text == '')
           );
         allow update: if request.auth != null
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions']);
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'kudos']);
         allow delete: if request.auth != null
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       }
@@ -326,7 +326,16 @@ service cloud.firestore {
       allow delete: if false;
       allow read: if false;
     }
-    
+
+    // Public, PII-free Kudos aggregate per anonymous identity (no userId), so a
+    // member's total Kudos can be displayed without exposing the read-blocked
+    // anonymousIdentities reverse lookup above. Written via the Kudos toggle.
+    match /kudosTotals/{anonymousId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null;
+      allow delete: if false;
+    }
+
     match /medications/{medicationId} {
       allow read: if request.auth != null;
       // Only medics can create medication entries, and only for themselves
