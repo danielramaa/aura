@@ -920,3 +920,13 @@ No backend, security-rule or data-model changes were made in this release; the F
 
 **Do differently:**
 - Add overflow handling as part of building each widget rather than as a late cleanup pass.
+
+
+**Pitch**
+-Enfrentar um desafio de saúde ou emocional pode ser solitário. Muitas pessoas evitam procurar apoio por medo do estigma e de expor a sua identidade.
+
+-A nossa solução é uma app de chat anónimo focada na entreajuda, criada para oferecer um espaço seguro de partilha. O seu maior diferencial está na privacidade: cada grupo de apoio funciona como um ambiente independente, permitindo comunicar livremente sem que a atividade seja associada ao utilizador ou ligada entre diferentes salas.
+
+-O nosso projeto alinha-se com o ODS 3 — Saúde e Bem-Estar — ao promover apoio emocional numa comunidade confidencial.
+
+-E se todos pudessem encontrar um espaço para partilhar a sua história sem julgamentos?
