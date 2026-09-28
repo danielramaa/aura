@@ -2,6 +2,9 @@
 
 # _Aura_ Development Report
 
+> [!NOTE]
+> **This project was transferred from a university repository.** _Aura_ was originally built by a team of five students for the Software Engineering course (LEIC-ES-2025-26, FEUP) in the repository `LEIC-ES-2025-26-2LEIC14/T3`. After the course ended, it was moved here to keep developing it. The full commit history, issues, pull requests, reviews, releases and the Scrum board were migrated with it. Issues and PRs imported from the original repo keep their original numbers and note their original author.
+
 Welcome to the documentation of _Aura_!
 
 This Software Development Report, tailored for LEIC-ES-2025-26, provides comprehensive details about _Aura_, starting from an high-level vision and going into low-level implementation decisions. 
@@ -27,11 +30,7 @@ It is organised by the following activities:
   * [Sprint 3](#Sprint-3)
   * [Final Release](#Final-Release)
 
-Contributions are expected to be made exclusively by the initial team, but we may open them to the community, after the course, in all areas and topics: requirements, technologies, development, experimentation, testing, etc.
-
-Please contact us!
-
-Thank you!
+The project is now maintained by Daniel Morais Rama. The original team who built it during the course:
 
 * Bruno da Fonseca Nicolau Costa Dias - up202405613@up.pt
 * Carolina Oliveira Dias - up202406310@up.pt
@@ -56,8 +55,8 @@ Run `flutter doctor` and resolve any reported issues before continuing.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/LEIC-ES-2025-26-2LEIC14/T3.git
-cd T3/projeto_es_2526
+git clone https://github.com/danielramaa/aura.git
+cd aura/projeto_es_2526
 ```
 
 ### 2. Install dependencies
@@ -237,7 +236,7 @@ Optionally, indicate an initial/tentative list of assumptions that you are doing
 
 ### User Stories
 
-The user stories for this project are managed and tracked in our [GitHub Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC14/projects/3/views/1).
+The user stories for this project are managed and tracked in our [GitHub Projects board](https://github.com/users/danielramaa/projects/7).
 
 ### User Interface
 
@@ -608,7 +607,7 @@ The Sprint 0 prototype implements the **Communities home screen** — the most c
 - Unread badge logic: hidden at 0, exact count up to 99, "99+" cap above that
 - Empty state UI with CTA to find a community
 
-The prototype is available as a downloadable `.apk` in the [v0 release](https://github.com/LEIC-ES-2025-26-2LEIC14/T3/releases/tag/v0).
+The prototype is available as a downloadable `.apk` in the [v0 release](https://github.com/danielramaa/aura/releases/tag/v0).
 
 ## Project management
 <!--
@@ -620,7 +619,7 @@ Common practices of managing agile software development with Scrum are: backlog 
 
 You can find below information and references related with the project management: 
 
-* Backlog management: Product backlog and Sprint backlog in a [Github Projects board](https://github.com/orgs/LEIC-ES-2025-26-2LEIC14/projects/3/views/1);
+* Backlog management: Product backlog and Sprint backlog in a [Github Projects board](https://github.com/users/danielramaa/projects/7);
 * Release management: [v0](#), v1, v2, v3, ...;
 * Sprint planning and retrospectives: 
   * plans: screenshots of Github Projects board at begin and end of each Sprint;
